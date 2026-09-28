@@ -11,7 +11,24 @@
 .userbox button{margin-top:10px;width:100%}
 #appShell[hidden],#authScreen[hidden]{display:none!important}
 
-</style></head><body>
+</style>
+<style>
+.mgmt-grid{display:grid;grid-template-columns:320px 1fr;gap:18px}
+.people-list{display:flex;flex-direction:column;gap:8px}
+.person-btn{width:100%;text-align:left;padding:12px;border:1px solid var(--line);background:var(--panel);border-radius:12px;cursor:pointer}
+.person-btn.active{outline:2px solid var(--accent)}
+.person-name{font-weight:800}.person-meta{font-size:12px;color:var(--muted);margin-top:3px}
+.tabs{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0}
+.tabbtn{padding:8px 11px;border-radius:999px;border:1px solid var(--line);background:transparent;cursor:pointer}
+.tabbtn.active{background:var(--accent);color:white;border-color:var(--accent)}
+.tabpane{display:none}.tabpane.active{display:block}
+.metricbox{padding:12px;border:1px solid var(--line);border-radius:12px}
+.mini-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.mini-item{padding:10px;border:1px solid var(--line);border-radius:10px}
+@media(max-width:850px){.mgmt-grid{grid-template-columns:1fr}}
+</style>
+
+</head><body>
 <div id="authScreen" class="auth-screen">
   <div class="auth-card">
     <div class="brandline">DANIELLE OS • ACESSO PRIVADO</div>
@@ -47,6 +64,27 @@
 <section class="page" data-page="plano"><h1>Plano até dezembro</h1><p class="lead">Ciclos de duas semanas: estudar pouco, executar muito e produzir evidência real de senioridade.</p><div class="grid" id="cycles"></div></section>
 <section class="page" data-page="coach"><h1>Conselheiro de Gestão</h1><p class="lead">Este módulo usa seu perfil e contexto para estruturar pedidos de aconselhamento. Sem uma chave/API ou backend, um HTML local não consegue chamar um GPT com segurança. Por isso, ele gera um prompt completo para você colar no ChatGPT; depois pode ser conectado a uma API/backend.</p><div class="grid"><div class="card c4"><h2>Contexto</h2><select id="adviceType" class="field"><option>Feedback</option><option>Delegação</option><option>Conflito</option><option>1:1</option><option>Decisão operacional</option><option>Desenvolvimento da equipe</option><option>Comunicação com liderança/stakeholder</option></select><br><br><textarea id="case" class="field" rows="12" placeholder="Descreva o caso: fatos, pessoas, objetivo, restrições e o que você está pensando em fazer."></textarea><br><br><button class="btn primary" onclick="askCoach()">Gerar aconselhamento</button></div><div class="card c8"><h2>Análise</h2><div class="chat" id="chat"><div class="msg ai">Descreva um caso real. Vou gerar um prompt de aconselhamento que considera seu perfil, seus riscos de liderança e um método de decisão.</div></div><div class="row" style="margin-top:10px"><button class="btn" onclick="copyPrompt()">Copiar prompt completo</button></div></div></div></section>
 <section class="page" data-page="score"><h1>Scorecard semanal</h1><p class="lead">A senioridade precisa aparecer em comportamento observável, não apenas em sensação de evolução.</p><div class="grid"><div class="card c6" id="scores"></div><div class="card c6"><h2>Evidências da semana</h2><textarea class="field save" data-key="evidence" rows="12" placeholder="Decisão tomada, processo melhorado, problema antecipado, pessoa desenvolvida, conflito conduzido, resultado mensurável..."></textarea><br><br><button class="btn primary" onclick="saveScores()">Salvar semana</button></div><div class="card c12"><h2>Histórico</h2><div id="history"></div></div></div></section>
+
+<section id="managementCockpit" class="card" style="margin-top:18px">
+  <div class="kicker">GESTÃO • COCKPIT</div>
+  <h2>Desenvolvimento da equipe</h2>
+  <p class="muted">Perfil comportamental é contexto, não sentença. Priorize comportamento observado, entregas, acordos e evolução.</p>
+
+  <div class="mgmt-grid">
+    <div>
+      <div class="row" style="justify-content:space-between">
+        <b>Equipe</b>
+        <button class="btn" id="cockpitAddPerson" type="button">+ Pessoa</button>
+      </div>
+      <div id="cockpitPeople" class="people-list" style="margin-top:12px"></div>
+    </div>
+
+    <div id="personWorkspace">
+      <div class="muted">Selecione uma pessoa da equipe.</div>
+    </div>
+  </div>
+</section>
+
 </main></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -433,6 +471,191 @@ sb.auth.onAuthStateChange((event,session)=>{
   }
 });
 setTimeout(initCloudData,200);
+</script>
+
+
+<script>
+let selectedMemberId=null;
+
+async function cockpitLoadPeople(){
+  if(!currentUserId) return;
+  const {data,error}=await sb.from('team_members')
+    .select('id,name,role,area,autonomy_level,current_development_goal,strengths,development_points,motivators,demotivators,communication_preferences,manager_notes,status')
+    .eq('status','active').order('created_at',{ascending:true});
+  const el=document.getElementById('cockpitPeople');
+  if(error){el.innerHTML='<span class="danger">'+esc(error.message)+'</span>';return;}
+  el.innerHTML=(data||[]).map(p=>`
+    <button class="person-btn ${selectedMemberId===p.id?'active':''}" onclick="openMember('${p.id}')">
+      <div class="person-name">${esc(p.name)}</div>
+      <div class="person-meta">${esc(p.role||'Cargo não informado')} • N${p.autonomy_level||1}</div>
+    </button>`).join('') || '<div class="muted">Cadastre a primeira pessoa.</div>';
+  if(!selectedMemberId && data && data[0]) openMember(data[0].id);
+}
+
+document.getElementById('cockpitAddPerson').addEventListener('click',async()=>{
+  await addPerson();
+  await cockpitLoadPeople();
+});
+
+async function openMember(id){
+  selectedMemberId=id;
+  await cockpitLoadPeopleButtonsOnly();
+  const [{data:p,error},{data:assess}]=await Promise.all([
+    sb.from('team_members').select('*').eq('id',id).single(),
+    sb.from('behavioral_assessments').select('*').eq('team_member_id',id).order('created_at',{ascending:false})
+  ]);
+  if(error){document.getElementById('personWorkspace').innerHTML=esc(error.message);return;}
+  const disc=(assess||[]).find(x=>x.assessment_type==='DISC');
+  renderMemberWorkspace(p,disc);
+  await Promise.all([loadEvidence(id),loadOneOnOnes(id),loadFeedbacks(id),loadDelegations(id)]);
+}
+async function cockpitLoadPeopleButtonsOnly(){
+  const {data}=await sb.from('team_members').select('id,name,role,autonomy_level').eq('status','active').order('created_at',{ascending:true});
+  const el=document.getElementById('cockpitPeople');
+  el.innerHTML=(data||[]).map(p=>`
+    <button class="person-btn ${selectedMemberId===p.id?'active':''}" onclick="openMember('${p.id}')">
+      <div class="person-name">${esc(p.name)}</div>
+      <div class="person-meta">${esc(p.role||'Cargo não informado')} • N${p.autonomy_level||1}</div>
+    </button>`).join('');
+}
+function renderMemberWorkspace(p,disc){
+  const w=document.getElementById('personWorkspace');
+  w.innerHTML=`
+    <div class="row"><div style="flex:1"><h2 style="margin-bottom:4px">${esc(p.name)}</h2><div class="muted">${esc(p.role||'')} ${p.area?'• '+esc(p.area):''}</div></div>
+    <div class="metricbox"><b>N${p.autonomy_level||1}</b><div class="tiny muted">autonomia</div></div></div>
+
+    <div class="tabs">
+      ${['Perfil','Evidências','1:1','Feedback','Delegações'].map((x,i)=>`<button class="tabbtn ${i===0?'active':''}" onclick="switchMgmtTab(this,'mg${i}')">${x}</button>`).join('')}
+    </div>
+
+    <div id="mg0" class="tabpane active">
+      <div class="grid two">
+        <div><label>Cargo</label><input id="mRole" class="field" value="${esc(p.role||'')}"></div>
+        <div><label>Área</label><input id="mArea" class="field" value="${esc(p.area||'')}"></div>
+        <div><label>Nível de autonomia</label><select id="mAut" class="field">${[1,2,3,4].map(n=>`<option value="${n}" ${p.autonomy_level===n?'selected':''}>N${n}</option>`).join('')}</select></div>
+        <div><label>DISC</label><input id="mDisc" class="field" placeholder="Ex.: CD" value="${esc(disc?.profile_name||'')}"></div>
+      </div>
+      <br><label>Objetivo atual de desenvolvimento</label><textarea id="mGoal" class="field">${esc(p.current_development_goal||'')}</textarea>
+      <br><label>Forças observadas</label><textarea id="mStrengths" class="field">${esc(jsonText(p.strengths))}</textarea>
+      <br><label>Pontos de desenvolvimento observados</label><textarea id="mDev" class="field">${esc(jsonText(p.development_points))}</textarea>
+      <br><label>Motivadores</label><textarea id="mMot" class="field">${esc(jsonText(p.motivators))}</textarea>
+      <br><label>Preferências de comunicação</label><textarea id="mComm" class="field">${esc(jsonText(p.communication_preferences))}</textarea>
+      <br><button class="btn primary" onclick="saveMemberProfile('${p.id}')">Salvar perfil</button>
+    </div>
+
+    <div id="mg1" class="tabpane">
+      <label>Contexto</label><input id="evContext" class="field" placeholder="Jogo, reunião, projeto...">
+      <br><br><label>Comportamento observado — descreva fatos</label><textarea id="evBehavior" class="field"></textarea>
+      <br><label>Impacto</label><textarea id="evImpact" class="field"></textarea>
+      <br><select id="evType" class="field"><option>observation</option><option>strength</option><option>development</option><option>delivery</option><option>incident</option><option>autonomy</option><option>communication</option></select>
+      <br><br><button class="btn primary" onclick="saveEvidence('${p.id}')">Registrar evidência</button>
+      <div id="evidenceList" class="mini-list"></div>
+    </div>
+
+    <div id="mg2" class="tabpane">
+      <label>Vitórias</label><textarea id="ooWins" class="field"></textarea>
+      <br><label>Bloqueios</label><textarea id="ooBlockers" class="field"></textarea>
+      <br><label>Tema de desenvolvimento</label><textarea id="ooDev" class="field"></textarea>
+      <br><label>Compromissos / próximos passos</label><textarea id="ooActions" class="field"></textarea>
+      <br><button class="btn primary" onclick="saveOneOnOne('${p.id}')">Salvar 1:1 de hoje</button>
+      <div id="oneList" class="mini-list"></div>
+    </div>
+
+    <div id="mg3" class="tabpane">
+      <select id="fbType" class="field"><option value="positive">Positivo</option><option value="development">Desenvolvimento</option><option value="corrective">Corretivo</option><option value="recognition">Reconhecimento</option></select>
+      <br><br><label>Situação</label><textarea id="fbSituation" class="field"></textarea>
+      <br><label>Comportamento</label><textarea id="fbBehavior" class="field"></textarea>
+      <br><label>Impacto</label><textarea id="fbImpact" class="field"></textarea>
+      <br><label>Expectativa / próximo comportamento</label><textarea id="fbExpectation" class="field"></textarea>
+      <br><button class="btn primary" onclick="saveFeedback('${p.id}')">Registrar feedback</button>
+      <div id="feedbackList" class="mini-list"></div>
+    </div>
+
+    <div id="mg4" class="tabpane">
+      <label>Delegação</label><input id="dgTitle" class="field" placeholder="O que será delegado?">
+      <br><br><label>Resultado esperado</label><textarea id="dgResult" class="field"></textarea>
+      <br><label>Critério de qualidade</label><textarea id="dgQuality" class="field"></textarea>
+      <br><div class="grid two"><div><label>Autonomia</label><select id="dgAut" class="field">${[1,2,3,4].map(n=>`<option value="${n}">N${n}</option>`).join('')}</select></div><div><label>Prazo</label><input id="dgDeadline" type="date" class="field"></div></div>
+      <br><label>Quando escalar para mim?</label><textarea id="dgEscalation" class="field"></textarea>
+      <br><button class="btn primary" onclick="saveDelegation('${p.id}')">Criar delegação</button>
+      <div id="delegationList" class="mini-list"></div>
+    </div>`;
+}
+function jsonText(v){
+  if(v==null) return '';
+  if(typeof v==='string') return v;
+  if(Array.isArray(v)) return v.join('\n');
+  if(typeof v==='object') return Object.values(v).join('\n');
+  return String(v);
+}
+function textJson(v){return (v||'').split('\n').map(x=>x.trim()).filter(Boolean);}
+function switchMgmtTab(btn,id){
+  btn.closest('#personWorkspace').querySelectorAll('.tabbtn').forEach(x=>x.classList.remove('active'));
+  btn.closest('#personWorkspace').querySelectorAll('.tabpane').forEach(x=>x.classList.remove('active'));
+  btn.classList.add('active'); document.getElementById(id).classList.add('active');
+}
+async function saveMemberProfile(id){
+  const payload={
+    role:mRole.value.trim(),area:mArea.value.trim(),autonomy_level:Number(mAut.value),
+    current_development_goal:mGoal.value.trim(),strengths:textJson(mStrengths.value),
+    development_points:textJson(mDev.value),motivators:textJson(mMot.value),
+    communication_preferences:textJson(mComm.value)
+  };
+  const {error}=await sb.from('team_members').update(payload).eq('id',id);
+  if(error){cloudMsg(error.message);return;}
+  const profile=mDisc.value.trim();
+  if(profile){
+    const {data:e}=await sb.from('behavioral_assessments').select('id').eq('team_member_id',id).eq('assessment_type','DISC').limit(1);
+    const a={user_id:currentUserId,team_member_id:id,assessment_type:'DISC',profile_name:profile,source_notes:'Registrado no cockpit de gestão'};
+    if(e?.length) await sb.from('behavioral_assessments').update(a).eq('id',e[0].id); else await sb.from('behavioral_assessments').insert(a);
+  }
+  cloudMsg('Perfil da equipe salvo',true); await cockpitLoadPeopleButtonsOnly();
+}
+async function saveEvidence(id){
+  const payload={user_id:currentUserId,team_member_id:id,context:evContext.value.trim(),observed_behavior:evBehavior.value.trim(),impact:evImpact.value.trim(),evidence_type:evType.value};
+  if(!payload.observed_behavior){cloudMsg('Descreva o comportamento observado.');return;}
+  const {error}=await sb.from('behavioral_evidence').insert(payload);
+  if(error){cloudMsg(error.message);return;} evContext.value=evBehavior.value=evImpact.value=''; await loadEvidence(id); cloudMsg('Evidência registrada',true);
+}
+async function loadEvidence(id){
+  const {data}=await sb.from('behavioral_evidence').select('*').eq('team_member_id',id).order('occurred_at',{ascending:false}).limit(10);
+  const el=document.getElementById('evidenceList'); if(!el)return;
+  el.innerHTML=(data||[]).map(x=>`<div class="mini-item"><b>${esc(x.evidence_type)}</b> • ${esc(x.context||'')}<br>${esc(x.observed_behavior)}${x.impact?'<br><span class="muted">Impacto: '+esc(x.impact)+'</span>':''}</div>`).join('');
+}
+async function saveOneOnOne(id){
+  const {error}=await sb.from('one_on_ones').insert({user_id:currentUserId,team_member_id:id,meeting_date:isoDateLocal(),wins:ooWins.value,blockers:ooBlockers.value,development_topic:ooDev.value,next_actions:ooActions.value});
+  if(error){cloudMsg(error.message);return;} ooWins.value=ooBlockers.value=ooDev.value=ooActions.value=''; await loadOneOnOnes(id); cloudMsg('1:1 registrado',true);
+}
+async function loadOneOnOnes(id){
+  const {data}=await sb.from('one_on_ones').select('*').eq('team_member_id',id).order('meeting_date',{ascending:false}).limit(8);
+  const el=document.getElementById('oneList'); if(!el)return;
+  el.innerHTML=(data||[]).map(x=>`<div class="mini-item"><b>${ptDate(x.meeting_date)}</b>${x.wins?'<br>Vitórias: '+esc(x.wins):''}${x.development_topic?'<br>Desenvolvimento: '+esc(x.development_topic):''}${x.next_actions?'<br><span class="muted">Próximos passos: '+esc(x.next_actions)+'</span>':''}</div>`).join('');
+}
+async function saveFeedback(id){
+  const {error}=await sb.from('feedbacks').insert({user_id:currentUserId,team_member_id:id,feedback_date:isoDateLocal(),feedback_type:fbType.value,situation:fbSituation.value,behavior:fbBehavior.value,impact:fbImpact.value,expectation:fbExpectation.value,status:'open'});
+  if(error){cloudMsg(error.message);return;} fbSituation.value=fbBehavior.value=fbImpact.value=fbExpectation.value=''; await loadFeedbacks(id); cloudMsg('Feedback registrado',true);
+}
+async function loadFeedbacks(id){
+  const {data}=await sb.from('feedbacks').select('*').eq('team_member_id',id).order('feedback_date',{ascending:false}).limit(10);
+  const el=document.getElementById('feedbackList'); if(!el)return;
+  el.innerHTML=(data||[]).map(x=>`<div class="mini-item"><b>${ptDate(x.feedback_date)} • ${esc(x.feedback_type)}</b><br>${esc(x.behavior||x.situation||'')}${x.expectation?'<br><span class="muted">Expectativa: '+esc(x.expectation)+'</span>':''}</div>`).join('');
+}
+async function saveDelegation(id){
+  if(!dgTitle.value.trim()){cloudMsg('Informe o que será delegado.');return;}
+  const {error}=await sb.from('delegations').insert({user_id:currentUserId,team_member_id:id,title:dgTitle.value.trim(),expected_result:dgResult.value,quality_criteria:dgQuality.value,autonomy_level:Number(dgAut.value),deadline:dgDeadline.value||null,escalation_rule:dgEscalation.value,status:'delegated'});
+  if(error){cloudMsg(error.message);return;} dgTitle.value=dgResult.value=dgQuality.value=dgEscalation.value='';dgDeadline.value=''; await loadDelegations(id); cloudMsg('Delegação registrada',true);
+}
+async function loadDelegations(id){
+  const {data}=await sb.from('delegations').select('*').eq('team_member_id',id).order('created_at',{ascending:false}).limit(10);
+  const el=document.getElementById('delegationList'); if(!el)return;
+  el.innerHTML=(data||[]).map(x=>`<div class="mini-item"><b>${esc(x.title)} • N${x.autonomy_level}</b><br><span class="muted">${esc(x.status)}${x.deadline?' • prazo '+ptDate(x.deadline):''}</span>${x.expected_result?'<br>'+esc(x.expected_result):''}</div>`).join('');
+}
+
+const oldInitCloudData=initCloudData;
+initCloudData=async function(){
+  await oldInitCloudData();
+  await cockpitLoadPeople();
+};
 </script>
 
 </body></html>
