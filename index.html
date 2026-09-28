@@ -314,6 +314,148 @@ select.field{max-width:100%}
 }
 </style>
 
+
+<style>
+/* ===== James — painel de ação, não painel de enfeite ===== */
+[data-page="james"]{max-width:1320px}
+[data-page="james"] > .lead{max-width:760px}
+
+.james-hero{
+  display:grid;
+  grid-template-columns:150px minmax(0,1fr);
+  gap:22px;
+  align-items:center;
+}
+.james-hero h2{margin:2px 0 4px}
+.james-connections{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:12px}
+.source-pill.connected{border-color:rgba(124,197,163,.45);color:var(--good);background:rgba(124,197,163,.08)}
+.source-pill.disconnected{opacity:.72}
+
+.james-todo-strip{
+  margin-top:14px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:#0d141d;
+}
+.james-todo-strip b{font-size:14px}
+.james-todo-strip .todo-numbers{font-size:13px;color:var(--muted)}
+
+.assistant-columns{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+  align-items:start;
+}
+.assistant-col{padding:16px}
+.assistant-col h2{font-size:19px;margin-bottom:3px}
+.assistant-col-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  padding-bottom:10px;
+  border-bottom:1px solid var(--line);
+  margin-bottom:10px;
+}
+.assistant-col-desc{font-size:12px;color:var(--muted);margin:0 0 8px}
+
+.assistant-item{
+  padding:13px;
+  margin:9px 0;
+  border-radius:11px;
+  background:#0e151e;
+  box-shadow:none;
+}
+.assistant-item .item-title{
+  font-size:16px;
+  line-height:1.3;
+  overflow-wrap:anywhere;
+}
+.assistant-item .item-meta{
+  font-size:12px;
+  line-height:1.35;
+  margin:5px 0 7px;
+}
+.assistant-item .item-summary{
+  font-size:14px;
+  line-height:1.45;
+}
+.assistant-item .reply-box{
+  font-size:13px;
+  line-height:1.45;
+  margin-top:9px;
+  padding:9px 11px;
+  max-height:170px;
+  overflow:auto;
+}
+.assistant-actions{
+  display:flex;
+  gap:7px;
+  flex-wrap:wrap;
+  margin-top:10px;
+}
+.btn.done-btn{
+  background:rgba(124,197,163,.12);
+  border-color:rgba(124,197,163,.45);
+  color:var(--good);
+  font-weight:700;
+}
+.responsible-row{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:8px;
+  align-items:center;
+  margin-top:9px;
+}
+.responsible-row .field{padding:7px 9px}
+.assistant-drop{min-height:75px}
+
+.meeting-toolbar{
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:14px;
+  flex-wrap:wrap;
+  margin-top:14px;
+}
+.meeting-date-picker{
+  display:flex;
+  align-items:end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.meeting-date-picker label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+.meeting-agenda-strip{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:10px;
+  margin:14px 0 4px;
+}
+.meeting-agenda-card{min-height:106px}
+.meeting-agenda-card .meeting-time{
+  color:var(--accent);
+  font-weight:800;
+  font-size:13px;
+}
+.meeting-agenda-card .meeting-title{
+  display:block;
+  font-size:15px;
+  line-height:1.35;
+  margin:5px 0;
+}
+
+@media(max-width:900px){
+  .assistant-columns{grid-template-columns:1fr}
+  .james-hero{grid-template-columns:1fr}
+  .meeting-agenda-strip{grid-template-columns:1fr}
+}
+</style>
+
 </head><body>
 <div id="authScreen" class="auth-screen">
   <div class="auth-card">
@@ -386,12 +528,20 @@ select.field{max-width:100%}
       <div class="kicker">STATUS</div>
       <h2 id="jamesStateText">James está dormindo</h2>
       <div id="jamesStateSub" class="james-status">Nada urgente esperando por você.</div>
-      <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:14px">
-        <span class="source-pill" id="googleConnPill">○ Google</span>
-        <span class="source-pill">💬 Slack • automação</span>
+      <div class="james-connections">
+        <span class="source-pill disconnected" id="googleConnPill">○ Google</span>
+        <span class="source-pill disconnected" id="slackConnPill">○ Slack</span>
         <button class="btn tiny" id="googleConnectBtn" onclick="connectGoogle()">Conectar Google</button>
+        <button class="btn tiny" id="slackConnectBtn" onclick="connectSlack()">Conectar Slack</button>
       </div>
-      <div id="jamesLastScan" class="tiny muted" style="margin-top:12px">Nenhuma varredura registrada ainda.</div><div class="tiny muted" style="margin-top:5px">Automático: 08h, 13h e 18h • “Varrer agora” consulta Google imediatamente.</div>
+      <div class="james-todo-strip">
+        <div>
+          <b>Todoist hoje</b>
+          <div id="jamesTodoistSummary" class="todo-numbers">Carregando…</div>
+        </div>
+        <button class="btn tiny" onclick="openOSPage('todoist')">Abrir Todoist</button>
+      </div>
+      <div id="jamesLastScan" class="tiny muted" style="margin-top:12px">Nenhuma varredura registrada ainda.</div><div class="tiny muted" style="margin-top:5px">Automático: 08h, 13h e 18h • “Varrer agora” consulta Google, Slack e Todoist.</div>
     </div>
   </div>
 
@@ -415,25 +565,55 @@ select.field{max-width:100%}
   
   <div class="assistant-columns" style="margin-top:18px">
     <div class="card assistant-col">
-      <div class="row" style="justify-content:space-between"><h2>Precisa de mim</h2><span class="tag" id="needsCount">0</span></div>
-      <div id="needsMeList" class="assistant-drop" data-status="needs_me" ondragover="assistantDragOver(event)" ondragleave="assistantDragLeave(event)" ondrop="dropAssistantCard(event,'needs_me')"></div>
+      <div class="assistant-col-head">
+        <div>
+          <h2>Precisa de mim</h2>
+          <p class="assistant-col-desc">Só o que depende de decisão ou ação sua.</p>
+        </div>
+        <span class="tag" id="needsCount">0</span>
+      </div>
+      <div id="needsMeList" class="assistant-drop" data-status="needs_me"
+        ondragover="assistantDragOver(event)" ondragleave="assistantDragLeave(event)"
+        ondrop="dropAssistantCard(event,'needs_me')"></div>
     </div>
 
     <div class="card assistant-col">
-      <div class="row" style="justify-content:space-between"><h2>Delegado</h2><span class="tag" id="delegatedCount">0</span></div>
-      <div class="tiny muted" style="margin-bottom:8px">Está com outra pessoa. James só acompanha prazo e cobrança.</div>
-      <div id="delegatedList" class="assistant-drop" data-status="delegated" ondragover="assistantDragOver(event)" ondragleave="assistantDragLeave(event)" ondrop="dropAssistantCard(event,'delegated')"></div>
+      <div class="assistant-col-head">
+        <div>
+          <h2>Rascunhos</h2>
+          <p class="assistant-col-desc">Resposta pronta. Você revisa, copia e envia.</p>
+        </div>
+        <span class="tag" id="draftCount">0</span>
+      </div>
+      <div id="draftWaitingList" class="assistant-drop" data-status="draft_waiting"
+        ondragover="assistantDragOver(event)" ondragleave="assistantDragLeave(event)"
+        ondrop="dropAssistantCard(event,'draft_waiting')"></div>
     </div>
 
     <div class="card assistant-col">
-      <div class="row" style="justify-content:space-between"><h2>Rascunhos</h2><span class="tag" id="draftCount">0</span></div>
-      <div class="tiny muted" style="margin-bottom:8px">Resposta pronta para revisar, copiar e enviar no canal original.</div>
-      <div id="draftWaitingList" class="assistant-drop" data-status="draft_waiting" ondragover="assistantDragOver(event)" ondragleave="assistantDragLeave(event)" ondrop="dropAssistantCard(event,'draft_waiting')"></div>
+      <div class="assistant-col-head">
+        <div>
+          <h2>Delegado</h2>
+          <p class="assistant-col-desc">Está com outra pessoa. James acompanha prazo e cobrança.</p>
+        </div>
+        <span class="tag" id="delegatedCount">0</span>
+      </div>
+      <div id="delegatedList" class="assistant-drop" data-status="delegated"
+        ondragover="assistantDragOver(event)" ondragleave="assistantDragLeave(event)"
+        ondrop="dropAssistantCard(event,'delegated')"></div>
     </div>
 
     <div class="card assistant-col">
-      <div class="row" style="justify-content:space-between"><h2>Já tratado</h2><span class="tag" id="treatedCount">0</span></div>
-      <div id="treatedList" class="assistant-drop" data-status="treated" ondragover="assistantDragOver(event)" ondragleave="assistantDragLeave(event)" ondrop="dropAssistantCard(event,'treated')"></div>
+      <div class="assistant-col-head">
+        <div>
+          <h2>Já tratado</h2>
+          <p class="assistant-col-desc">Histórico. Não precisa administrar.</p>
+        </div>
+        <span class="tag" id="treatedCount">0</span>
+      </div>
+      <div id="treatedList" class="assistant-drop" data-status="treated"
+        ondragover="assistantDragOver(event)" ondragleave="assistantDragLeave(event)"
+        ondrop="dropAssistantCard(event,'treated')"></div>
     </div>
   </div>
 </section>
@@ -689,14 +869,24 @@ select.field{max-width:100%}
   <h1>Reuniões</h1>
   <p class="lead">Preparar → conduzir → decidir → atribuir → executar → medir. A reunião só vale se sair com clareza e ação.</p>
   <div class="card" style="margin:16px 0 18px">
-    <div class="row" style="justify-content:space-between;align-items:flex-start">
-      <div>
-        <h2>Agenda sincronizada</h2>
-        <div class="muted tiny">Reuniões do Google entram aqui após “Varrer agora” ou nas varreduras automáticas. Clique para preparar, conduzir e fechar.</div>
-      </div>
-      <button class="btn" onclick="refreshMeetingsView(this)">Recarregar reuniões</button>
+    <div>
+      <h2>Agenda</h2>
+      <div class="muted tiny">Escolha o dia. O botão consulta o Google Calendar de verdade e atualiza esta agenda.</div>
     </div>
-    <div id="meetingRefreshStatus" class="tiny muted" style="margin-top:8px"></div><div id="meetingAgendaList" class="meeting-agenda-strip"></div>
+
+    <div class="meeting-toolbar">
+      <div class="meeting-date-picker">
+        <div>
+          <label>Data</label>
+          <input id="meetingViewDate" type="date" class="field" style="width:170px" onchange="loadMeetings(this.value)">
+        </div>
+        <button class="btn" onclick="setMeetingDateToday()">Hoje</button>
+        <button class="btn primary" id="meetingSyncBtn" onclick="syncMeetingsForSelectedDate(this)">Carregar agenda</button>
+      </div>
+      <div id="meetingRefreshStatus" class="tiny muted">Selecione uma data ou use hoje.</div>
+    </div>
+
+    <div id="meetingAgendaList" class="meeting-agenda-strip"></div>
   </div>
   <div class="grid">
     <div class="card c7">
@@ -844,7 +1034,13 @@ sb.auth.onAuthStateChange((_event, session) => {
 
 <script>
 const pages=[['painel','Painel'],['james','James'],['rotina','Hoje'],['todoist','Todoist'],['reunioes','Reuniões'],['gestao','Gestão'],['reflexao','Decisões'],['senioridade','Resultados'],['desenvolvimento','Desenvolvimento'],['score','Scorecard'],['perfil','Perfil'],['plano','Plano até dezembro'],['coach','Conselheiro IA']];
-const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james')loadJames();if(id==='todoist')loadTodoistTasks();if(id==='reunioes')loadMeetings();if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}};nav.appendChild(b)});
+const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist()}if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}};nav.appendChild(b)});
+
+function openOSPage(id){
+  const btn=document.querySelector(`#nav button[data-page="${id}"]`);
+  if(btn)btn.click();
+}
+
 const store=(k,v)=>localStorage.setItem('dos_'+k,JSON.stringify(v)),load=(k,d)=>{try{return JSON.parse(localStorage.getItem('dos_'+k))??d}catch{return d}};
 document.querySelectorAll('.save').forEach(e=>{e.value=load(e.dataset.key,'');e.oninput=()=>store(e.dataset.key,e.value)});
 const checklist=(el,key,items)=>{let state=load(key,{});el.innerHTML='';items.forEach((t,i)=>{let d=document.createElement('label');d.className='task '+(state[i]?'done':'');d.innerHTML=`<input type="checkbox" ${state[i]?'checked':''}><span>${t}</span>`;d.querySelector('input').onchange=e=>{state[i]=e.target.checked;store(key,state);d.classList.toggle('done',e.target.checked)};el.appendChild(d)})};
@@ -1711,26 +1907,84 @@ async function saveMeeting(completed=false){
   }
   cloudMsg('Reunião salva',true);await loadMeetings();return currentMeetingId;
 }
-async function loadMeetings(){
+function ensureMeetingDate(){
+  const input=document.getElementById('meetingViewDate');
+  if(input && !input.value)input.value=isoDateLocal();
+  return input?.value||isoDateLocal();
+}
+function setMeetingDateToday(){
+  const input=document.getElementById('meetingViewDate');
+  if(input)input.value=isoDateLocal();
+  syncMeetingsForSelectedDate(document.getElementById('meetingSyncBtn'));
+}
+
+async function loadMeetings(date){
   if(!currentUserId)return;
-  const today=isoDateLocal();
-  const [{data:recent,error},{data:agenda}]=await Promise.all([
-    sb.from('meetings').select('id,meeting_date,start_time,title,meeting_type,status,participants,calendar_event_id').order('meeting_date',{ascending:false}).limit(15),
-    sb.from('meetings').select('id,meeting_date,start_time,title,meeting_type,status,participants,calendar_event_id').gte('meeting_date',today).order('meeting_date',{ascending:true}).order('start_time',{ascending:true}).limit(12)
+  const selected=date||ensureMeetingDate();
+
+  const [{data:recent,error},{data:agenda,error:agendaErr}]=await Promise.all([
+    sb.from('meetings')
+      .select('id,meeting_date,start_time,title,meeting_type,status,participants,calendar_event_id')
+      .order('meeting_date',{ascending:false})
+      .order('start_time',{ascending:false})
+      .limit(15),
+
+    sb.from('meetings')
+      .select('id,meeting_date,start_time,title,meeting_type,status,participants,calendar_event_id,calendar_url')
+      .eq('meeting_date',selected)
+      .neq('status','cancelled')
+      .order('start_time',{ascending:true})
+      .limit(30)
   ]);
+
   const el=document.getElementById('meetingList');
   if(el){
     if(error)el.innerHTML=esc(error.message);
-    else el.innerHTML=(recent||[]).map(m=>`<button class="person-btn" onclick="openMeeting('${m.id}')"><div class="person-name">${esc(m.title)}</div><div class="person-meta">${ptDate(m.meeting_date)}${m.start_time?' • '+esc(String(m.start_time).slice(0,5)):''} • ${esc(m.meeting_type||'')} • ${esc(m.status)}</div></button>`).join('')||'<span class="muted">Nenhuma reunião salva.</span>';
+    else el.innerHTML=(recent||[]).map(m=>`
+      <button class="person-btn" onclick="openMeeting('${m.id}')">
+        <div class="person-name">${esc(m.title)}</div>
+        <div class="person-meta">${ptDate(m.meeting_date)}${m.start_time?' • '+esc(String(m.start_time).slice(0,5)):''} • ${esc(m.meeting_type||'')} • ${esc(m.status)}</div>
+      </button>`).join('')||'<span class="muted">Nenhuma reunião salva.</span>';
   }
+
   const agendaEl=document.getElementById('meetingAgendaList');
   if(agendaEl){
-    agendaEl.innerHTML=(agenda||[]).length?(agenda||[]).map(m=>`
-      <button class="meeting-agenda-card" onclick="openMeeting('${m.id}')">
-        <span class="tiny muted">${ptDate(m.meeting_date)}${m.start_time?' • '+esc(String(m.start_time).slice(0,5)):''}</span>
-        <b>${esc(m.title)}</b>
-        <span class="tiny muted">${m.calendar_event_id?'Agenda Google • ':''}${esc(m.participants||'')}</span>
-      </button>`).join(''):'<span class="muted">Nenhuma reunião sincronizada ainda.</span>';
+    if(agendaErr){
+      agendaEl.innerHTML=`<span class="danger">${esc(agendaErr.message)}</span>`;
+    }else{
+      agendaEl.innerHTML=(agenda||[]).length?(agenda||[]).map(m=>`
+        <button class="meeting-agenda-card" onclick="openMeeting('${m.id}')">
+          <span class="meeting-time">${m.start_time?esc(String(m.start_time).slice(0,5)):'—'}</span>
+          <span class="meeting-title">${esc(m.title)}</span>
+          <span class="tiny muted">${esc(m.participants||'Sem participantes informados')}</span>
+        </button>`).join('')
+        :`<span class="muted">Nenhuma reunião encontrada em ${ptDate(selected)}.</span>`;
+    }
+  }
+}
+
+async function syncMeetingsForSelectedDate(btn,quiet=false){
+  const date=ensureMeetingDate();
+  const status=document.getElementById('meetingRefreshStatus');
+  const original=btn?.textContent||'Carregar agenda';
+  if(btn){btn.disabled=true;btn.textContent='Carregando...'}
+  if(status)status.textContent='Consultando Google Calendar...';
+
+  try{
+    const result=await callEdge('google-calendar-sync',{date});
+    await loadMeetings(date);
+    if(status)status.textContent=`${result?.synced??0} reunião(ões) sincronizada(s) em ${ptDate(date)}.`;
+    if(!quiet)cloudMsg('Agenda carregada do Google',true);
+  }catch(e){
+    if(status)status.textContent='Não consegui carregar a agenda: '+(e?.message||String(e));
+    if(e?.data?.needs_google_connect){
+      const g=document.getElementById('googleConnectBtn');
+      if(g)g.style.display='';
+    }
+    if(!quiet)cloudMsg('Agenda: '+(e?.message||String(e)));
+    await loadMeetings(date);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=original}
   }
 }
 async function openMeeting(id){
@@ -1969,6 +2223,166 @@ async function callEdge(name,payload={}){
   return data;
 }
 
+
+async function loadSlackStatus(){
+  const pill=document.getElementById('slackConnPill');
+  const btn=document.getElementById('slackConnectBtn');
+  if(!pill||!btn)return;
+
+  try{
+    const data=await callEdge('slack-status');
+    if(data.connected){
+      pill.textContent=`● Slack${data.team_name?' • '+data.team_name:''}`;
+      pill.classList.add('connected');
+      pill.classList.remove('disconnected');
+      btn.style.display='none';
+    }else{
+      pill.textContent='○ Slack não conectado';
+      pill.classList.remove('connected');
+      pill.classList.add('disconnected');
+      btn.style.display='';
+    }
+  }catch{
+    pill.textContent='○ Slack não conectado';
+    pill.classList.remove('connected');
+    pill.classList.add('disconnected');
+    btn.style.display='';
+  }
+}
+
+async function connectSlack(){
+  const btn=document.getElementById('slackConnectBtn');
+  if(btn){btn.disabled=true;btn.textContent='Abrindo Slack...'}
+  try{
+    const data=await callEdge('slack-oauth-start');
+    if(!data.url)throw new Error('URL de autorização do Slack não recebida.');
+    window.location.href=data.url;
+  }catch(e){
+    cloudMsg('Slack: '+(e?.message||String(e)));
+    if(btn){btn.disabled=false;btn.textContent='Conectar Slack'}
+  }
+}
+
+function parseLooseJson(text){
+  const clean=String(text||'').replace(/```json/gi,'').replace(/```/g,'').trim();
+  const a=clean.indexOf('{'),b=clean.lastIndexOf('}');
+  if(a<0||b<a)throw new Error('A IA não retornou JSON válido.');
+  return JSON.parse(clean.slice(a,b+1));
+}
+
+async function saveSlackTriage(messages){
+  if(!messages?.length)return {written:0};
+
+  const compact=messages.slice(-70);
+  const question=`Você está fazendo a triagem do Slack para o painel James.
+
+REGRAS:
+- Só inclua algo que exija resposta, decisão, preparação, acompanhamento ou ação real da Danielle.
+- Foram lidos todos os canais dos quais ela participa que têm "futebol" no nome e DMs 1:1.
+- Dê atenção extra a Nathália Mesquita, mas não crie tarefa apenas por ela ter falado.
+- Ignore conversa social, FYI, mensagens informativas e itens claramente encerrados.
+- Para TODO item pendente, suggested_reply precisa ser curto, natural e pronto para copiar/enviar. Não invente fatos.
+- status "needs_me": Danielle precisa decidir/executar algo além de responder.
+- status "draft_waiting": o principal próximo passo é Danielle responder.
+- status "delegated": depende de outra pessoa/fornecedor; preencha responsible.
+- status "treated": ficou claro que já foi resolvido.
+- due_at deve ser ISO ou null.
+- urgency: low, normal, high ou urgent.
+- Retorne SOMENTE JSON no formato:
+{"items":[{"source_ref":"channel_id:timestamp","source_url":"","sender_name":"","title":"","summary":"","why_it_needs_me":"","due_at":null,"urgency":"normal","status":"draft_waiting","suggested_reply":"","responsible":"","fingerprint":"slack:channel_id:timestamp"}]}
+
+MENSAGENS:
+${JSON.stringify(compact)}`;
+
+  const answer=await callManagementAdvisor('James • triagem Slack',question);
+  const parsed=parseLooseJson(answer);
+  const items=Array.isArray(parsed.items)?parsed.items:[];
+
+  let written=0;
+  for(const it of items){
+    const fp=it.fingerprint||`slack:${it.source_ref||crypto.randomUUID()}`;
+    const {data:old}=await sb.from('assistant_items')
+      .select('id,status,status_locked,responsible,responsible_locked')
+      .eq('fingerprint',fp).maybeSingle();
+
+    const row={
+      user_id:currentUserId,
+      source:'slack',
+      source_ref:it.source_ref||null,
+      source_url:it.source_url||null,
+      source_context:'Slack ao vivo',
+      sender_name:it.sender_name||null,
+      title:it.title||'Slack',
+      summary:it.summary||null,
+      why_it_needs_me:it.why_it_needs_me||null,
+      due_at:it.due_at||null,
+      urgency:['low','normal','high','urgent'].includes(it.urgency)?it.urgency:'normal',
+      status:['needs_me','delegated','draft_waiting','treated'].includes(it.status)?it.status:'needs_me',
+      suggested_reply:it.suggested_reply||null,
+      responsible:it.responsible||null,
+      fingerprint:fp,
+      last_seen_at:new Date().toISOString(),
+      treated_at:it.status==='treated'?new Date().toISOString():null
+    };
+
+    if(old?.status_locked)row.status=old.status;
+    if(old?.responsible_locked)row.responsible=old.responsible;
+
+    const result=old?.id
+      ?await sb.from('assistant_items').update(row).eq('id',old.id)
+      :await sb.from('assistant_items').insert(row);
+
+    if(!result.error)written++;
+  }
+  return {written};
+}
+
+async function scanSlackLive(){
+  try{
+    const data=await callEdge('slack-fetch');
+    const tri=await saveSlackTriage(data.messages||[]);
+    return {...data,...tri};
+  }catch(e){
+    if(e?.data?.needs_slack_connect){
+      const btn=document.getElementById('slackConnectBtn');
+      if(btn)btn.style.display='';
+    }
+    throw e;
+  }
+}
+
+function handleSlackOAuthReturn(){
+  const p=new URLSearchParams(location.search);
+  const status=p.get('slack');
+  if(!status)return;
+
+  if(status==='connected'){
+    cloudMsg('Slack conectado ao James',true);
+    history.replaceState({},'',location.pathname);
+    setTimeout(async()=>{
+      await loadSlackStatus();
+      const btn=document.getElementById('jamesScanBtn');
+      if(btn)scanJamesNow(btn);
+    },500);
+  }else if(status==='error'){
+    cloudMsg('Não consegui conectar o Slack: '+(p.get('reason')||'erro desconhecido'));
+    history.replaceState({},'',location.pathname);
+  }
+}
+
+async function loadJamesTodoist(){
+  const el=document.getElementById('jamesTodoistSummary');
+  if(!el)return;
+  try{
+    const {groups}=await todoistCall({action:'list'});
+    const today=(groups.today||[]).length;
+    const overdue=(groups.overdue||[]).length;
+    el.textContent=`${today} pendente(s) hoje${overdue?` • ${overdue} atrasada(s)`:''}`;
+  }catch(e){
+    el.textContent='Todoist indisponível agora';
+  }
+}
+
 async function loadGoogleStatus(){
   const pill=document.getElementById('googleConnPill');
   const btn=document.getElementById('googleConnectBtn');
@@ -1978,7 +2392,7 @@ async function loadGoogleStatus(){
     const data=await callEdge('google-status');
     if(data.connected){
       pill.textContent=`● Google conectado${data.google_email?' • '+data.google_email:''}`;
-      pill.classList.add('good');
+      pill.classList.add('connected');pill.classList.remove('disconnected');
       btn.textContent='Reconectar Google';
       btn.style.display='none';
       if(data.last_scan_at){
@@ -1989,13 +2403,13 @@ async function loadGoogleStatus(){
       }
     }else{
       pill.textContent='○ Google não conectado';
-      pill.classList.remove('good');
+      pill.classList.remove('connected');pill.classList.add('disconnected');
       btn.style.display='';
       btn.textContent='Conectar Google';
     }
   }catch(e){
     pill.textContent='○ Google não conectado';
-    pill.classList.remove('good');
+    pill.classList.remove('connected');pill.classList.add('disconnected');
     btn.style.display='';
   }
 }
@@ -2022,20 +2436,38 @@ async function scanJamesNow(btn){
   if(btn){btn.disabled=true;btn.textContent='James está olhando...'}
   if(cat){cat.classList.remove('sleeping');cat.classList.add('awake')}
   if(stateText)stateText.textContent='James está olhando';
-  if(stateSub)stateSub.textContent='Consultando Gmail e Agenda agora...';
+  if(stateSub)stateSub.textContent='Consultando Gmail, Agenda, Slack e Todoist...';
+
+  let googleResult=null,slackResult=null;
+  const errors=[];
 
   try{
-    const result=await callEdge('google-scan');
-    await Promise.all([loadJames(),loadMeetings(),loadGoogleStatus()]);
-    cloudMsg(`Varredura concluída • ${result?.counts?.needs??0} precisa(m) de você • ${result?.counts?.drafts??0} rascunho(s)`,true);
-  }catch(e){
-    if(e?.data?.needs_google_connect){
-      cloudMsg('Conecte o Google antes da primeira varredura.');
-      document.getElementById('googleConnectBtn').style.display='';
-    }else{
-      cloudMsg('Erro na varredura: '+(e?.message||String(e)));
-    }
-    await loadJames();
+    const results=await Promise.allSettled([
+      callEdge('google-scan'),
+      scanSlackLive(),
+      loadJamesTodoist()
+    ]);
+
+    if(results[0].status==='fulfilled')googleResult=results[0].value;
+    else errors.push('Google: '+(results[0].reason?.message||results[0].reason));
+
+    if(results[1].status==='fulfilled')slackResult=results[1].value;
+    else errors.push('Slack: '+(results[1].reason?.message||results[1].reason));
+
+    await Promise.all([
+      loadJames(),
+      loadMeetings(ensureMeetingDate()),
+      loadGoogleStatus(),
+      loadSlackStatus(),
+      loadJamesTodoist()
+    ]);
+
+    const pieces=[];
+    if(googleResult)pieces.push('Google ok');
+    if(slackResult)pieces.push(`Slack: ${slackResult.items_written??0} item(ns)`);
+    if(errors.length)pieces.push(errors.join(' • '));
+
+    cloudMsg(`Varredura concluída • ${pieces.join(' • ')}`,errors.length===0);
   }finally{
     if(btn){btn.disabled=false;btn.textContent=original}
   }
@@ -2078,20 +2510,7 @@ async function refreshJamesPanel(btn){
   }
 }
 
-async function refreshMeetingsView(btn){
-  const original=btn?.textContent||'Recarregar reuniões';
-  const status=document.getElementById('meetingRefreshStatus');
-  if(btn){btn.disabled=true;btn.textContent='Recarregando...'}
-  if(status)status.textContent='Lendo reuniões já sincronizadas...';
-  try{
-    await loadMeetings();
-    const stamp=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    if(status)status.textContent=`Recarregado às ${stamp}. A agenda é sincronizada nas varreduras automáticas do James.`;
-    cloudMsg('Reuniões recarregadas',true);
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent=original}
-  }
-}
+
 
 function assistantSourceIcon(source){
   if(source==='gmail')return '✉ Gmail';
@@ -2107,24 +2526,47 @@ function assistantDueLabel(value){
 }
 function assistantItemHtml(item){
   const cls=item.urgency==='urgent'?'urgent':item.urgency==='high'?'high':'';
-  const reply=item.suggested_reply?`<div class="reply-box"><b>Rascunho</b><br>${esc(item.suggested_reply)}</div>`:'';
-  const url=item.source_url?`<button class="btn tiny" onclick="window.open('${esc(item.source_url)}','_blank','noopener')">Abrir origem</button>`:'';
-  const copy=item.suggested_reply?`<button class="btn tiny" onclick="copyAssistantReply('${item.id}')">Copiar rascunho</button>`:'';
-  const responsible=item.responsible||'';
-  return `<div class="assistant-item ${cls}" draggable="true" ondragstart="assistantDragStart(event,'${item.id}')" data-assistant-id="${item.id}">
+  const reply=item.suggested_reply
+    ?`<div class="reply-box"><b>Rascunho</b><br>${esc(item.suggested_reply)}</div>`
+    :'';
+  const open=item.source_url
+    ?`<button class="btn tiny" onclick="window.open('${esc(item.source_url)}','_blank','noopener')">Abrir origem</button>`
+    :'';
+  const copy=item.suggested_reply
+    ?`<button class="btn tiny" onclick="copyAssistantReply('${item.id}')">Copiar rascunho</button>`
+    :'';
+  const done=item.status!=='treated'
+    ?`<button class="btn tiny done-btn" onclick="completeAssistantItem('${item.id}')">✓ Concluído</button>`
+    :`<button class="btn tiny" onclick="reopenAssistantItem('${item.id}')">Reabrir</button>`;
+
+  return `<div class="assistant-item ${cls}" draggable="true"
+    ondragstart="assistantDragStart(event,'${item.id}')" data-assistant-id="${item.id}">
     <div class="assistant-card-head">
       <div class="item-title">${esc(item.title||'Sem título')}</div>
       <span class="source-pill">${assistantSourceIcon(item.source)}</span>
     </div>
-    <div class="item-meta">${item.sender_name?esc(item.sender_name)+' • ':''}${item.due_at?'até '+assistantDueLabel(item.due_at):'sem prazo definido'}</div>
-    ${item.summary?`<div>${esc(item.summary)}</div>`:''}
-    ${item.why_it_needs_me?`<div class="muted tiny" style="margin-top:7px"><b>Por que entrou:</b> ${esc(item.why_it_needs_me)}</div>`:''}
+
+    <div class="item-meta">
+      ${item.sender_name?esc(item.sender_name)+' • ':''}
+      ${item.due_at?'até '+assistantDueLabel(item.due_at):'sem prazo definido'}
+    </div>
+
+    ${item.summary?`<div class="item-summary">${esc(item.summary)}</div>`:''}
+
+    ${item.why_it_needs_me
+      ?`<div class="muted tiny" style="margin-top:7px">${esc(item.why_it_needs_me)}</div>`
+      :''}
+
     <div class="responsible-row">
       <span class="tiny muted">Responsável</span>
-      <input class="field" style="padding:7px 9px" value="${esc(responsible)}" placeholder="Danielle / Bianca / fornecedor..." onchange="updateAssistantResponsible('${item.id}',this.value)">
+      <input class="field" value="${esc(item.responsible||'')}"
+        placeholder="Danielle / equipe / fornecedor"
+        onchange="updateAssistantResponsible('${item.id}',this.value)">
     </div>
+
     ${reply}
-    <div class="row" style="gap:7px;flex-wrap:wrap;margin-top:10px">${copy}${url}</div>
+
+    <div class="assistant-actions">${done}${copy}${open}</div>
   </div>`;
 }
 let assistantCache={};
@@ -2140,7 +2582,7 @@ async function loadJames(){
   const needs=(items||[]).filter(x=>x.status==='needs_me');
   const delegated=(items||[]).filter(x=>x.status==='delegated');
   const drafts=(items||[]).filter(x=>x.status==='draft_waiting');
-  const treated=(items||[]).filter(x=>x.status==='treated').slice(0,20);
+  const treated=(items||[]).filter(x=>x.status==='treated').slice(0,8);
 
   document.getElementById('needsCount').textContent=needs.length;
   document.getElementById('delegatedCount').textContent=delegated.length;
@@ -2183,12 +2625,21 @@ async function loadJames(){
   }
 }
 async function setAssistantStatus(id,status){
-  const patch={status};
+  const patch={status,status_locked:true};
   if(status==='treated')patch.treated_at=new Date().toISOString();
   else patch.treated_at=null;
+
   const {error}=await sb.from('assistant_items').update(patch).eq('id',id);
   if(error){cloudMsg(error.message);return}
   await loadJames();
+}
+async function completeAssistantItem(id){
+  await setAssistantStatus(id,'treated');
+  cloudMsg('Movido para Já tratado',true);
+}
+async function reopenAssistantItem(id){
+  await setAssistantStatus(id,'needs_me');
+  cloudMsg('Item reaberto',true);
 }
 
 let assistantDraggedId=null;
@@ -2232,8 +2683,10 @@ async function copyAssistantReply(id){
 const initCloudDataBeforeJames=initCloudData;
 initCloudData=async function(){
   await initCloudDataBeforeJames();
-  await Promise.all([loadJames(),loadGoogleStatus()]);
+  ensureMeetingDate();
+  await Promise.all([loadJames(),loadGoogleStatus(),loadSlackStatus(),loadJamesTodoist()]);
   handleGoogleOAuthReturn();
+  handleSlackOAuthReturn();
 };
 </script>
 
