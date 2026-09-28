@@ -2,7 +2,40 @@
 <html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Danielle OS — Senioridade Dezembro 2026</title>
 <style>
 :root{--bg:#0b0f14;--panel:#121923;--panel2:#172231;--text:#edf3f8;--muted:#98a7b8;--line:#263446;--accent:#d7b56d;--good:#7cc5a3;--warn:#e3a86b}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,Segoe UI,Arial,sans-serif}button,input,textarea,select{font:inherit}.app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}.side{position:sticky;top:0;height:100vh;padding:28px 18px;border-right:1px solid var(--line);background:#0e141c}.brand{font-size:19px;font-weight:800}.brand small{display:block;color:var(--accent);font-size:11px;letter-spacing:.15em;text-transform:uppercase;margin-top:3px}.nav{margin-top:28px;display:grid;gap:6px}.nav button{border:0;background:transparent;color:var(--muted);text-align:left;padding:10px 12px;border-radius:9px;cursor:pointer}.nav button.active,.nav button:hover{background:var(--panel2);color:var(--text)}.main{padding:34px;max-width:1400px;width:100%;margin:auto}.page{display:none}.page.active{display:block}h1{font-size:32px;margin:0 0 8px}h2{font-size:20px;margin:0 0 16px}h3{font-size:14px;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin:0 0 10px}.lead{color:var(--muted);max-width:900px}.grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;margin-top:22px}.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}.c3{grid-column:span 3}.c4{grid-column:span 4}.c6{grid-column:span 6}.c8{grid-column:span 8}.c12{grid-column:span 12}.metric{font-size:28px;font-weight:800}.muted{color:var(--muted)}.bar{height:7px;background:#253142;border-radius:10px;overflow:hidden;margin-top:8px}.bar i{display:block;height:100%;background:var(--accent)}ul{padding-left:18px}.tag{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:4px 8px;margin:3px;color:#cbd7e4;font-size:12px}.task{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #1e2937}.task:last-child{border:0}.task input{margin-top:5px}.task.done span{text-decoration:line-through;color:#667585}.field{width:100%;background:#0d141d;border:1px solid var(--line);color:var(--text);border-radius:9px;padding:10px}.btn{border:1px solid var(--line);background:var(--panel2);color:var(--text);padding:9px 13px;border-radius:9px;cursor:pointer}.btn.primary{background:var(--accent);color:#17130b;border-color:var(--accent);font-weight:700}.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.week{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}.day{background:#0e151e;border:1px solid var(--line);border-radius:10px;padding:12px;min-height:180px}.day b{color:var(--accent)}.score{display:grid;grid-template-columns:1fr 80px;gap:10px;align-items:center;margin:7px 0}.chat{height:440px;overflow:auto;background:#0c1219;border:1px solid var(--line);border-radius:12px;padding:14px}.msg{max-width:82%;padding:10px 12px;border-radius:12px;margin:8px 0;white-space:pre-wrap}.me{margin-left:auto;background:#263548}.ai{background:#172231}.callout{border-left:3px solid var(--accent);padding:10px 14px;background:#111923}.tiny{font-size:12px}.danger{color:#efb0a7}.good{color:var(--good)}@media(max-width:900px){.app{display:block}.side{position:relative;height:auto;border-right:0}.nav{display:flex;overflow:auto}.main{padding:20px}.c3,.c4,.c6,.c8{grid-column:span 12}.week{grid-template-columns:1fr}.side .brand{margin-bottom:10px}}
-</style></head><body><div class="app"><aside class="side"><div class="brand">DANIELLE OS<small>Senioridade • Dez 2026</small></div><div class="nav" id="nav"></div></aside><main class="main">
+
+.auth-screen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+.auth-card{width:min(430px,100%);background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:28px}
+.auth-card h1{font-size:26px}.auth-card .brandline{color:var(--accent);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:800}
+.auth-error{min-height:22px;color:#efb0a7;margin-top:10px}.auth-ok{color:var(--good)}
+.userbox{margin-top:auto;padding-top:18px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.userbox button{margin-top:10px;width:100%}
+#appShell[hidden],#authScreen[hidden]{display:none!important}
+
+</style></head><body>
+<div id="authScreen" class="auth-screen">
+  <div class="auth-card">
+    <div class="brandline">DANIELLE OS • ACESSO PRIVADO</div>
+    <h1>Entrar</h1>
+    <p class="muted">Use a conta criada no Supabase. O cadastro público está desativado.</p>
+    <form id="loginForm">
+      <label>E-mail</label>
+      <input id="loginEmail" class="field" type="email" autocomplete="username" required>
+      <br><br>
+      <label>Senha</label>
+      <input id="loginPassword" class="field" type="password" autocomplete="current-password" required>
+      <br><br>
+      <button id="loginButton" class="btn primary" type="submit" style="width:100%">Entrar no Danielle OS</button>
+      <div id="loginMessage" class="auth-error"></div>
+    </form>
+    <p class="tiny muted">A senha não é salva pelo Danielle OS. A sessão é gerenciada pelo Supabase Auth.</p>
+  </div>
+</div>
+<div id="appShell" class="app" hidden><aside class="side"><div class="brand">DANIELLE OS<small>Senioridade • Dez 2026</small></div><div class="nav" id="nav"></div>
+<div class="userbox">
+  <div id="signedUser">Sessão protegida</div>
+  <button class="btn" id="logoutButton" type="button">Sair</button>
+</div>
+</aside><main class="main">
 <section class="page active" data-page="painel"><h1>Painel de evolução</h1><p class="lead">Objetivo: chegar a dezembro operando menos como solucionadora central e mais como líder sênior que cria clareza, autonomia, governança, decisões e melhoria sistêmica.</p><div class="grid">
 <div class="card c3"><h3>Semanas até dezembro</h3><div class="metric" id="weeks">—</div><div class="muted">ciclos de execução</div></div><div class="card c3"><h3>Foco da semana</h3><div class="metric" style="font-size:18px">Liderar pelo sistema</div><div class="muted">menos centralização</div></div><div class="card c3"><h3>Score semanal</h3><div class="metric" id="avgScore">—</div><div class="muted">média do seu check-in</div></div><div class="card c3"><h3>North Star</h3><div class="metric" style="font-size:18px">Autonomia do time</div><div class="muted">problemas resolvidos sem você</div></div>
 <div class="card c8"><h2>Contrato de senioridade</h2><div class="callout">Eu não sou paga apenas para resolver problemas. Minha senioridade cresce quando eu <b>antecipo riscos, tomo decisões com contexto, desenvolvo pessoas, estruturo processos e torno a operação menos dependente de mim.</b></div><h3 style="margin-top:18px">Evidências até dezembro</h3><div id="evidenceTasks"></div></div>
@@ -13,7 +46,73 @@
 <section class="page" data-page="plano"><h1>Plano até dezembro</h1><p class="lead">Ciclos de duas semanas: estudar pouco, executar muito e produzir evidência real de senioridade.</p><div class="grid" id="cycles"></div></section>
 <section class="page" data-page="coach"><h1>Conselheiro de Gestão</h1><p class="lead">Este módulo usa seu perfil e contexto para estruturar pedidos de aconselhamento. Sem uma chave/API ou backend, um HTML local não consegue chamar um GPT com segurança. Por isso, ele gera um prompt completo para você colar no ChatGPT; depois pode ser conectado a uma API/backend.</p><div class="grid"><div class="card c4"><h2>Contexto</h2><select id="adviceType" class="field"><option>Feedback</option><option>Delegação</option><option>Conflito</option><option>1:1</option><option>Decisão operacional</option><option>Desenvolvimento da equipe</option><option>Comunicação com liderança/stakeholder</option></select><br><br><textarea id="case" class="field" rows="12" placeholder="Descreva o caso: fatos, pessoas, objetivo, restrições e o que você está pensando em fazer."></textarea><br><br><button class="btn primary" onclick="askCoach()">Gerar aconselhamento</button></div><div class="card c8"><h2>Análise</h2><div class="chat" id="chat"><div class="msg ai">Descreva um caso real. Vou gerar um prompt de aconselhamento que considera seu perfil, seus riscos de liderança e um método de decisão.</div></div><div class="row" style="margin-top:10px"><button class="btn" onclick="copyPrompt()">Copiar prompt completo</button></div></div></div></section>
 <section class="page" data-page="score"><h1>Scorecard semanal</h1><p class="lead">A senioridade precisa aparecer em comportamento observável, não apenas em sensação de evolução.</p><div class="grid"><div class="card c6" id="scores"></div><div class="card c6"><h2>Evidências da semana</h2><textarea class="field save" data-key="evidence" rows="12" placeholder="Decisão tomada, processo melhorado, problema antecipado, pessoa desenvolvida, conflito conduzido, resultado mensurável..."></textarea><br><br><button class="btn primary" onclick="saveScores()">Salvar semana</button></div><div class="card c12"><h2>Histórico</h2><div id="history"></div></div></div></section>
-</main></div><script>
+</main></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://zeowzrsuzywienrjeebs.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_-bdFb4J0X_TxJfU7GnmlMA_KTdv_UFI';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true }
+});
+
+const authScreen = document.getElementById('authScreen');
+const appShell = document.getElementById('appShell');
+const loginForm = document.getElementById('loginForm');
+const loginButton = document.getElementById('loginButton');
+const loginMessage = document.getElementById('loginMessage');
+const signedUser = document.getElementById('signedUser');
+const logoutButton = document.getElementById('logoutButton');
+
+function showLoggedOut(message='') {
+  authScreen.hidden = false;
+  appShell.hidden = true;
+  signedUser.textContent = 'Sessão protegida';
+  loginMessage.textContent = message;
+}
+
+function showLoggedIn(session) {
+  authScreen.hidden = true;
+  appShell.hidden = false;
+  signedUser.textContent = session?.user?.email ? `Logada como ${session.user.email}` : 'Sessão autenticada';
+  loginMessage.textContent = '';
+}
+
+loginForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  loginMessage.textContent = '';
+  loginButton.disabled = true;
+  loginButton.textContent = 'Entrando...';
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  loginButton.disabled = false;
+  loginButton.textContent = 'Entrar no Danielle OS';
+  if (error) {
+    showLoggedOut('Não foi possível entrar. Confira e-mail e senha.');
+    return;
+  }
+  showLoggedIn(data.session);
+});
+
+logoutButton.addEventListener('click', async () => {
+  await sb.auth.signOut();
+  showLoggedOut('Sessão encerrada.');
+  document.getElementById('loginPassword').value = '';
+});
+
+sb.auth.onAuthStateChange((_event, session) => {
+  if (session) showLoggedIn(session);
+  else showLoggedOut();
+});
+
+(async () => {
+  const { data } = await sb.auth.getSession();
+  if (data.session) showLoggedIn(data.session);
+  else showLoggedOut();
+})();
+</script>
+
+<script>
 const pages=[['painel','Painel'],['perfil','Perfil'],['rotina','Rotina'],['gestao','Gestão'],['plano','Plano até dezembro'],['coach','Conselheiro IA'],['score','Scorecard']];
 const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active')};nav.appendChild(b)});
 const store=(k,v)=>localStorage.setItem('dos_'+k,JSON.stringify(v)),load=(k,d)=>{try{return JSON.parse(localStorage.getItem('dos_'+k))??d}catch{return d}};
