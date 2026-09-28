@@ -35,7 +35,29 @@
   <div id="signedUser">Sessão protegida</div>
   <button class="btn" id="logoutButton" type="button">Sair</button>
 </div>
-</aside><main class="main">
+</aside>
+<main class="main">
+<section id="dbTestPanel" class="card" style="margin-bottom:18px">
+  <div class="kicker">SUPABASE • TESTE DE SEGURANÇA</div>
+  <h2>Conexão com o banco</h2>
+  <p class="muted">Este teste cria/atualiza somente o seu próprio registro em <code>profiles</code>, usando a sessão autenticada e as políticas RLS.</p>
+  <div class="grid two">
+    <div>
+      <label>Nome para teste</label>
+      <input id="dbTestName" class="field" value="Danielle Gomes">
+    </div>
+    <div>
+      <label>Cargo para teste</label>
+      <input id="dbTestRole" class="field" value="Supervisora de Operações">
+    </div>
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
+    <button id="dbSaveTest" class="btn primary" type="button">Gravar no Supabase</button>
+    <button id="dbReadTest" class="btn" type="button">Ler meu registro</button>
+  </div>
+  <div id="dbTestStatus" class="muted" style="margin-top:12px">Aguardando teste.</div>
+</section>
+
 <section class="page active" data-page="painel"><h1>Painel de evolução</h1><p class="lead">Objetivo: chegar a dezembro operando menos como solucionadora central e mais como líder sênior que cria clareza, autonomia, governança, decisões e melhoria sistêmica.</p><div class="grid">
 <div class="card c3"><h3>Semanas até dezembro</h3><div class="metric" id="weeks">—</div><div class="muted">ciclos de execução</div></div><div class="card c3"><h3>Foco da semana</h3><div class="metric" style="font-size:18px">Liderar pelo sistema</div><div class="muted">menos centralização</div></div><div class="card c3"><h3>Score semanal</h3><div class="metric" id="avgScore">—</div><div class="muted">média do seu check-in</div></div><div class="card c3"><h3>North Star</h3><div class="metric" style="font-size:18px">Autonomia do time</div><div class="muted">problemas resolvidos sem você</div></div>
 <div class="card c8"><h2>Contrato de senioridade</h2><div class="callout">Eu não sou paga apenas para resolver problemas. Minha senioridade cresce quando eu <b>antecipo riscos, tomo decisões com contexto, desenvolvo pessoas, estruturo processos e torno a operação menos dependente de mim.</b></div><h3 style="margin-top:18px">Evidências até dezembro</h3><div id="evidenceTasks"></div></div>
@@ -126,4 +148,71 @@ let team=load('team',[{name:'Pessoa 1',disc:'',aut:'N1',obs:''},{name:'Pessoa 2'
 const scoreNames=['Foco','Execução','Delegação','Comunicação','Liderança','Energia','Autocrítica saudável','Conversas difíceis'];document.getElementById('scores').innerHTML='<h2>Notas 0–10</h2>'+scoreNames.map((x,i)=>`<div class="score"><label>${x}</label><input class="field scoreInput" data-name="${x}" type="number" min="0" max="10" value="5"></div>`).join('');function saveScores(){let vals={date:new Date().toLocaleDateString('pt-BR'),scores:{},evidence:load('evidence','')};document.querySelectorAll('.scoreInput').forEach(e=>vals.scores[e.dataset.name]=+e.value);let h=load('scoreHistory',[]);h.unshift(vals);store('scoreHistory',h);renderHistory();updateAvg()}function renderHistory(){let h=load('scoreHistory',[]);document.getElementById('history').innerHTML=h.length?h.map(x=>`<div class="task"><span><b>${x.date}</b> — média ${(Object.values(x.scores).reduce((a,b)=>a+b,0)/Object.values(x.scores).length).toFixed(1)}<br><span class="muted tiny">${x.evidence||''}</span></span></div>`).join(''):'<span class="muted">Nenhum check-in salvo ainda.</span>'}function updateAvg(){let h=load('scoreHistory',[]);document.getElementById('avgScore').textContent=h.length?(Object.values(h[0].scores).reduce((a,b)=>a+b,0)/Object.values(h[0].scores).length).toFixed(1):'—'}renderHistory();updateAvg();
 let lastPrompt='';function askCoach(){let type=document.getElementById('adviceType').value,cs=document.getElementById('case').value.trim();if(!cs)return;let teamContext=team.map(p=>`${p.name}: DISC ${p.disc||'não informado'}, autonomia ${p.aut}, observações: ${p.obs||'—'}`).join('\n');lastPrompt=`Atue como meu mentor executivo e coach de liderança. Não concorde automaticamente comigo. Separe fatos de interpretação, identifique vieses e riscos, e priorize desenvolvimento da equipe e senioridade.\n\nMEU PERFIL: Big Five: imaginação 96, planejamento 75, ambição 71, abertura 69, experimentação 65, necessidade de aprovação 65, autodisciplina 32, sociabilidade 30, desinibição 25, flexibilidade 5. DISC: C62/D55/S30/I20, perfil CD. Sabotadores mais altos: hiper-racional 9,5; esquivo 9; hipervigilante 8,5; hiper-realizador 8,5; controlador 8; inquieto 7. Autocrítica 14/15. Trate isso como hipóteses, não rótulos.\n\nEQUIPE:\n${teamContext}\n\nTIPO DE SITUAÇÃO: ${type}\nCASO: ${cs}\n\nResponda nesta ordem: 1) fatos vs interpretações; 2) meu possível ponto cego/sabotador; 3) impacto na pessoa/equipe; 4) três opções com trade-offs; 5) recomendação prática sem decidir por mim; 6) se for feedback, escreva uma versão Fato→Impacto→Expectativa→Pergunta; 7) perguntas que eu deveria fazer em vez de dar a solução; 8) como transformar o caso em evidência de senioridade; 9) ação e follow-up com prazo.`;let chat=document.getElementById('chat');chat.innerHTML+=`<div class="msg me">${cs}</div><div class="msg ai">Prompt estratégico gerado. Clique em “Copiar prompt completo” e cole no ChatGPT.\n\nEle já inclui seu perfil, contexto da equipe e o framework de análise. Quando você preencher o DISC das meninas, esse contexto também entrará automaticamente.</div>`;chat.scrollTop=chat.scrollHeight}function copyPrompt(){if(!lastPrompt)return;navigator.clipboard.writeText(lastPrompt).then(()=>alert('Prompt copiado.'))}
 let now=new Date(),target=new Date('2026-12-20T00:00:00');document.getElementById('weeks').textContent=Math.max(0,Math.ceil((target-now)/(7*864e5)));
-</script></body></html>
+</script>
+<script>
+const dbStatus = document.getElementById('dbTestStatus');
+const dbSave = document.getElementById('dbSaveTest');
+const dbRead = document.getElementById('dbReadTest');
+
+function dbMsg(message, ok=false){
+  dbStatus.textContent = message;
+  dbStatus.className = ok ? 'auth-ok' : 'muted';
+}
+
+dbSave.addEventListener('click', async () => {
+  dbSave.disabled = true;
+  dbMsg('Gravando...');
+  const { data: sessionData } = await sb.auth.getSession();
+  const user = sessionData.session?.user;
+  if (!user) {
+    dbMsg('Sessão não encontrada. Saia e entre novamente.');
+    dbSave.disabled = false;
+    return;
+  }
+
+  const payload = {
+    user_id: user.id,
+    full_name: document.getElementById('dbTestName').value.trim(),
+    role: document.getElementById('dbTestRole').value.trim(),
+    company: 'Ingresse',
+    career_objective: 'Aumentar senioridade profissional e capacidade de liderança até dezembro de 2026'
+  };
+
+  const { data, error } = await sb
+    .from('profiles')
+    .upsert(payload, { onConflict: 'user_id' })
+    .select('id,user_id,full_name,role,company,career_objective,updated_at')
+    .single();
+
+  dbSave.disabled = false;
+  if (error) {
+    dbMsg('Erro ao gravar: ' + error.message);
+    return;
+  }
+  dbMsg('✓ Gravado com sucesso. RLS aceitou a operação para o seu usuário.', true);
+});
+
+dbRead.addEventListener('click', async () => {
+  dbRead.disabled = true;
+  dbMsg('Lendo...');
+  const { data, error } = await sb
+    .from('profiles')
+    .select('full_name,role,company,career_objective,updated_at')
+    .maybeSingle();
+  dbRead.disabled = false;
+
+  if (error) {
+    dbMsg('Erro ao ler: ' + error.message);
+    return;
+  }
+  if (!data) {
+    dbMsg('Nenhum perfil encontrado ainda. Clique primeiro em “Gravar no Supabase”.');
+    return;
+  }
+  document.getElementById('dbTestName').value = data.full_name || '';
+  document.getElementById('dbTestRole').value = data.role || '';
+  dbMsg(`✓ Registro lido: ${data.full_name || 'sem nome'} • ${data.role || 'sem cargo'} • ${data.company || 'sem empresa'}`, true);
+});
+</script>
+
+</body></html>
