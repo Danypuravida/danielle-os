@@ -28,6 +28,20 @@
 @media(max-width:850px){.mgmt-grid{grid-template-columns:1fr}}
 </style>
 
+
+<style>
+.statline{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}
+.statmini{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--panel)}
+.statmini b{font-size:24px;display:block}
+.timeline{display:flex;flex-direction:column;gap:10px}
+.timeline-item{border-left:3px solid var(--accent);padding:10px 12px;background:var(--panel);border-radius:0 10px 10px 0}
+.progressbar{height:8px;background:var(--line);border-radius:999px;overflow:hidden;margin-top:8px}
+.progressbar > span{display:block;height:100%;background:var(--accent)}
+.badge{display:inline-block;padding:3px 8px;border-radius:999px;border:1px solid var(--line);font-size:11px;margin-right:4px}
+.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media(max-width:850px){.statline,.formgrid{grid-template-columns:1fr}}
+</style>
+
 </head><body>
 <div id="authScreen" class="auth-screen">
   <div class="auth-card">
@@ -57,7 +71,16 @@
 <section class="page active" data-page="painel"><h1>Painel de evolução</h1><p class="lead">Objetivo: chegar a dezembro operando menos como solucionadora central e mais como líder sênior que cria clareza, autonomia, governança, decisões e melhoria sistêmica.</p><div class="grid">
 <div class="card c3"><h3>Semanas até dezembro</h3><div class="metric" id="weeks">—</div><div class="muted">ciclos de execução</div></div><div class="card c3"><h3>Foco da semana</h3><div class="metric" style="font-size:18px">Liderar pelo sistema</div><div class="muted">menos centralização</div></div><div class="card c3"><h3>Score semanal</h3><div class="metric" id="avgScore">—</div><div class="muted">média do seu check-in</div></div><div class="card c3"><h3>North Star</h3><div class="metric" style="font-size:18px">Autonomia do time</div><div class="muted">problemas resolvidos sem você</div></div>
 <div class="card c8"><h2>Contrato de senioridade</h2><div class="callout">Eu não sou paga apenas para resolver problemas. Minha senioridade cresce quando eu <b>antecipo riscos, tomo decisões com contexto, desenvolvo pessoas, estruturo processos e torno a operação menos dependente de mim.</b></div><h3 style="margin-top:18px">Evidências até dezembro</h3><div id="evidenceTasks"></div></div>
-<div class="card c4"><h2>Check-in rápido</h2><label>Maior entrega da semana</label><textarea class="field save" data-key="win" rows="3"></textarea><br><br><label>O que deleguei de verdade?</label><textarea class="field save" data-key="delegated" rows="3"></textarea><br><br><label>Conversa que não posso evitar</label><textarea class="field save" data-key="hardtalk" rows="3"></textarea></div></div></section>
+<div class="card c4"><h2>Check-in rápido</h2><label>Maior entrega da semana</label><textarea class="field save" data-key="win" rows="3"></textarea><br><br><label>O que deleguei de verdade?</label><textarea class="field save" data-key="delegated" rows="3"></textarea><br><br><label>Conversa que não posso evitar</label><textarea class="field save" data-key="hardtalk" rows="3"></textarea></div>
+<div class="card c12">
+  <h2>Evidências objetivas de evolução</h2>
+  <div class="statline">
+    <div class="statmini"><b id="dashEvidenceCount">—</b><span class="muted">evidências de senioridade registradas</span></div>
+    <div class="statmini"><b id="dashActiveGoals">—</b><span class="muted">metas de desenvolvimento ativas</span></div>
+    <div class="statmini"><b id="dashAutonomy">—</b><span class="muted">autonomia média da equipe</span></div>
+  </div>
+</div>
+</div></section>
 <section class="page" data-page="perfil"><h1>Meu perfil operacional</h1><p class="lead">Hipóteses de trabalho integrando Big Five, DISC e Sabotadores. Use como mapa de observação, não como rótulo.</p><div class="grid"><div class="card c6"><h2>Forças predominantes</h2><span class="tag">Imaginação 96</span><span class="tag">Planejamento 75</span><span class="tag">Ambição 71</span><span class="tag">Abertura 69</span><span class="tag">Experimentação 65</span><span class="tag">DISC C 62</span><span class="tag">DISC D 55</span><p>Combinação central: <b>inovação alta + necessidade alta de estrutura</b>. Você tende a enxergar possibilidades e querer convertê-las em processos, critérios, indicadores e governança.</p></div><div class="card c6"><h2>Pontos de atenção</h2><span class="tag">Autodisciplina 32</span><span class="tag">Flexibilidade 5</span><span class="tag">Aprovação 65</span><span class="tag">Autocrítica 14/15</span><span class="tag">Hiper-racional 9,5</span><span class="tag">Esquivo 9</span><span class="tag">Hiper-realizador 8,5</span><p>Risco: tentar compensar incerteza com controle, análise ou trabalho adicional. O antídoto é criar <b>sistemas externos de execução e autonomia</b>, não exigir mais força de vontade.</p></div><div class="card c4"><h3>Meu melhor modo</h3><p>Estratégica, preparada, objetiva, estruturadora, curiosa, calma sob pressão e orientada a melhoria.</p></div><div class="card c4"><h3>Quando exagero</h3><p>Centralizo, reviso demais, busco fundamentação além do necessário, começo novas frentes, adio conversas desconfortáveis ou confundo meu método com o método correto.</p></div><div class="card c4"><h3>Pergunta-mestra</h3><p><b>“Isso precisa da Danielle ou precisa de um sistema melhor?”</b></p></div></div></section>
 <section class="page" data-page="rotina"><h1>Sistema de rotina</h1><p class="lead">A rotina foi desenhada para reduzir dependência de memória e motivação. Ideia nova não vira prioridade automaticamente.</p><div class="grid"><div class="card c12"><h2>Semana padrão</h2><div class="week"><div class="day"><b>SEG • DIREÇÃO</b><p>30–45 min de planejamento.</p><p>1 resultado da semana<br>3 entregas críticas<br>delegações<br>riscos</p></div><div class="day"><b>TER • EXECUÇÃO</b><p>Bloco profundo.</p><p>Resolver trabalho estratégico antes de manutenção. Fazer 1 checkpoint de delegação.</p></div><div class="day"><b>QUA • PESSOAS</b><p>1:1 / feedback / desenvolvimento.</p><p>Reconhecimento específico + uma pergunta de coaching.</p></div><div class="day"><b>QUI • SISTEMA</b><p>Processos, indicadores e melhoria.</p><p>Eliminar uma causa de retrabalho ou dependência.</p></div><div class="day"><b>SEX • FECHAMENTO</b><p>Revisão de 30 min.</p><p>Entregas, aprendizados, evidências de senioridade e preparação da próxima semana.</p></div></div></div><div class="card c6"><h2>Ritual diário — 10 min</h2><div id="dailyTasks"></div><textarea class="field save" data-key="todayResult" rows="2" placeholder="Resultado que precisa existir hoje"></textarea></div><div class="card c6"><h2>Encerramento — 5 min</h2><textarea class="field save" data-key="delivered" rows="2" placeholder="Entreguei..."></textarea><br><br><textarea class="field save" data-key="learned" rows="2" placeholder="Aprendi..."></textarea><br><br><textarea class="field save" data-key="tomorrow" rows="2" placeholder="Primeiro passo de amanhã..."></textarea></div><div class="card c12"><h2>Backlog — NÃO AGORA</h2><div class="row"><input id="idea" class="field" style="flex:1" placeholder="Nova ideia, projeto ou melhoria"><button class="btn" onclick="addIdea()">Estacionar</button></div><div id="ideas"></div></div></div></section>
 <section class="page" data-page="gestao"><h1>Sistema de gestão</h1><p class="lead">Princípio: clareza alta, autonomia crescente e controle proporcional ao risco.</p><div class="grid"><div class="card c6"><h2>Delegação</h2><ol><li>Resultado esperado</li><li>Prazo</li><li>Critério de qualidade</li><li>Limites de autonomia</li><li>Checkpoint</li><li>Quando me acionar</li></ol><div class="callout">Antes de corrigir: <b>“Está errado ou só não é o meu jeito?”</b></div></div><div class="card c6"><h2>Níveis de autonomia</h2><p><b>N1</b> — execute como orientado</p><p><b>N2</b> — analise e me proponha</p><p><b>N3</b> — decida e me informe</p><p><b>N4</b> — decida e execute</p></div><div class="card c6"><h2>Feedback</h2><p><b>Fato → Impacto → Expectativa → Pergunta</b></p><textarea class="field save" data-key="feedbackDraft" rows="7" placeholder="Escreva aqui o caso e depois leve ao Conselheiro IA..."></textarea></div><div class="card c6"><h2>1:1 quinzenal</h2><p>5 min — pessoa<br>10 min — operação<br>10 min — desenvolvimento<br>5 min — meu feedback<br>5 min — compromisso</p><div class="callout">Não transformar 1:1 em reunião de status.</div></div><div class="card c12"><h2>Mapa da equipe</h2><div id="team"></div><button class="btn" onclick="addPerson()">+ pessoa</button><p class="tiny muted">Amanhã, inclua o DISC de cada pessoa. Não use DISC para rotular: registre também evidências observadas, motivadores, autonomia e desenvolvimento.</p></div></div></section>
@@ -65,7 +88,95 @@
 <section class="page" data-page="coach"><h1>Conselheiro de Gestão</h1><p class="lead">Este módulo usa seu perfil e contexto para estruturar pedidos de aconselhamento. Sem uma chave/API ou backend, um HTML local não consegue chamar um GPT com segurança. Por isso, ele gera um prompt completo para você colar no ChatGPT; depois pode ser conectado a uma API/backend.</p><div class="grid"><div class="card c4"><h2>Contexto</h2><select id="adviceType" class="field"><option>Feedback</option><option>Delegação</option><option>Conflito</option><option>1:1</option><option>Decisão operacional</option><option>Desenvolvimento da equipe</option><option>Comunicação com liderança/stakeholder</option></select><br><br><textarea id="case" class="field" rows="12" placeholder="Descreva o caso: fatos, pessoas, objetivo, restrições e o que você está pensando em fazer."></textarea><br><br><button class="btn primary" onclick="askCoach()">Gerar aconselhamento</button></div><div class="card c8"><h2>Análise</h2><div class="chat" id="chat"><div class="msg ai">Descreva um caso real. Vou gerar um prompt de aconselhamento que considera seu perfil, seus riscos de liderança e um método de decisão.</div></div><div class="row" style="margin-top:10px"><button class="btn" onclick="copyPrompt()">Copiar prompt completo</button></div></div></div></section>
 <section class="page" data-page="score"><h1>Scorecard semanal</h1><p class="lead">A senioridade precisa aparecer em comportamento observável, não apenas em sensação de evolução.</p><div class="grid"><div class="card c6" id="scores"></div><div class="card c6"><h2>Evidências da semana</h2><textarea class="field save" data-key="evidence" rows="12" placeholder="Decisão tomada, processo melhorado, problema antecipado, pessoa desenvolvida, conflito conduzido, resultado mensurável..."></textarea><br><br><button class="btn primary" onclick="saveScores()">Salvar semana</button></div><div class="card c12"><h2>Histórico</h2><div id="history"></div></div></div></section>
 
-<section id="managementCockpit" class="card" style="margin-top:18px">
+
+<section class="page" data-page="senioridade">
+  <h1>Portfólio de senioridade</h1>
+  <p class="lead">Não registre “trabalhei muito”. Registre decisões, sistemas, desenvolvimento de pessoas, influência e impacto que demonstrem um nível maior de atuação.</p>
+  <div class="grid">
+    <div class="card c5">
+      <h2>Nova evidência</h2>
+      <div class="formgrid">
+        <div><label>Competência</label>
+          <select id="seCompetency" class="field">
+            <option>Liderança</option><option>Delegação</option><option>Decisão</option>
+            <option>Processos</option><option>Stakeholders</option><option>Comunicação executiva</option>
+            <option>Indicadores</option><option>Desenvolvimento de pessoas</option><option>Projeto estratégico</option>
+          </select>
+        </div>
+        <div><label>Força da evidência</label>
+          <select id="seStrength" class="field"><option value="1">1 — fraca</option><option value="2">2</option><option value="3" selected>3 — boa</option><option value="4">4</option><option value="5">5 — muito forte</option></select>
+        </div>
+      </div>
+      <br><label>Situação</label><textarea id="seSituation" class="field" rows="3"></textarea>
+      <br><label>Minha ação</label><textarea id="seAction" class="field" rows="3"></textarea>
+      <br><label>Resultado</label><textarea id="seResult" class="field" rows="3"></textarea>
+      <br><label>Impacto mensurável</label><textarea id="seImpact" class="field" rows="2" placeholder="Tempo, retrabalho, autonomia, satisfação, receita, risco, qualidade..."></textarea>
+      <br><label>Stakeholder envolvido</label><input id="seStakeholder" class="field">
+      <br><br><label>Aprendizado</label><textarea id="seLearning" class="field" rows="2"></textarea>
+      <br><button class="btn primary" onclick="saveSeniorityEvidence()">Registrar evidência</button>
+    </div>
+    <div class="card c7">
+      <div class="row" style="justify-content:space-between"><h2>Meu histórico</h2><span class="tag" id="senioritySummary">—</span></div>
+      <div id="seniorityList" class="timeline"></div>
+    </div>
+  </div>
+</section>
+
+<section class="page" data-page="desenvolvimento">
+  <h1>Desenvolvimento profissional</h1>
+  <p class="lead">Poucas metas, métricas claras e evidência de mudança. O objetivo não é colecionar cursos; é alterar comportamento e resultado.</p>
+  <div class="grid">
+    <div class="card c5">
+      <h2>Nova meta</h2>
+      <label>Título</label><input id="dgGoalTitle" class="field" placeholder="Ex.: Delegar sem retomar a execução">
+      <br><br><label>Categoria</label>
+      <select id="dgGoalCategory" class="field">
+        <option>Liderança</option><option>Execução</option><option>Comunicação</option>
+        <option>Gestão de pessoas</option><option>Estratégia</option><option>Influência</option><option>Autogestão</option>
+      </select>
+      <br><br><label>Descrição</label><textarea id="dgGoalDesc" class="field" rows="3"></textarea>
+      <br><label>Métrica de sucesso</label><textarea id="dgGoalMetric" class="field" rows="2" placeholder="Como saberei que mudou?"></textarea>
+      <br><div class="formgrid">
+        <div><label>Linha de base</label><input id="dgGoalBaseline" class="field"></div>
+        <div><label>Meta</label><input id="dgGoalTarget" class="field"></div>
+      </div>
+      <br><label>Data-alvo</label><input id="dgGoalDate" class="field" type="date" value="2026-12-31">
+      <br><br><button class="btn primary" onclick="saveDevelopmentGoal()">Criar meta</button>
+    </div>
+    <div class="card c7">
+      <h2>Metas ativas</h2>
+      <div id="developmentGoalList"></div>
+    </div>
+  </div>
+</section>
+
+<section class="page" data-page="reflexao">
+  <h1>Laboratório de decisões</h1>
+  <p class="lead">Use depois de situações que mexeram com você ou antes de decisões importantes. O objetivo é tornar visível o padrão automático e criar uma resposta melhor.</p>
+  <div class="grid">
+    <div class="card c5">
+      <label>Categoria</label>
+      <select id="ccCategory" class="field">
+        <option>Delegação</option><option>Feedback</option><option>Conflito</option><option>Decisão</option>
+        <option>Stakeholder</option><option>Autocrítica</option><option>Execução</option><option>Comunicação</option>
+      </select>
+      <br><br><label>Situação</label><textarea id="ccSituation" class="field" rows="3"></textarea>
+      <br><label>Pensamento automático</label><textarea id="ccThought" class="field" rows="2" placeholder="O que eu pensei imediatamente?"></textarea>
+      <br><label>O que fiz / estou inclinada a fazer</label><textarea id="ccAction" class="field" rows="2"></textarea>
+      <br><label>Possível viés ou sabotador</label><input id="ccBias" class="field" placeholder="Ex.: hiper-racionalidade, controle, aprovação, esquiva...">
+      <br><br><label>Interpretação alternativa</label><textarea id="ccAlternative" class="field" rows="2"></textarea>
+      <br><label>Ação escolhida</label><textarea id="ccChosen" class="field" rows="2"></textarea>
+      <br><label>Aprendizado</label><textarea id="ccLearning" class="field" rows="2"></textarea>
+      <br><button class="btn primary" onclick="saveCoachingCase()">Salvar reflexão</button>
+    </div>
+    <div class="card c7">
+      <h2>Padrões registrados</h2>
+      <div id="coachingCaseList" class="timeline"></div>
+    </div>
+  </div>
+</section>
+
+<section id="managementCockpit" class="card" style="margin-top:18px;display:none">
   <div class="kicker">GESTÃO • COCKPIT</div>
   <h2>Desenvolvimento da equipe</h2>
   <p class="muted">Perfil comportamental é contexto, não sentença. Priorize comportamento observado, entregas, acordos e evolução.</p>
@@ -152,85 +263,29 @@ sb.auth.onAuthStateChange((_event, session) => {
 </script>
 
 <script>
-const pages=[['painel','Painel'],['perfil','Perfil'],['rotina','Rotina'],['gestao','Gestão'],['plano','Plano até dezembro'],['coach','Conselheiro IA'],['score','Scorecard']];
-const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active')};nav.appendChild(b)});
+const pages=[['painel','Painel'],['perfil','Perfil'],['rotina','Rotina'],['gestao','Gestão'],['senioridade','Senioridade'],['desenvolvimento','Desenvolvimento'],['reflexao','Decisões'],['plano','Plano até dezembro'],['score','Scorecard'],['coach','Conselheiro IA']];
+const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao')loadCoachingCases()};nav.appendChild(b)});
 const store=(k,v)=>localStorage.setItem('dos_'+k,JSON.stringify(v)),load=(k,d)=>{try{return JSON.parse(localStorage.getItem('dos_'+k))??d}catch{return d}};
 document.querySelectorAll('.save').forEach(e=>{e.value=load(e.dataset.key,'');e.oninput=()=>store(e.dataset.key,e.value)});
 const checklist=(el,key,items)=>{let state=load(key,{});el.innerHTML='';items.forEach((t,i)=>{let d=document.createElement('label');d.className='task '+(state[i]?'done':'');d.innerHTML=`<input type="checkbox" ${state[i]?'checked':''}><span>${t}</span>`;d.querySelector('input').onchange=e=>{state[i]=e.target.checked;store(key,state);d.classList.toggle('done',e.target.checked)};el.appendChild(d)})};
 checklist(document.getElementById('dailyTasks'),'daily',['Definir 1 resultado do dia','Escolher até 3 manutenções','Definir 1 delegação','Identificar 1 conversa importante','Escolher conscientemente algo que NÃO farei']);
 checklist(document.getElementById('evidenceTasks'),'evidences',['Uma melhoria sistêmica implementada e medida','Uma pessoa da equipe com autonomia claramente maior','Um caso de conflito/feedback bem conduzido','Uma decisão executiva defendida com dados + contexto humano','Um processo que deixou de depender diretamente de mim','Um projeto com diagnóstico → proposta → implementação → resultado']);
 function renderIdeas(){let a=load('ideas',[]),el=document.getElementById('ideas');el.innerHTML=a.map((x,i)=>`<div class="task"><span style="flex:1">${x}</span><button class="btn tiny" onclick="delIdea(${i})">remover</button></div>`).join('')}function addIdea(){let e=document.getElementById('idea');if(!e.value.trim())return;let a=load('ideas',[]);a.push(e.value.trim());store('ideas',a);e.value='';renderIdeas()}function delIdea(i){let a=load('ideas',[]);a.splice(i,1);store('ideas',a);renderIdeas()}renderIdeas();
-const cycles=[['1–2','Autogestão','Mapear gatilhos, autocrítica, hiper-racionalidade e hiper-realização.','Diário de 10 ocorrências reais + 1 mudança de comportamento.'],['3–4','Execução','WIP limitado, timeboxing, definição de pronto e regra dos 70%.','Aumentar taxa de conclusão sem aumentar horas.'],['5–6','Comunicação executiva','Síntese, assertividade, storytelling de decisão e comunicação para cima.','1 decisão apresentada em 30s, 2min e 5min.'],['7–8','Delegação','Resultado, autonomia, checkpoints e tolerância a métodos diferentes.','Mover pelo menos uma responsabilidade recorrente para N3/N4.'],['9–10','Feedback & conflitos','Fato-impacto-expectativa-pergunta; conversas difíceis cedo.','2 feedbacks documentados + follow-up.'],['11–12','Gestão por indicadores','Indicadores que geram decisão, não dashboard decorativo.','1 rotina gerencial baseada em indicador e ação.'],['13–14','Stakeholders','Influência sem autoridade, negociação e alinhamento de governança.','1 caso real com decisão/alinhamento destravado.'],['15–16','Projeto sênior','Diagnóstico → business case → implementação → mensuração.','Case executivo de dezembro.']];document.getElementById('cycles').innerHTML=cycles.map(c=>`<div class="card c6"><h3>Semanas ${c[0]}</h3><h2>${c[1]}</h2><p>${c[2]}</p><p class="good"><b>Evidência:</b> ${c[3]}</p></div>`).join('');
+const cycles=[
+['1–2','Execução e autogestão','Reduzir WIP, usar definição de pronto e fechar ciclos antes de abrir novas frentes.','Taxa de conclusão maior + diário de padrões automáticos.'],
+['3–4','Delegação e autonomia','Definir resultado, qualidade, autonomia, checkpoint e escalonamento.','Uma responsabilidade recorrente movida pelo menos um nível de autonomia.'],
+['5–6','Feedback e conversas difíceis','Antecipar conversas em vez de acumular incômodo.','Dois feedbacks completos com follow-up e mudança observável.'],
+['7–8','Comunicação executiva e stakeholders','Síntese, recomendação, risco, trade-off e pedido claro.','Uma decisão destravada com liderança/clube/parceiro e registro do impacto.'],
+['9–10','Gestão por indicadores e sistemas','Transformar dado em decisão e eliminar uma causa de retrabalho.','Uma melhoria sistêmica implementada e medida.'],
+['11–12','Desenvolvimento da equipe','Coaching, 1:1, autonomia e sucessão operacional.','Uma pessoa resolvendo algo relevante com menor dependência sua.'],
+['13','Consolidação de senioridade','Organizar o portfólio, escolher os cases mais fortes e explicitar a evolução.','Case executivo: contexto → decisão → pessoas → sistema → impacto → aprendizado.']
+];document.getElementById('cycles').innerHTML=cycles.map(c=>`<div class="card c6"><h3>Semanas ${c[0]}</h3><h2>${c[1]}</h2><p>${c[2]}</p><p class="good"><b>Evidência:</b> ${c[3]}</p></div>`).join('');
 let team=load('team',[{name:'Pessoa 1',disc:'',aut:'N1',obs:''},{name:'Pessoa 2',disc:'',aut:'N1',obs:''},{name:'Pessoa 3',disc:'',aut:'N1',obs:''}]);function renderTeam(){let el=document.getElementById('team');el.innerHTML=team.map((p,i)=>`<div class="card" style="margin:10px 0"><div class="row"><input class="field" style="flex:1" value="${p.name}" onchange="team[${i}].name=this.value;saveTeam()"><input class="field" style="width:150px" placeholder="DISC" value="${p.disc}" onchange="team[${i}].disc=this.value;saveTeam()"><select class="field" style="width:110px" onchange="team[${i}].aut=this.value;saveTeam()">${['N1','N2','N3','N4'].map(x=>`<option ${p.aut===x?'selected':''}>${x}</option>`).join('')}</select></div><textarea class="field" rows="3" placeholder="Evidências, motivadores, desenvolvimento, acordos..." onchange="team[${i}].obs=this.value;saveTeam()">${p.obs}</textarea></div>`).join('')}function saveTeam(){store('team',team)}function addPerson(){team.push({name:'Nova pessoa',disc:'',aut:'N1',obs:''});saveTeam();renderTeam()}renderTeam();
 const scoreNames=['Foco','Execução','Delegação','Comunicação','Liderança','Energia','Autocrítica saudável','Conversas difíceis'];document.getElementById('scores').innerHTML='<h2>Notas 0–10</h2>'+scoreNames.map((x,i)=>`<div class="score"><label>${x}</label><input class="field scoreInput" data-name="${x}" type="number" min="0" max="10" value="5"></div>`).join('');function saveScores(){let vals={date:new Date().toLocaleDateString('pt-BR'),scores:{},evidence:load('evidence','')};document.querySelectorAll('.scoreInput').forEach(e=>vals.scores[e.dataset.name]=+e.value);let h=load('scoreHistory',[]);h.unshift(vals);store('scoreHistory',h);renderHistory();updateAvg()}function renderHistory(){let h=load('scoreHistory',[]);document.getElementById('history').innerHTML=h.length?h.map(x=>`<div class="task"><span><b>${x.date}</b> — média ${(Object.values(x.scores).reduce((a,b)=>a+b,0)/Object.values(x.scores).length).toFixed(1)}<br><span class="muted tiny">${x.evidence||''}</span></span></div>`).join(''):'<span class="muted">Nenhum check-in salvo ainda.</span>'}function updateAvg(){let h=load('scoreHistory',[]);document.getElementById('avgScore').textContent=h.length?(Object.values(h[0].scores).reduce((a,b)=>a+b,0)/Object.values(h[0].scores).length).toFixed(1):'—'}renderHistory();updateAvg();
 let lastPrompt='';function askCoach(){let type=document.getElementById('adviceType').value,cs=document.getElementById('case').value.trim();if(!cs)return;let teamContext=team.map(p=>`${p.name}: DISC ${p.disc||'não informado'}, autonomia ${p.aut}, observações: ${p.obs||'—'}`).join('\n');lastPrompt=`Atue como meu mentor executivo e coach de liderança. Não concorde automaticamente comigo. Separe fatos de interpretação, identifique vieses e riscos, e priorize desenvolvimento da equipe e senioridade.\n\nMEU PERFIL: Big Five: imaginação 96, planejamento 75, ambição 71, abertura 69, experimentação 65, necessidade de aprovação 65, autodisciplina 32, sociabilidade 30, desinibição 25, flexibilidade 5. DISC: C62/D55/S30/I20, perfil CD. Sabotadores mais altos: hiper-racional 9,5; esquivo 9; hipervigilante 8,5; hiper-realizador 8,5; controlador 8; inquieto 7. Autocrítica 14/15. Trate isso como hipóteses, não rótulos.\n\nEQUIPE:\n${teamContext}\n\nTIPO DE SITUAÇÃO: ${type}\nCASO: ${cs}\n\nResponda nesta ordem: 1) fatos vs interpretações; 2) meu possível ponto cego/sabotador; 3) impacto na pessoa/equipe; 4) três opções com trade-offs; 5) recomendação prática sem decidir por mim; 6) se for feedback, escreva uma versão Fato→Impacto→Expectativa→Pergunta; 7) perguntas que eu deveria fazer em vez de dar a solução; 8) como transformar o caso em evidência de senioridade; 9) ação e follow-up com prazo.`;let chat=document.getElementById('chat');chat.innerHTML+=`<div class="msg me">${cs}</div><div class="msg ai">Prompt estratégico gerado. Clique em “Copiar prompt completo” e cole no ChatGPT.\n\nEle já inclui seu perfil, contexto da equipe e o framework de análise. Quando você preencher o DISC das meninas, esse contexto também entrará automaticamente.</div>`;chat.scrollTop=chat.scrollHeight}function copyPrompt(){if(!lastPrompt)return;navigator.clipboard.writeText(lastPrompt).then(()=>alert('Prompt copiado.'))}
-let now=new Date(),target=new Date('2026-12-20T00:00:00');document.getElementById('weeks').textContent=Math.max(0,Math.ceil((target-now)/(7*864e5)));
+let now=new Date(),target=new Date('2026-12-31T23:59:59');document.getElementById('weeks').textContent=Math.max(0,Math.ceil((target-now)/(7*864e5)));
 </script>
-<script>
-const dbStatus = document.getElementById('dbTestStatus');
-const dbSave = document.getElementById('dbSaveTest');
-const dbRead = document.getElementById('dbReadTest');
 
-function dbMsg(message, ok=false){
-  dbStatus.textContent = message;
-  dbStatus.className = ok ? 'auth-ok' : 'muted';
-}
-
-dbSave.addEventListener('click', async () => {
-  dbSave.disabled = true;
-  dbMsg('Gravando...');
-  const { data: sessionData } = await sb.auth.getSession();
-  const user = sessionData.session?.user;
-  if (!user) {
-    dbMsg('Sessão não encontrada. Saia e entre novamente.');
-    dbSave.disabled = false;
-    return;
-  }
-
-  const payload = {
-    user_id: user.id,
-    full_name: document.getElementById('dbTestName').value.trim(),
-    role: document.getElementById('dbTestRole').value.trim(),
-    company: 'Ingresse',
-    career_objective: 'Aumentar senioridade profissional e capacidade de liderança até dezembro de 2026'
-  };
-
-  const { data, error } = await sb
-    .from('profiles')
-    .upsert(payload, { onConflict: 'user_id' })
-    .select('id,user_id,full_name,role,company,career_objective,updated_at')
-    .single();
-
-  dbSave.disabled = false;
-  if (error) {
-    dbMsg('Erro ao gravar: ' + error.message);
-    return;
-  }
-  dbMsg('✓ Gravado com sucesso. RLS aceitou a operação para o seu usuário.', true);
-});
-
-dbRead.addEventListener('click', async () => {
-  dbRead.disabled = true;
-  dbMsg('Lendo...');
-  const { data, error } = await sb
-    .from('profiles')
-    .select('full_name,role,company,career_objective,updated_at')
-    .maybeSingle();
-  dbRead.disabled = false;
-
-  if (error) {
-    dbMsg('Erro ao ler: ' + error.message);
-    return;
-  }
-  if (!data) {
-    dbMsg('Nenhum perfil encontrado ainda. Clique primeiro em “Gravar no Supabase”.');
-    return;
-  }
-  document.getElementById('dbTestName').value = data.full_name || '';
-  document.getElementById('dbTestRole').value = data.role || '';
-  dbMsg(`✓ Registro lido: ${data.full_name || 'sem nome'} • ${data.role || 'sem cargo'} • ${data.company || 'sem empresa'}`, true);
-});
-</script>
 
 
 <script>
@@ -656,6 +711,185 @@ initCloudData=async function(){
   await oldInitCloudData();
   await cockpitLoadPeople();
 };
+</script>
+
+
+<script>
+/* ---------- MY PROFILE: seed structured assessment context for future AI ---------- */
+async function seedMyProfile(){
+  if(!currentUserId) return;
+  const payload={
+    user_id:currentUserId,
+    full_name:'Danielle Gomes dos Santos',
+    role:'Supervisora de Operações',
+    company:'Ingresse',
+    career_objective:'Chegar ao fim de 2026 demonstrando senioridade maior em liderança, execução, influência, gestão por sistemas e desenvolvimento da equipe.',
+    professional_summary:'Liderança operacional em ticketing/acesso com foco em processos, indicadores, parceiros, governança e desenvolvimento de equipe.',
+    big_five:{
+      emotional_sensitivity:46, approval_need:65, temperament:21, impulsivity:46, vulnerability:50,
+      agreeableness:38, judgment_cynicism:5, people_goal_sensitivity:55, tolerance:50, cooperation:47,
+      extraversion:37, disinhibition:25, sociability:30, influence:53, energy:42,
+      discipline:59, ambition:71, self_discipline:32, planned:75, perfectionism:58,
+      openness:57, imagination:96, openness_subscale:69, flexibility:5, experimentation:65
+    },
+    disc:{profile:'CD', name:'Estrategista de Precisão', C:62, D:55, S:30, I:20},
+    saboteurs:{insistente:5.5,prestativo:4.5,hipervigilante:8.5,inquieto:7,controlador:8,esquivo:9,hiper_realizador:8.5,vitima:5.5,hiper_racional:9.5,self_criticism:14},
+    strengths:['estruturação','planejamento','imaginação','ambição','análise','orientação a melhoria'],
+    development_points:['delegação com autonomia','flexibilidade de método','execução sustentada','conversas difíceis','redução de centralização','comunicação que combine dados e contexto humano']
+  };
+  await sb.from('profiles').upsert(payload,{onConflict:'user_id'});
+}
+
+/* ---------- SENIORITY EVIDENCE ---------- */
+async function saveSeniorityEvidence(){
+  if(!currentUserId) return;
+  const payload={
+    user_id:currentUserId,evidence_date:isoDateLocal(),
+    competency:seCompetency.value,
+    situation:seSituation.value.trim(),action_taken:seAction.value.trim(),
+    result:seResult.value.trim(),measurable_impact:seImpact.value.trim(),
+    stakeholder:seStakeholder.value.trim(),lesson_learned:seLearning.value.trim(),
+    evidence_strength:Number(seStrength.value)
+  };
+  if(!payload.situation || !payload.action_taken || !payload.result){
+    cloudMsg('Preencha situação, ação e resultado para registrar a evidência.'); return;
+  }
+  const {error}=await sb.from('seniority_evidence').insert(payload);
+  if(error){cloudMsg('Erro ao salvar evidência: '+error.message);return;}
+  ['seSituation','seAction','seResult','seImpact','seStakeholder','seLearning'].forEach(id=>document.getElementById(id).value='');
+  await loadSeniorityEvidence(); await refreshDashboardMetrics();
+  cloudMsg('Evidência de senioridade registrada',true);
+}
+async function loadSeniorityEvidence(){
+  if(!currentUserId) return;
+  const {data,error}=await sb.from('seniority_evidence').select('*').order('evidence_date',{ascending:false}).order('created_at',{ascending:false}).limit(30);
+  const el=document.getElementById('seniorityList'); if(!el)return;
+  if(error){el.innerHTML='<span class="danger">'+esc(error.message)+'</span>';return;}
+  const rows=data||[];
+  const strong=rows.filter(x=>Number(x.evidence_strength)>=4).length;
+  document.getElementById('senioritySummary').textContent=`${rows.length} registros • ${strong} fortes`;
+  el.innerHTML=rows.length?rows.map(x=>`
+    <div class="timeline-item">
+      <span class="badge">${esc(x.competency||'')}</span><span class="badge">força ${x.evidence_strength||'—'}/5</span>
+      <b>${ptDate(x.evidence_date)}</b>
+      <div style="margin-top:7px"><b>Situação:</b> ${esc(x.situation||'')}</div>
+      <div><b>Ação:</b> ${esc(x.action_taken||'')}</div>
+      <div><b>Resultado:</b> ${esc(x.result||'')}</div>
+      ${x.measurable_impact?`<div class="good"><b>Impacto:</b> ${esc(x.measurable_impact)}</div>`:''}
+      ${x.lesson_learned?`<div class="muted"><b>Aprendizado:</b> ${esc(x.lesson_learned)}</div>`:''}
+    </div>`).join(''):'<span class="muted">Nenhuma evidência registrada ainda.</span>';
+}
+
+/* ---------- DEVELOPMENT GOALS ---------- */
+async function saveDevelopmentGoal(){
+  if(!currentUserId) return;
+  const title=dgGoalTitle.value.trim();
+  if(!title){cloudMsg('Dê um título à meta.');return;}
+  const payload={
+    user_id:currentUserId,title,category:dgGoalCategory.value,
+    description:dgGoalDesc.value.trim(),start_date:isoDateLocal(),
+    target_date:dgGoalDate.value||'2026-12-31',
+    success_metric:dgGoalMetric.value.trim(),baseline:dgGoalBaseline.value.trim(),
+    target:dgGoalTarget.value.trim(),status:'active',progress:0
+  };
+  const {error}=await sb.from('development_goals').insert(payload);
+  if(error){cloudMsg('Erro ao criar meta: '+error.message);return;}
+  ['dgGoalTitle','dgGoalDesc','dgGoalMetric','dgGoalBaseline','dgGoalTarget'].forEach(id=>document.getElementById(id).value='');
+  await loadDevelopmentGoals(); await refreshDashboardMetrics();
+  cloudMsg('Meta de desenvolvimento criada',true);
+}
+async function loadDevelopmentGoals(){
+  if(!currentUserId) return;
+  const {data,error}=await sb.from('development_goals').select('*').in('status',['planned','active','paused','completed']).order('target_date',{ascending:true});
+  const el=document.getElementById('developmentGoalList'); if(!el)return;
+  if(error){el.innerHTML='<span class="danger">'+esc(error.message)+'</span>';return;}
+  el.innerHTML=(data||[]).length?(data||[]).map(x=>`
+    <div class="mini-item">
+      <div class="row" style="justify-content:space-between">
+        <div><b>${esc(x.title)}</b><br><span class="muted tiny">${esc(x.category||'')} • alvo ${ptDate(x.target_date)}</span></div>
+        <span class="badge">${esc(x.status)}</span>
+      </div>
+      ${x.success_metric?`<p class="tiny"><b>Métrica:</b> ${esc(x.success_metric)}</p>`:''}
+      <div class="progressbar"><span style="width:${Math.max(0,Math.min(100,Number(x.progress)||0))}%"></span></div>
+      <div class="row" style="margin-top:8px">
+        <input class="field" style="width:100px" type="number" min="0" max="100" value="${Number(x.progress)||0}" id="prog_${x.id}">
+        <button class="btn tiny" onclick="updateGoalProgress('${x.id}')">Atualizar %</button>
+        ${x.status!=='completed'?`<button class="btn tiny" onclick="completeGoal('${x.id}')">Concluir</button>`:''}
+      </div>
+    </div>`).join(''):'<span class="muted">Nenhuma meta criada ainda.</span>';
+}
+async function updateGoalProgress(id){
+  const val=Math.max(0,Math.min(100,Number(document.getElementById('prog_'+id).value)||0));
+  const {error}=await sb.from('development_goals').update({progress:val,status:val>=100?'completed':'active'}).eq('id',id);
+  if(error){cloudMsg(error.message);return;} await loadDevelopmentGoals();await refreshDashboardMetrics();cloudMsg('Progresso atualizado',true);
+}
+async function completeGoal(id){
+  const {error}=await sb.from('development_goals').update({progress:100,status:'completed'}).eq('id',id);
+  if(error){cloudMsg(error.message);return;} await loadDevelopmentGoals();await refreshDashboardMetrics();cloudMsg('Meta concluída',true);
+}
+
+/* ---------- REFLECTION / COACHING CASES ---------- */
+async function saveCoachingCase(){
+  if(!currentUserId) return;
+  if(!ccSituation.value.trim()){cloudMsg('Descreva a situação.');return;}
+  const payload={
+    user_id:currentUserId,case_date:isoDateLocal(),category:ccCategory.value,
+    situation:ccSituation.value.trim(),automatic_thought:ccThought.value.trim(),
+    action_taken:ccAction.value.trim(),possible_bias:ccBias.value.trim(),
+    possible_saboteur:ccBias.value.trim(),alternative_interpretation:ccAlternative.value.trim(),
+    chosen_action:ccChosen.value.trim(),learning:ccLearning.value.trim()
+  };
+  const {error}=await sb.from('coaching_cases').insert(payload);
+  if(error){cloudMsg('Erro ao salvar reflexão: '+error.message);return;}
+  ['ccSituation','ccThought','ccAction','ccBias','ccAlternative','ccChosen','ccLearning'].forEach(id=>document.getElementById(id).value='');
+  await loadCoachingCases(); cloudMsg('Reflexão registrada',true);
+}
+async function loadCoachingCases(){
+  if(!currentUserId) return;
+  const {data,error}=await sb.from('coaching_cases').select('*').order('case_date',{ascending:false}).order('created_at',{ascending:false}).limit(20);
+  const el=document.getElementById('coachingCaseList'); if(!el)return;
+  if(error){el.innerHTML='<span class="danger">'+esc(error.message)+'</span>';return;}
+  el.innerHTML=(data||[]).length?(data||[]).map(x=>`
+    <div class="timeline-item">
+      <span class="badge">${esc(x.category||'')}</span><b>${ptDate(x.case_date)}</b>
+      <div style="margin-top:6px">${esc(x.situation||'')}</div>
+      ${x.automatic_thought?`<div class="muted"><b>Automático:</b> ${esc(x.automatic_thought)}</div>`:''}
+      ${x.possible_bias?`<div><b>Padrão possível:</b> ${esc(x.possible_bias)}</div>`:''}
+      ${x.alternative_interpretation?`<div><b>Alternativa:</b> ${esc(x.alternative_interpretation)}</div>`:''}
+      ${x.chosen_action?`<div class="good"><b>Ação escolhida:</b> ${esc(x.chosen_action)}</div>`:''}
+    </div>`).join(''):'<span class="muted">Nenhum caso registrado ainda.</span>';
+}
+
+/* ---------- DASHBOARD METRICS ---------- */
+async function refreshDashboardMetrics(){
+  if(!currentUserId) return;
+  const [ev,goals,teamRows]=await Promise.all([
+    sb.from('seniority_evidence').select('id',{count:'exact',head:true}),
+    sb.from('development_goals').select('id',{count:'exact',head:true}).eq('status','active'),
+    sb.from('team_members').select('autonomy_level').eq('status','active')
+  ]);
+  const evEl=document.getElementById('dashEvidenceCount');
+  const goalEl=document.getElementById('dashActiveGoals');
+  const autoEl=document.getElementById('dashAutonomy');
+  if(evEl)evEl.textContent=ev.count??0;
+  if(goalEl)goalEl.textContent=goals.count??0;
+  const nums=(teamRows.data||[]).map(x=>Number(x.autonomy_level)).filter(Number.isFinite);
+  if(autoEl)autoEl.textContent=nums.length?'N'+(nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(1):'—';
+}
+
+/* Extend the existing cloud initializer. */
+const previousInitCloudDataV4=initCloudData;
+initCloudData=async function(){
+  await previousInitCloudDataV4();
+  await seedMyProfile();
+  await Promise.all([
+    refreshDashboardMetrics(),
+    loadSeniorityEvidence(),
+    loadDevelopmentGoals(),
+    loadCoachingCases()
+  ]);
+};
+setTimeout(()=>{ if(currentUserId) initCloudData(); },350);
 </script>
 
 </body></html>
