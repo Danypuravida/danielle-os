@@ -32,32 +32,11 @@
 </div>
 <div id="appShell" class="app" hidden><aside class="side"><div class="brand">DANIELLE OS<small>Senioridade • Dez 2026</small></div><div class="nav" id="nav"></div>
 <div class="userbox">
-  <div id="signedUser">Sessão protegida</div>
+  <div id="signedUser">Sessão protegida</div><div id="cloudStatus" class="tiny muted" style="margin-top:5px">Sincronizando dados…</div>
   <button class="btn" id="logoutButton" type="button">Sair</button>
 </div>
 </aside>
 <main class="main">
-<section id="dbTestPanel" class="card" style="margin-bottom:18px">
-  <div class="kicker">SUPABASE • TESTE DE SEGURANÇA</div>
-  <h2>Conexão com o banco</h2>
-  <p class="muted">Este teste cria/atualiza somente o seu próprio registro em <code>profiles</code>, usando a sessão autenticada e as políticas RLS.</p>
-  <div class="grid two">
-    <div>
-      <label>Nome para teste</label>
-      <input id="dbTestName" class="field" value="Danielle Gomes">
-    </div>
-    <div>
-      <label>Cargo para teste</label>
-      <input id="dbTestRole" class="field" value="Supervisora de Operações">
-    </div>
-  </div>
-  <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px">
-    <button id="dbSaveTest" class="btn primary" type="button">Gravar no Supabase</button>
-    <button id="dbReadTest" class="btn" type="button">Ler meu registro</button>
-  </div>
-  <div id="dbTestStatus" class="muted" style="margin-top:12px">Aguardando teste.</div>
-</section>
-
 <section class="page active" data-page="painel"><h1>Painel de evolução</h1><p class="lead">Objetivo: chegar a dezembro operando menos como solucionadora central e mais como líder sênior que cria clareza, autonomia, governança, decisões e melhoria sistêmica.</p><div class="grid">
 <div class="card c3"><h3>Semanas até dezembro</h3><div class="metric" id="weeks">—</div><div class="muted">ciclos de execução</div></div><div class="card c3"><h3>Foco da semana</h3><div class="metric" style="font-size:18px">Liderar pelo sistema</div><div class="muted">menos centralização</div></div><div class="card c3"><h3>Score semanal</h3><div class="metric" id="avgScore">—</div><div class="muted">média do seu check-in</div></div><div class="card c3"><h3>North Star</h3><div class="metric" style="font-size:18px">Autonomia do time</div><div class="muted">problemas resolvidos sem você</div></div>
 <div class="card c8"><h2>Contrato de senioridade</h2><div class="callout">Eu não sou paga apenas para resolver problemas. Minha senioridade cresce quando eu <b>antecipo riscos, tomo decisões com contexto, desenvolvo pessoas, estruturo processos e torno a operação menos dependente de mim.</b></div><h3 style="margin-top:18px">Evidências até dezembro</h3><div id="evidenceTasks"></div></div>
@@ -213,6 +192,247 @@ dbRead.addEventListener('click', async () => {
   document.getElementById('dbTestRole').value = data.role || '';
   dbMsg(`✓ Registro lido: ${data.full_name || 'sem nome'} • ${data.role || 'sem cargo'} • ${data.company || 'sem empresa'}`, true);
 });
+</script>
+
+
+<script>
+/* DANIELLE OS v3 — persistence layer.
+   Supabase is now the source of truth for Team, Idea Backlog,
+   Daily Check-in and Weekly Scorecard. localStorage remains only
+   as a temporary fallback for untouched prototype modules. */
+
+let currentUserId = null;
+let cloudReady = false;
+let dailySaveTimer = null;
+
+const cloudStatus = document.getElementById('cloudStatus');
+function cloudMsg(msg, good=false){
+  if(!cloudStatus) return;
+  cloudStatus.textContent = msg;
+  cloudStatus.className = good ? 'tiny good' : 'tiny muted';
+}
+function isoDateLocal(d=new Date()){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function mondayOf(date=new Date()){
+  const d=new Date(date); const day=(d.getDay()+6)%7;
+  d.setDate(d.getDate()-day);
+  return isoDateLocal(d);
+}
+function ptDate(iso){
+  if(!iso) return '';
+  const [y,m,d]=iso.slice(0,10).split('-');
+  return `${d}/${m}/${y}`;
+}
+function esc(v=''){
+  return String(v).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+async function requireUser(){
+  const {data,error}=await sb.auth.getSession();
+  if(error || !data.session) return null;
+  currentUserId=data.session.user.id;
+  return data.session.user;
+}
+
+/* ---------- TEAM ---------- */
+async function loadTeamCloud(){
+  if(!currentUserId) return;
+  const {data,error}=await sb.from('team_members')
+    .select('id,name,role,area,autonomy_level,manager_notes,status')
+    .eq('status','active').order('created_at',{ascending:true});
+  if(error){ cloudMsg('Falha ao carregar equipe: '+error.message); return; }
+  team=(data||[]).map(x=>({
+    id:x.id,name:x.name,disc:'',aut:'N'+(x.autonomy_level||1),
+    obs:x.manager_notes||'',role:x.role||'',area:x.area||''
+  }));
+  renderTeam();
+}
+renderTeam = function(){
+  const el=document.getElementById('team');
+  if(!el) return;
+  if(!team.length){
+    el.innerHTML='<div class="muted">Nenhuma pessoa cadastrada ainda.</div>';
+    return;
+  }
+  el.innerHTML=team.map((p,i)=>`<div class="card" style="margin:10px 0">
+    <div class="row">
+      <input class="field" style="flex:1" value="${esc(p.name)}" onchange="team[${i}].name=this.value;saveTeam(${i})">
+      <input class="field" style="width:150px" placeholder="DISC" value="${esc(p.disc||'')}" onchange="team[${i}].disc=this.value;saveTeam(${i})">
+      <select class="field" style="width:110px" onchange="team[${i}].aut=this.value;saveTeam(${i})">${['N1','N2','N3','N4'].map(x=>`<option ${p.aut===x?'selected':''}>${x}</option>`).join('')}</select>
+    </div>
+    <textarea class="field" rows="3" placeholder="Evidências, motivadores, desenvolvimento, acordos..." onchange="team[${i}].obs=this.value;saveTeam(${i})">${esc(p.obs||'')}</textarea>
+  </div>`).join('');
+};
+saveTeam = async function(i){
+  if(!currentUserId) return;
+  const p=team[i];
+  const payload={
+    user_id:currentUserId,
+    name:p.name.trim()||'Sem nome',
+    autonomy_level:Number(String(p.aut).replace('N',''))||1,
+    manager_notes:p.obs||'',
+    status:'active'
+  };
+  let result;
+  if(p.id) result=await sb.from('team_members').update(payload).eq('id',p.id).select('id').single();
+  else result=await sb.from('team_members').insert(payload).select('id').single();
+  if(result.error){ cloudMsg('Erro ao salvar equipe: '+result.error.message); return; }
+  p.id=result.data.id;
+  // Store DISC separately as a behavioral assessment when filled.
+  if((p.disc||'').trim()){
+    const {data:existing}=await sb.from('behavioral_assessments')
+      .select('id').eq('team_member_id',p.id).eq('assessment_type','DISC').limit(1);
+    const assessment={
+      user_id:currentUserId,team_member_id:p.id,assessment_type:'DISC',
+      profile_name:p.disc.trim(),source_notes:'Inserido no Danielle OS'
+    };
+    if(existing && existing.length) await sb.from('behavioral_assessments').update(assessment).eq('id',existing[0].id);
+    else await sb.from('behavioral_assessments').insert(assessment);
+  }
+  cloudMsg('Dados salvos no Supabase',true);
+};
+addPerson = async function(){
+  if(!currentUserId) return;
+  const {data,error}=await sb.from('team_members').insert({
+    user_id:currentUserId,name:'Nova pessoa',autonomy_level:1,status:'active'
+  }).select('id,name,autonomy_level,manager_notes').single();
+  if(error){ cloudMsg('Erro ao adicionar pessoa: '+error.message); return; }
+  team.push({id:data.id,name:data.name,disc:'',aut:'N1',obs:''});
+  renderTeam(); cloudMsg('Pessoa adicionada',true);
+};
+async function loadDiscCloud(){
+  if(!team.length) return;
+  const ids=team.map(x=>x.id).filter(Boolean);
+  if(!ids.length) return;
+  const {data}=await sb.from('behavioral_assessments')
+    .select('team_member_id,profile_name,assessment_date,created_at')
+    .eq('assessment_type','DISC').in('team_member_id',ids)
+    .order('created_at',{ascending:false});
+  const seen=new Set();
+  (data||[]).forEach(a=>{
+    if(seen.has(a.team_member_id)) return;
+    seen.add(a.team_member_id);
+    const p=team.find(x=>x.id===a.team_member_id);
+    if(p) p.disc=a.profile_name||'';
+  });
+  renderTeam();
+}
+
+/* ---------- IDEA BACKLOG ---------- */
+renderIdeas = async function(){
+  const el=document.getElementById('ideas'); if(!el||!currentUserId) return;
+  const {data,error}=await sb.from('idea_backlog')
+    .select('id,title,status,priority,created_at')
+    .in('status',['not_now','incubate','execute'])
+    .order('created_at',{ascending:false});
+  if(error){ el.innerHTML='<span class="danger">'+esc(error.message)+'</span>'; return; }
+  el.innerHTML=(data||[]).length ? data.map(x=>`<div class="task"><span style="flex:1">${esc(x.title)}</span><button class="btn tiny" onclick="delIdea('${x.id}')">remover</button></div>`).join('') : '<span class="muted">Backlog vazio.</span>';
+};
+addIdea = async function(){
+  const e=document.getElementById('idea'); if(!e.value.trim()||!currentUserId) return;
+  const {error}=await sb.from('idea_backlog').insert({user_id:currentUserId,title:e.value.trim(),status:'not_now',priority:3});
+  if(error){ cloudMsg('Erro no backlog: '+error.message); return; }
+  e.value=''; await renderIdeas(); cloudMsg('Ideia estacionada no Supabase',true);
+};
+delIdea = async function(id){
+  const {error}=await sb.from('idea_backlog').update({status:'discarded'}).eq('id',id);
+  if(error){ cloudMsg('Erro ao remover ideia: '+error.message); return; }
+  await renderIdeas();
+};
+
+/* ---------- DAILY CHECK-IN ---------- */
+async function loadDailyCloud(){
+  if(!currentUserId) return;
+  const date=isoDateLocal();
+  const {data,error}=await sb.from('daily_checkins').select('*').eq('checkin_date',date).maybeSingle();
+  if(error){ cloudMsg('Erro ao carregar rotina: '+error.message); return; }
+  const map={todayResult:'main_result',delivered:'delivered',learned:'learned',tomorrow:'tomorrow_first_step'};
+  document.querySelectorAll('.save').forEach(el=>{
+    const col=map[el.dataset.key];
+    if(col && data) el.value=data[col]||'';
+  });
+}
+async function saveDailyCloud(){
+  if(!currentUserId) return;
+  const get=k=>document.querySelector(`.save[data-key="${k}"]`)?.value||'';
+  const payload={
+    user_id:currentUserId,checkin_date:isoDateLocal(),
+    main_result:get('todayResult'),delivered:get('delivered'),
+    learned:get('learned'),tomorrow_first_step:get('tomorrow')
+  };
+  const {error}=await sb.from('daily_checkins').upsert(payload,{onConflict:'user_id,checkin_date'});
+  if(error){ cloudMsg('Erro ao salvar check-in: '+error.message); return; }
+  cloudMsg('Rotina sincronizada',true);
+}
+document.querySelectorAll('.save').forEach(el=>{
+  if(['todayResult','delivered','learned','tomorrow'].includes(el.dataset.key)){
+    el.addEventListener('input',()=>{
+      clearTimeout(dailySaveTimer);
+      dailySaveTimer=setTimeout(saveDailyCloud,700);
+    });
+  }
+});
+
+/* ---------- WEEKLY SCORECARD ---------- */
+saveScores = async function(){
+  if(!currentUserId) return;
+  const vals={};
+  document.querySelectorAll('.scoreInput').forEach(e=>vals[e.dataset.name]=Number(e.value)||0);
+  const evidence=document.querySelector('.save[data-key="evidence"]')?.value||'';
+  const payload={
+    user_id:currentUserId,week_start:mondayOf(),
+    focus:vals['Foco'],execution:vals['Execução'],delegation:vals['Delegação'],
+    communication:vals['Comunicação'],leadership:vals['Liderança'],energy:vals['Energia'],
+    healthy_self_criticism:vals['Autocrítica saudável'],
+    difficult_conversations:vals['Conversas difíceis'],
+    biggest_win:evidence
+  };
+  const {error}=await sb.from('weekly_scorecards').upsert(payload,{onConflict:'user_id,week_start'});
+  if(error){ cloudMsg('Erro ao salvar scorecard: '+error.message); return; }
+  await renderHistory(); cloudMsg('Scorecard salvo no Supabase',true);
+};
+renderHistory = async function(){
+  if(!currentUserId) return;
+  const {data,error}=await sb.from('weekly_scorecards').select('*').order('week_start',{ascending:false}).limit(12);
+  const el=document.getElementById('history');
+  if(error){ el.innerHTML='<span class="danger">'+esc(error.message)+'</span>'; return; }
+  const scoreCols=['focus','execution','delegation','communication','leadership','energy','healthy_self_criticism','difficult_conversations'];
+  el.innerHTML=(data||[]).length ? data.map(x=>{
+    const nums=scoreCols.map(k=>Number(x[k])).filter(Number.isFinite);
+    const avg=nums.length?(nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(1):'—';
+    return `<div class="task"><span><b>Semana de ${ptDate(x.week_start)}</b> — média ${avg}<br><span class="muted tiny">${esc(x.biggest_win||'')}</span></span></div>`;
+  }).join('') : '<span class="muted">Nenhum scorecard salvo ainda.</span>';
+  updateAvg(data||[]);
+};
+updateAvg = function(rows){
+  if(!Array.isArray(rows)){ renderHistory(); return; }
+  const x=rows[0], el=document.getElementById('avgScore'); if(!el) return;
+  if(!x){el.textContent='—';return;}
+  const keys=['focus','execution','delegation','communication','leadership','energy','healthy_self_criticism','difficult_conversations'];
+  const nums=keys.map(k=>Number(x[k])).filter(Number.isFinite);
+  el.textContent=nums.length?(nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(1):'—';
+};
+
+/* ---------- START CLOUD DATA ---------- */
+async function initCloudData(){
+  const user=await requireUser();
+  if(!user){ cloudMsg('Sessão não autenticada'); return; }
+  cloudMsg('Carregando dados…');
+  await loadTeamCloud();
+  await loadDiscCloud();
+  await Promise.all([renderIdeas(),loadDailyCloud(),renderHistory()]);
+  cloudReady=true;
+  cloudMsg('Supabase sincronizado',true);
+}
+sb.auth.onAuthStateChange((event,session)=>{
+  if(session && (event==='SIGNED_IN' || event==='INITIAL_SESSION' || event==='TOKEN_REFRESHED')){
+    currentUserId=session.user.id;
+    setTimeout(initCloudData,0);
+  }
+});
+setTimeout(initCloudData,200);
 </script>
 
 </body></html>
