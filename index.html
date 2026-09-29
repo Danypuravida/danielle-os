@@ -493,6 +493,7 @@ select.field{max-width:100%}
 .james-columns .assistant-col.needs:before{background:#ff8d7a}
 .james-columns .assistant-col.drafts:before{background:#d7b56d}
 .james-columns .assistant-col.delegated:before{background:#79a8ff}
+.james-columns .assistant-col.postponed:before{background:#9b8bbd}
 .james-columns .assistant-col.treated:before{background:#7cc5a3}
 .assistant-item{border:1px solid #223244;background:linear-gradient(180deg,#0f1721 0%,#0d141d 100%);box-shadow:0 10px 25px rgba(0,0,0,.14)}
 .assistant-item:hover{transform:translateY(-1px);border-color:#314964}
@@ -507,6 +508,58 @@ select.field{max-width:100%}
 .btn.done-btn{box-shadow:inset 0 0 0 1px rgba(124,197,163,.35)}
 @media(max-width:1180px){.james-source-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:780px){.james-source-grid{grid-template-columns:1fr}.james-action-row{align-items:stretch}.james-action-row .btn{width:100%}}
+</style>
+
+
+<style>
+/* ===== Overview ===== */
+.overview-hero{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:16px}
+.overview-score-card{
+  background:
+    radial-gradient(circle at top right,rgba(124,197,163,.12),transparent 34%),
+    radial-gradient(circle at top left,rgba(215,181,109,.14),transparent 34%),
+    linear-gradient(180deg,#121b27 0%,#0f1721 100%);
+}
+.overview-score-wrap{display:flex;align-items:center;gap:18px;margin:12px 0 16px}
+.overview-score{font-size:62px;font-weight:900;line-height:1;letter-spacing:-.06em}
+.overview-label{font-size:23px;font-weight:850;line-height:1.15;margin-bottom:6px}
+.overview-meter{height:9px;background:#0b1118;border:1px solid var(--line);border-radius:99px;overflow:hidden}
+.overview-meter span{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#d67568 0%,#dfad68 48%,#7cc5a3 100%);transition:.35s}
+.overview-now{background:linear-gradient(180deg,#121a26 0%,#101721 100%)}
+.overview-now h2{font-size:23px;margin-top:9px}
+.overview-now-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:18px}
+.overview-now-stats div{padding:10px;border:1px solid var(--line);border-radius:11px;background:rgba(255,255,255,.02)}
+.overview-now-stats b{display:block;font-size:23px}
+.overview-now-stats span{display:block;font-size:11px;color:var(--muted);line-height:1.25;margin-top:2px}
+.overview-pillars{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px}
+.overview-pillar{padding:15px 16px}
+.overview-pillar span{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.overview-pillar b{display:block;font-size:28px;margin:5px 0 2px}
+.overview-pillar small{color:var(--muted)}
+.overview-modules{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:16px}
+.overview-module{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;
+  padding:13px 14px;border:1px solid var(--line);border-radius:12px;background:#0e151e;
+}
+.overview-module-main{min-width:0}
+.overview-module-title{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.overview-module-title b{font-size:15px}
+.overview-module p{font-size:13px;color:var(--muted);line-height:1.45;margin:5px 0 0}
+.performance-chip{display:inline-flex;align-items:center;padding:3px 8px;border-radius:999px;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;border:1px solid}
+.performance-chip.great{color:#8ed8b5;border-color:rgba(124,197,163,.38);background:rgba(124,197,163,.08)}
+.performance-chip.good{color:#9dbdff;border-color:rgba(121,168,255,.35);background:rgba(121,168,255,.08)}
+.performance-chip.attention{color:#efc07b;border-color:rgba(227,168,107,.4);background:rgba(227,168,107,.08)}
+.performance-chip.low{color:#ef8f84;border-color:rgba(226,112,99,.4);background:rgba(226,112,99,.08)}
+.performance-chip.nodata{color:var(--muted);border-color:var(--line);background:rgba(255,255,255,.02)}
+@media(max-width:980px){
+  .overview-hero,.overview-modules{grid-template-columns:1fr}
+  .overview-pillars{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  .overview-pillars{grid-template-columns:1fr 1fr}
+  .overview-score{font-size:50px}
+  .overview-score-wrap{align-items:flex-start}
+}
 </style>
 
 </head><body>
@@ -537,7 +590,65 @@ select.field{max-width:100%}
 </div>
 </aside>
 <main class="main">
-<section class="page active" data-page="painel"><h1>Painel de evolução</h1><p class="lead">Objetivo: chegar a dezembro operando menos como solucionadora central e mais como líder sênior que cria clareza, autonomia, governança, decisões e melhoria sistêmica.</p><div class="grid">
+
+<section class="page active" data-page="overview">
+  <h1>Overview</h1>
+  <p class="lead">Uma leitura geral do Danielle OS: o que está fluindo, o que precisa de atenção e onde existe pouca informação para avaliar com segurança.</p>
+
+  <div class="overview-hero">
+    <div class="card overview-score-card">
+      <div class="kicker">PERFORMANCE REGISTRADA</div>
+      <div class="overview-score-wrap">
+        <div class="overview-score" id="overviewScore">—</div>
+        <div>
+          <div class="overview-label" id="overviewLabel">Calculando…</div>
+          <div class="muted" id="overviewConfidence">Baseando a leitura nos dados disponíveis.</div>
+        </div>
+      </div>
+      <div class="overview-meter"><span id="overviewMeterFill" style="width:0%"></span></div>
+      <div class="tiny muted" style="margin-top:9px">A nota mede o que está registrado no Danielle OS — não é um julgamento pessoal. Quanto mais você usa o sistema, mais fiel fica a leitura.</div>
+    </div>
+
+    <div class="card overview-now">
+      <div class="kicker">AGORA</div>
+      <h2 id="overviewNowTitle">Carregando seu panorama…</h2>
+      <div id="overviewNowText" class="muted">Buscando James, Todoist, reuniões, gestão e evolução.</div>
+      <div class="overview-now-stats">
+        <div><b id="overviewPending">—</b><span>Pendências James</span></div>
+        <div><b id="overviewOverdue">—</b><span>Todoist atrasadas</span></div>
+        <div><b id="overviewMeetings">—</b><span>Reuniões hoje</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="overview-pillars">
+    <div class="card overview-pillar">
+      <span>Execução</span><b id="overviewExecScore">—</b><small id="overviewExecLabel">—</small>
+    </div>
+    <div class="card overview-pillar">
+      <span>Liderança</span><b id="overviewLeadershipScore">—</b><small id="overviewLeadershipLabel">—</small>
+    </div>
+    <div class="card overview-pillar">
+      <span>Resultados</span><b id="overviewResultsScore">—</b><small id="overviewResultsLabel">—</small>
+    </div>
+    <div class="card overview-pillar">
+      <span>Desenvolvimento</span><b id="overviewDevScore">—</b><small id="overviewDevLabel">—</small>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <div class="row" style="justify-content:space-between;align-items:flex-start;gap:12px">
+      <div>
+        <h2>Resumo de cada aba</h2>
+        <p class="muted">O que cada frente está dizendo agora, sem precisar entrar em todas elas.</p>
+      </div>
+      <button class="btn" onclick="loadOverview()">Atualizar overview</button>
+    </div>
+    <div id="overviewModules" class="overview-modules"></div>
+  </div>
+</section>
+
+<section class="page" data-page="painel"><h1>Painel de evolução</h1><p class="lead">Objetivo: chegar a dezembro operando menos como solucionadora central e mais como líder sênior que cria clareza, autonomia, governança, decisões e melhoria sistêmica.</p><div class="grid">
 <div class="card c3"><h3>Semanas até dezembro</h3><div class="metric" id="weeks">—</div><div class="muted">ciclos de execução</div></div><div class="card c3"><h3>Foco da semana</h3><div class="metric" style="font-size:18px">Liderar pelo sistema</div><div class="muted">menos centralização</div></div><div class="card c3"><h3>Score semanal</h3><div class="metric" id="avgScore">—</div><div class="muted">média do seu check-in</div></div><div class="card c3"><h3>North Star</h3><div class="metric" style="font-size:18px">Autonomia do time</div><div class="muted">problemas resolvidos sem você</div></div>
 <div class="card c8"><h2>Contrato de senioridade</h2><div class="callout">Eu não sou paga apenas para resolver problemas. Minha senioridade cresce quando eu <b>antecipo riscos, tomo decisões com contexto, desenvolvo pessoas, estruturo processos e torno a operação menos dependente de mim.</b></div><h3 style="margin-top:18px">Evidências até dezembro</h3><div id="evidenceTasks"></div></div>
 <div class="card c4"><h2>Check-in rápido</h2><label>Maior entrega da semana</label><textarea class="field save" data-key="win" rows="3"></textarea><br><br><label>O que deleguei de verdade?</label><textarea class="field save" data-key="delegated" rows="3"></textarea><br><br><label>Conversa que não posso evitar</label><textarea class="field save" data-key="hardtalk" rows="3"></textarea></div>
@@ -623,9 +734,12 @@ select.field{max-width:100%}
       <p id="sourceCalendarState" class="muted">Reuniões entram aqui e na aba Reuniões.</p>
     </div>
     <div class="card source-status-card slack">
-      <div class="source-card-top"><span class="source-card-badge">Slack</span><span class="tag" id="sourceSlackCount">0</span></div>
+      <div class="source-card-top"><span class="source-card-badge">Slack • Ingresse</span><span class="tag" id="sourceSlackCount">0</span></div>
       <h3>Canais + DMs</h3>
-      <p id="sourceSlackState" class="muted">O James lê DMs e canais com “futebol” no nome.</p>
+      <p id="sourceSlackState" class="muted">Verificando a conexão do Slack…</p>
+      <div class="assistant-actions" style="margin-top:10px">
+        <button class="btn tiny" id="slackRefreshBtn" onclick="scanSlackOnly(this)">Atualizar Slack</button>
+      </div>
     </div>
     <div class="card source-status-card todoist">
       <div class="source-card-top"><span class="source-card-badge">Todoist</span><span class="tag" id="sourceTodoistCount">0</span></div>
@@ -689,6 +803,19 @@ select.field{max-width:100%}
       <div id="delegatedList" class="assistant-drop" data-status="delegated"
         ondragover="assistantDragOver(event)" ondragleave="assistantDragLeave(event)"
         ondrop="dropAssistantCard(event,'delegated')"></div>
+    </div>
+
+    <div class="card assistant-col postponed">
+      <div class="assistant-col-head">
+        <div>
+          <h2>Adiado</h2>
+          <p class="assistant-col-desc">Fora das pendências de hoje. Fica estacionado até você retomar.</p>
+        </div>
+        <span class="tag" id="postponedCount">0</span>
+      </div>
+      <div id="postponedList" class="assistant-drop" data-status="postponed"
+        ondragover="assistantDragOver(event)" ondragleave="assistantDragLeave(event)"
+        ondrop="dropAssistantCard(event,'postponed')"></div>
     </div>
 
     <div class="card assistant-col treated">
@@ -1121,8 +1248,8 @@ sb.auth.onAuthStateChange((_event, session) => {
 </script>
 
 <script>
-const pages=[['painel','Painel'],['james','James'],['rotina','Hoje'],['todoist','Todoist'],['reunioes','Reuniões'],['gestao','Gestão'],['reflexao','Decisões'],['senioridade','Resultados'],['desenvolvimento','Desenvolvimento'],['score','Scorecard'],['perfil','Perfil'],['plano','Plano até dezembro'],['coach','Conselheiro IA']];
-const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist()}if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}};nav.appendChild(b)});
+const pages=[['overview','Overview'],['painel','Painel'],['james','James'],['rotina','Hoje'],['todoist','Todoist'],['reunioes','Reuniões'],['gestao','Gestão'],['reflexao','Decisões'],['senioridade','Resultados'],['desenvolvimento','Desenvolvimento'],['score','Scorecard'],['perfil','Perfil'],['plano','Plano até dezembro'],['coach','Conselheiro IA']];
+const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist()}if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}if(id==='overview')loadOverview()};nav.appendChild(b)});
 
 function openOSPage(id){
   const btn=document.querySelector(`#nav button[data-page="${id}"]`);
@@ -2336,6 +2463,7 @@ async function callEdge(name,payload={}){
 }
 
 
+let slackBootstrapTried=false;
 async function loadSlackStatus(){
   const pill=document.getElementById('slackConnPill');
   const btn=document.getElementById('slackConnectBtn');
@@ -2345,10 +2473,21 @@ async function loadSlackStatus(){
     const data=await callEdge('slack-status');
     if(data.connected){
       pill.textContent=`● Slack${data.team_name?' • '+data.team_name:''}`;
-      setTextSafe('sourceSlackState','Slack conectado'+(data.team_name?' • '+data.team_name:'')+'. DMs e canais com “futebol” entram na triagem.');
       pill.classList.add('connected');
       pill.classList.remove('disconnected');
       btn.style.display='none';
+
+      if(data.last_error){
+        setTextSafe('sourceSlackState','Slack conectado, mas a última leitura falhou. Clique em Atualizar Slack.');
+      }else if(data.last_scan_at){
+        setTextSafe('sourceSlackState',`Conectado ao ${data.team_name||'Slack'} • última leitura ${new Date(data.last_scan_at).toLocaleString('pt-BR')}.`);
+      }else{
+        setTextSafe('sourceSlackState',`Conectado ao ${data.team_name||'Slack'} • preparando a primeira leitura.`);
+        if(!slackBootstrapTried){
+          slackBootstrapTried=true;
+          setTimeout(()=>scanSlackOnly(document.getElementById('slackRefreshBtn'),true).catch(()=>{}),700);
+        }
+      }
     }else{
       pill.textContent='○ Slack não conectado';
       setTextSafe('sourceSlackState','Conecte o Slack para James ler DMs e canais com “futebol” no nome.');
@@ -2358,10 +2497,31 @@ async function loadSlackStatus(){
     }
   }catch{
     pill.textContent='○ Slack não conectado';
-    setTextSafe('sourceSlackState','Conecte o Slack para James ler DMs e canais com “futebol” no nome.');
+    setTextSafe('sourceSlackState','Não consegui confirmar o Slack agora.');
     pill.classList.remove('connected');
     pill.classList.add('disconnected');
     btn.style.display='';
+  }
+}
+
+async function scanSlackOnly(btn,quiet=false){
+  const original=btn?.textContent||'Atualizar Slack';
+  if(btn){btn.disabled=true;btn.textContent='Lendo Slack...'}
+  setTextSafe('sourceSlackState','James está lendo DMs e canais de futebol…');
+  try{
+    const result=await scanSlackLive();
+    try{await callEdge('james-summary')}catch{}
+    await Promise.all([loadJames(),loadSlackStatus()]);
+    setTextSafe('sourceSlackState',`Slack atualizado • ${result.messages_seen??result.messages?.length??0} mensagem(ns) lida(s) • ${result.written??0} item(ns) relevante(s).`);
+    if(!quiet)cloudMsg('Slack atualizado no James',true);
+    return result;
+  }catch(e){
+    const stage=e?.data?.stage?` (${e.data.stage})`:'';
+    setTextSafe('sourceSlackState','Falha ao ler Slack'+stage+'. Clique para tentar novamente.');
+    if(!quiet)cloudMsg('Slack: '+(e?.message||String(e)));
+    throw e;
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=original}
   }
 }
 
@@ -2579,6 +2739,8 @@ async function scanJamesNow(btn){
     if(results[1].status==='fulfilled')slackResult=results[1].value;
     else errors.push('Slack: '+(results[1].reason?.message||results[1].reason));
 
+    try{await callEdge('james-summary')}catch{}
+
     await Promise.all([
       loadJames(),
       loadMeetings(ensureMeetingDate()),
@@ -2679,7 +2841,7 @@ async function installAppNow(){
   try{cloudMsg('Use o menu do navegador para instalar o app.',true)}catch{}
 }
 function updateJamesSourceCards(items){
-  const open=arr=>arr.filter(x=>x.status!=='treated');
+  const open=arr=>arr.filter(x=>!['treated','postponed'].includes(x.status));
   const gmail=open((items||[]).filter(x=>x.source==='gmail'));
   const calendar=open((items||[]).filter(x=>x.source==='calendar'));
   const slack=open((items||[]).filter(x=>x.source==='slack'));
@@ -2717,6 +2879,12 @@ function assistantItemHtml(item){
     ?`<button class="btn tiny done-btn" onclick="completeAssistantItem('${item.id}')">✓ Concluído</button>`
     :`<button class="btn tiny" onclick="reopenAssistantItem('${item.id}')">Reabrir</button>`;
 
+  const postpone=item.status==='postponed'
+    ?`<button class="btn tiny" onclick="resumeAssistantItem('${item.id}')">Retomar</button>`
+    :(item.status!=='treated'
+      ?`<button class="btn tiny" onclick="postponeAssistantItem('${item.id}')">Adiar</button>`
+      :'');
+
   return `<div class="assistant-item ${cls}" draggable="true" data-source="${esc(item.source||'')}"
     ondragstart="assistantDragStart(event,'${item.id}')" data-assistant-id="${item.id}">
     <div class="assistant-card-head">
@@ -2745,7 +2913,7 @@ function assistantItemHtml(item){
 
     ${reply}
 
-    <div class="assistant-actions">${done}${copy}${open}</div>
+    <div class="assistant-actions">${done}${postpone}${copy}${open}</div>
   </div>`;
 }
 let assistantCache={};
@@ -2761,11 +2929,13 @@ async function loadJames(){
   const needs=(items||[]).filter(x=>x.status==='needs_me');
   const delegated=(items||[]).filter(x=>x.status==='delegated');
   const drafts=(items||[]).filter(x=>x.status==='draft_waiting');
+  const postponed=(items||[]).filter(x=>x.status==='postponed');
   const treated=(items||[]).filter(x=>x.status==='treated').slice(0,8);
 
   document.getElementById('needsCount').textContent=needs.length;
   document.getElementById('delegatedCount').textContent=delegated.length;
   document.getElementById('draftCount').textContent=drafts.length;
+  document.getElementById('postponedCount').textContent=postponed.length;
   document.getElementById('treatedCount').textContent=(items||[]).filter(x=>x.status==='treated').length;
 
   updateJamesSourceCards(items||[]);
@@ -2774,6 +2944,7 @@ async function loadJames(){
   render('needsMeList',needs,'Nada esperando uma ação sua.');
   render('delegatedList',delegated,'Nada aguardando terceiros.');
   render('draftWaitingList',drafts,'Nenhum rascunho aguardando sua aprovação.');
+  render('postponedList',postponed,'Nada adiado.');
   render('treatedList',treated,'Nenhum item tratado ainda.');
 
   const now=Date.now();
@@ -2832,6 +3003,26 @@ async function reopenAssistantItem(id){
   await setAssistantStatus(id,'needs_me');
   cloudMsg('Item reaberto',true);
 }
+async function postponeAssistantItem(id){
+  const {error}=await sb.from('assistant_items').update({
+    status:'postponed',
+    status_locked:true,
+    treated_at:null
+  }).eq('id',id);
+  if(error){cloudMsg(error.message);return}
+  await loadJames();
+  cloudMsg('Adiado • saiu das pendências de hoje',true);
+}
+async function resumeAssistantItem(id){
+  const {error}=await sb.from('assistant_items').update({
+    status:'needs_me',
+    status_locked:true,
+    treated_at:null
+  }).eq('id',id);
+  if(error){cloudMsg(error.message);return}
+  await loadJames();
+  cloudMsg('Item retomado',true);
+}
 
 let assistantDraggedId=null;
 function assistantDragStart(event,id){
@@ -2871,11 +3062,277 @@ async function copyAssistantReply(id){
   try{await navigator.clipboard.writeText(text);cloudMsg('Resposta copiada',true)}
   catch{cloudMsg('Não consegui copiar automaticamente.')}
 }
+
+function performanceLabel(score){
+  if(score==null||Number.isNaN(Number(score)))return {label:'Sem base suficiente',cls:'nodata'};
+  const s=Number(score);
+  if(s>=85)return {label:'Indo muito bem',cls:'great'};
+  if(s>=70)return {label:'Bom ritmo',cls:'good'};
+  if(s>=55)return {label:'Atenção',cls:'attention'};
+  return {label:'Baixa performance • atenção',cls:'low'};
+}
+function clampScore(v){return Math.max(0,Math.min(100,Math.round(Number(v)||0)))}
+function avgNumbers(values){
+  const a=values.filter(v=>v!=null && !Number.isNaN(Number(v))).map(Number);
+  return a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+}
+function scoreFromFive(v){return v==null?null:clampScore((Number(v)/5)*100)}
+function overviewChip(score){
+  const x=performanceLabel(score);
+  return `<span class="performance-chip ${x.cls}">${esc(x.label)}</span>`;
+}
+function localChecklistScore(key,total){
+  if(localStorage.getItem('dos_'+key)===null)return null;
+  const state=load(key,{});
+  const done=Object.values(state||{}).filter(Boolean).length;
+  return total?clampScore((done/total)*100):null;
+}
+async function loadOverview(){
+  if(!currentUserId)return;
+
+  const modulesEl=document.getElementById('overviewModules');
+  if(modulesEl)modulesEl.innerHTML='<span class="muted">Atualizando overview…</span>';
+
+  const today=isoDateLocal();
+  const monthAgo=new Date(Date.now()-30*86400000).toISOString().slice(0,10);
+
+  const [
+    scoreRes, goalsRes, evidenceRes, oneRes, feedbackRes, delegationRes,
+    decisionRes, meetingRes, actionRes, assistantRes, aiRes, assessmentsRes
+  ]=await Promise.all([
+    sb.from('weekly_scorecards').select('*').order('week_start',{ascending:false}).limit(1).maybeSingle(),
+    sb.from('development_goals').select('id,title,status,progress,target_date').order('created_at',{ascending:false}),
+    sb.from('seniority_evidence').select('id,evidence_date,evidence_strength,delta_percent,domain').order('evidence_date',{ascending:false}).limit(100),
+    sb.from('one_on_ones').select('id,meeting_date').gte('meeting_date',monthAgo),
+    sb.from('feedbacks').select('id,feedback_date,status').gte('feedback_date',monthAgo),
+    sb.from('delegations').select('id,status,autonomy_level,manager_intervention_needed,deadline,created_at').gte('created_at',new Date(Date.now()-30*86400000).toISOString()),
+    sb.from('decision_records').select('id,decision_date,chosen_decision,rationale,outcome').gte('decision_date',monthAgo),
+    sb.from('meetings').select('id,meeting_date,start_time,status,objective,desired_outcome,decisions').eq('meeting_date',today).neq('status','cancelled'),
+    sb.from('meeting_actions').select('id,status,due_date,owner'),
+    sb.from('assistant_items').select('id,source,status,urgency,due_at,treated_at,last_seen_at').limit(300),
+    sb.from('ai_conversations').select('id,created_at').order('created_at',{ascending:false}).limit(100),
+    sb.from('behavioral_assessments').select('id,assessment_type').limit(100)
+  ]);
+
+  let todoGroups={today:[],overdue:[],upcoming:[],priority:[]};
+  try{
+    const td=await todoistCall({action:'list'});
+    todoGroups=td.groups||todoGroups;
+  }catch{}
+
+  const scorecard=scoreRes.data||null;
+  const goals=goalsRes.data||[];
+  const evidences=evidenceRes.data||[];
+  const oneOnOnes=oneRes.data||[];
+  const feedbacks=feedbackRes.data||[];
+  const delegations=delegationRes.data||[];
+  const decisions=decisionRes.data||[];
+  const meetings=meetingRes.data||[];
+  const meetingActions=actionRes.data||[];
+  const assistant=assistantRes.data||[];
+  const ai=aiRes.data||[];
+  const assessments=assessmentsRes.data||[];
+
+  const openAssistant=assistant.filter(x=>['needs_me','draft_waiting','delegated'].includes(x.status));
+  const postponed=assistant.filter(x=>x.status==='postponed').length;
+  const treated=assistant.filter(x=>x.status==='treated').length;
+  const slackOpen=openAssistant.filter(x=>x.source==='slack').length;
+  const gmailOpen=openAssistant.filter(x=>x.source==='gmail').length;
+
+  const todoToday=(todoGroups.today||[]).length;
+  const todoOverdue=(todoGroups.overdue||[]).length;
+
+  // Pilar Execução: prioriza scorecard; na falta dele usa saúde das tarefas + ritual de hoje.
+  const dailyLocal=localChecklistScore('daily',5);
+  let taskHealth=clampScore(100-(todoOverdue*18)-Math.max(0,todoToday-8)*3);
+  const scorecardExecution=scorecard?scoreFromFive(scorecard.execution):null;
+  const completionRatio=scorecard && Number(scorecard.priorities_planned)>0
+    ?clampScore((Number(scorecard.priorities_completed||0)/Number(scorecard.priorities_planned))*100):null;
+  const executionScore=avgNumbers([scorecardExecution,completionRatio,taskHealth,dailyLocal]);
+
+  // Pilar Liderança: dados autoavaliados do scorecard + sinais objetivos de gestão.
+  const leadershipSelf=scorecard?avgNumbers([
+    scoreFromFive(scorecard.delegation),
+    scoreFromFive(scorecard.communication),
+    scoreFromFive(scorecard.leadership)
+  ]):null;
+  const managementActivity=Math.min(100,
+    oneOnOnes.length*20 +
+    feedbacks.length*20 +
+    delegations.length*15
+  );
+  const leadershipScore=avgNumbers([leadershipSelf, managementActivity || null]);
+
+  // Pilar Resultados: evidências fortes e decisões registradas.
+  const evidenceStrength=evidences.length
+    ?avgNumbers(evidences.map(x=>x.evidence_strength!=null?scoreFromFive(x.evidence_strength):null))
+    :null;
+  const evidenceVolume=evidences.length?Math.min(100,evidences.length*15):null;
+  const decisionQuality=decisions.length?Math.min(100,decisions.filter(x=>x.chosen_decision&&x.rationale).length*22):null;
+  const resultsScore=avgNumbers([evidenceStrength,evidenceVolume,decisionQuality]);
+
+  // Pilar Desenvolvimento: progresso das metas + foco/autoavaliação do scorecard.
+  const activeGoals=goals.filter(x=>x.status==='active');
+  const goalProgress=activeGoals.length?avgNumbers(activeGoals.map(x=>Number(x.progress||0))):null;
+  const devSelf=scorecard?avgNumbers([
+    scoreFromFive(scorecard.focus),
+    scoreFromFive(scorecard.healthy_self_criticism)
+  ]):null;
+  const developmentScore=avgNumbers([goalProgress,devSelf]);
+
+  // A média usa apenas pilares que possuem alguma base.
+  const overall=avgNumbers([executionScore,leadershipScore,resultsScore,developmentScore]);
+  const availablePillars=[executionScore,leadershipScore,resultsScore,developmentScore].filter(x=>x!=null).length;
+  const coverage=Math.round((availablePillars/4)*100);
+  const overallRounded=overall==null?null:clampScore(overall);
+  const overallStatus=performanceLabel(overallRounded);
+
+  setTextSafe('overviewScore',overallRounded==null?'—':String(overallRounded));
+  setTextSafe('overviewLabel',overallRounded==null?'Sem base suficiente':overallStatus.label);
+  setTextSafe('overviewConfidence',overallRounded==null
+    ?'Ainda faltam registros para formar uma média.'
+    :`Cobertura da leitura: ${coverage}% dos pilares possuem dados.`);
+  const fill=document.getElementById('overviewMeterFill');
+  if(fill)fill.style.width=(overallRounded??0)+'%';
+
+  const setPillar=(prefix,score)=>{
+    const val=score==null?null:clampScore(score);
+    setTextSafe(prefix+'Score',val==null?'—':String(val));
+    setTextSafe(prefix+'Label',performanceLabel(val).label);
+  };
+  setPillar('overviewExec',executionScore);
+  setPillar('overviewLeadership',leadershipScore);
+  setPillar('overviewResults',resultsScore);
+  setPillar('overviewDev',developmentScore);
+
+  setTextSafe('overviewPending',String(openAssistant.length));
+  setTextSafe('overviewOverdue',String(todoOverdue));
+  setTextSafe('overviewMeetings',String(meetings.length));
+
+  let nowTitle='Sistema sob controle';
+  let nowText='Nenhum alerta crítico apareceu na leitura atual.';
+  if(todoOverdue>=3 || openAssistant.filter(x=>['urgent','high'].includes(x.urgency)).length>=3){
+    nowTitle='Atenção concentrada agora';
+    nowText='Há volume de pendências/atrasos suficiente para reduzir abertura de novas frentes e fechar o que já está ativo.';
+  }else if(openAssistant.length>=5 || todoOverdue>0){
+    nowTitle='Dia pede fechamento de ciclos';
+    nowText=`Você tem ${openAssistant.length} item(ns) abertos no James e ${todoOverdue} tarefa(s) atrasada(s) no Todoist.`;
+  }else if(overallRounded!=null && overallRounded>=85){
+    nowTitle='Você está indo muito bem';
+    nowText='Os registros atuais mostram boa saúde de execução e desenvolvimento. Continue acumulando evidências objetivas.';
+  }
+  setTextSafe('overviewNowTitle',nowTitle);
+  setTextSafe('overviewNowText',nowText);
+
+  const scorecardAvg=scorecard?avgNumbers([
+    scoreFromFive(scorecard.focus),scoreFromFive(scorecard.execution),scoreFromFive(scorecard.delegation),
+    scoreFromFive(scorecard.communication),scoreFromFive(scorecard.leadership),scoreFromFive(scorecard.energy)
+  ]):null;
+
+  const todayPrepared=meetings.filter(m=>m.objective||m.desired_outcome||m.decisions).length;
+  const openMeetingActions=meetingActions.filter(a=>!['done','completed','closed','treated'].includes(String(a.status||'').toLowerCase())).length;
+  const profileTypes=[...new Set(assessments.map(x=>x.assessment_type).filter(Boolean))].length;
+  const evidenceChecklist=localChecklistScore('evidences',6);
+
+  const moduleData=[
+    {
+      id:'painel',name:'Painel',
+      score:avgNumbers([resultsScore,leadershipScore]),
+      text:`${evidences.length} evidência(s) de senioridade • ${activeGoals.length} meta(s) de desenvolvimento ativa(s).`
+    },
+    {
+      id:'james',name:'James',
+      score:clampScore(100-Math.min(65,openAssistant.length*7)-Math.min(20,openAssistant.filter(x=>x.urgency==='urgent').length*10)),
+      text:`${openAssistant.length} pendência(s) ativa(s), ${postponed} adiada(s), ${treated} já tratada(s). Gmail: ${gmailOpen} • Slack: ${slackOpen}.`
+    },
+    {
+      id:'rotina',name:'Hoje',
+      score:dailyLocal,
+      text:`Ritual diário: ${dailyLocal==null?'sem leitura':dailyLocal+'% concluído'} neste navegador.`
+    },
+    {
+      id:'todoist',name:'Todoist',
+      score:taskHealth,
+      text:`${todoToday} tarefa(s) para hoje • ${todoOverdue} atrasada(s).`
+    },
+    {
+      id:'reunioes',name:'Reuniões',
+      score:meetings.length?clampScore(60+(todayPrepared/meetings.length)*40):80,
+      text:`${meetings.length} reunião(ões) hoje • ${todayPrepared} com preparo/registro no Danielle OS • ${openMeetingActions} ação(ões) aberta(s).`
+    },
+    {
+      id:'gestao',name:'Gestão',
+      score:leadershipScore,
+      text:`Últimos 30 dias: ${oneOnOnes.length} 1:1 • ${feedbacks.length} feedback(s) • ${delegations.length} delegação(ões).`
+    },
+    {
+      id:'reflexao',name:'Decisões',
+      score:decisionQuality,
+      text:`${decisions.length} decisão(ões) registrada(s) nos últimos 30 dias.`
+    },
+    {
+      id:'senioridade',name:'Resultados',
+      score:resultsScore,
+      text:`${evidences.length} evidência(s) registrada(s) • força média ${evidenceStrength==null?'—':Math.round(evidenceStrength)}.`
+    },
+    {
+      id:'desenvolvimento',name:'Desenvolvimento',
+      score:developmentScore,
+      text:`${activeGoals.length} meta(s) ativa(s) • progresso médio ${goalProgress==null?'—':Math.round(goalProgress)+'%'}.`
+    },
+    {
+      id:'score',name:'Scorecard',
+      score:scorecardAvg,
+      text:scorecard?`Última semana: ${ptDate(scorecard.week_start)} • média ${Math.round(scorecardAvg||0)}.`:'Nenhum scorecard semanal registrado ainda.'
+    },
+    {
+      id:'perfil',name:'Perfil',
+      score:profileTypes?100:null,
+      text:profileTypes?`${profileTypes} tipo(s) de avaliação comportamental registrados.`:'Seu perfil-base existe na página, mas não há avaliação estruturada salva no banco.'
+    },
+    {
+      id:'plano',name:'Plano até dezembro',
+      score:evidenceChecklist,
+      text:`Checklist de evidências: ${evidenceChecklist==null?'—':evidenceChecklist+'%'} concluído neste navegador.`
+    },
+    {
+      id:'coach',name:'Conselheiro IA',
+      score:ai.length?Math.min(100,55+ai.length*5):null,
+      text:`${ai.length} conversa(s) registrada(s) com o conselheiro IA.`
+    }
+  ];
+
+  const scoredModules=moduleData.filter(m=>m.score!=null && !Number.isNaN(Number(m.score)));
+  const systemOverall=avgNumbers(scoredModules.map(m=>m.score));
+  const systemRounded=systemOverall==null?null:clampScore(systemOverall);
+  const systemStatus=performanceLabel(systemRounded);
+  const moduleCoverage=Math.round((scoredModules.length/moduleData.length)*100);
+
+  setTextSafe('overviewScore',systemRounded==null?'—':String(systemRounded));
+  setTextSafe('overviewLabel',systemRounded==null?'Sem base suficiente':systemStatus.label);
+  setTextSafe('overviewConfidence',systemRounded==null
+    ?'Ainda faltam registros para formar uma média geral.'
+    :`Média de ${scoredModules.length} de ${moduleData.length} abas com dados • cobertura ${moduleCoverage}%.`);
+  const systemFill=document.getElementById('overviewMeterFill');
+  if(systemFill)systemFill.style.width=(systemRounded??0)+'%';
+
+  if(modulesEl){
+    modulesEl.innerHTML=moduleData.map(m=>`
+      <div class="overview-module">
+        <div class="overview-module-main">
+          <div class="overview-module-title"><b>${esc(m.name)}</b>${overviewChip(m.score)}</div>
+          <p>${esc(m.text)}</p>
+        </div>
+        <button class="btn tiny" onclick="openOSPage('${m.id}')">Abrir</button>
+      </div>`).join('');
+  }
+}
+
 const initCloudDataBeforeJames=initCloudData;
 initCloudData=async function(){
   await initCloudDataBeforeJames();
   ensureMeetingDate();
-  await Promise.all([loadJames(),loadGoogleStatus(),loadSlackStatus(),loadJamesTodoist()]);
+  await Promise.all([loadJames(),loadGoogleStatus(),loadSlackStatus(),loadJamesTodoist(),loadOverview()]);
   handleGoogleOAuthReturn();
   handleSlackOAuthReturn();
 };
