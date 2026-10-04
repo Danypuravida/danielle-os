@@ -1,7 +1,7 @@
 {
   "name": "Danielle OS",
   "short_name": "Danielle OS",
-  "description": "Sistema pessoal de senioridade, gestão e execução da Danielle.",
+  "description": "Danielle OS — gestão, execução, James e Central Financeira pessoal.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
