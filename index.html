@@ -4144,11 +4144,26 @@ function financeOccurrenceDate(value){
   const date=new Date(String(value).slice(0,10)+'T12:00:00');
   return Number.isNaN(date.getTime())?'Data não informada':date.toLocaleDateString('pt-BR');
 }
+function financePaymentMethodLabel(t){
+  const raw=normalizeText(t.raw_type||'').replace(/[_-]+/g,' ');
+  const description=normalizeText(t.description||'').trim();
+  // Use the original transaction type, not the category chosen by the user.
+  if(/\bPIX\b/.test(raw)||/^(?:PIX\b|(?:ENTRADA|SAIDA|DEVOLUCAO|TRANSFERENCIA)\s+(?:DE\s+)?PIX\b)/.test(description))return 'PIX';
+  if(/\b(?:DEBITO|DEBIT)\b/.test(raw)&&/\b(?:CARTAO|CARD)\b/.test(raw))return 'Cartão de débito';
+  if(/\bBOLETO\b/.test(raw)||/^(?:DEPOSITO|PAGAMENTO|PAGTO|PGTO)\s+(?:(?:POR|DE|DO)\s+)?BOLETO\b/.test(description))return 'Boleto';
+  const bankTransfer=raw.match(/\b(TED|DOC)\b/)||description.match(/^(?:TRANSFERENCIA\s+(?:VIA\s+)?)?(TED|DOC)\b/);
+  if(bankTransfer)return bankTransfer[1];
+  if(/\bTRANSFERENCIA\b/.test(raw)||/^TRANSFERENCIA\b/.test(description))return 'Transferência';
+  if(!t.is_card_payment&&t.direction!=='transfer'&&(t.source_document_kind==='monthly_credit_card_bill'||/\b(?:CREDIT CARD|CARTAO DE CREDITO)\b/.test(raw)))return 'Cartão de crédito';
+  if(/\b(?:DINHEIRO|CASH)\b/.test(raw))return 'Dinheiro';
+  if(/\bDEPOSITO\b/.test(raw)||/^DEPOSITO\b/.test(description))return 'Depósito';
+  return 'Não informado';
+}
 function financeReviewOccurrencesHtml(items){
   const sorted=[...items].sort((a,b)=>String(b.transaction_date||'').localeCompare(String(a.transaction_date||'')));
   return `<details class="finance-review-occurrences"><summary>Ver lançamentos (${sorted.length})</summary><div class="finance-review-occurrence-list">${sorted.map(t=>`<div class="finance-review-occurrence">
     <div><time datetime="${finEsc(t.transaction_date||'')}">${financeOccurrenceDate(t.transaction_date)}</time>${t.purchase_date&&t.purchase_date!==t.transaction_date?`<small>Compra: ${financeOccurrenceDate(t.purchase_date)}</small>`:''}</div>
-    <span class="finance-review-occurrence-description">${finEsc(t.description||t.counterparty||'Lançamento')}</span>
+    <span class="finance-review-occurrence-description">${finEsc(t.description||t.counterparty||'Lançamento')}<small>Forma: ${financePaymentMethodLabel(t)}${t.is_card_payment?' • pagamento de fatura':''}</small></span>
     <b class="finance-money">${finMoney(t.amount)}</b>
   </div>`).join('')}</div></details>`;
 }
