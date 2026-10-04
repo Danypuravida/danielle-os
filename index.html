@@ -46,7 +46,7 @@
 .finance-import-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.finance-import-card{border:1px dashed #38506a;border-radius:13px;padding:16px;background:#0e151e}.finance-import-card h3{margin-bottom:5px}.finance-upload-status{min-height:22px;margin-top:8px}
 .finance-review-row{display:grid;grid-template-columns:minmax(180px,1.4fr) 120px 70px minmax(170px,1fr) auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid #1e2937}.finance-review-row:last-child{border-bottom:0}.finance-review-name b{display:block}.finance-review-name small{color:var(--muted)}
 .finance-goal{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#0e151e}.finance-goal-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.finance-progress{height:8px;background:#253142;border-radius:10px;overflow:hidden;margin:10px 0}.finance-progress i{display:block;height:100%;background:#78b995}
-.finance-coach-hero{background:radial-gradient(circle at 100% 0%,rgba(215,181,109,.12),transparent 38%),#111923}.finance-score-ring{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--score,0)*1%),#263446 0);position:relative;flex:0 0 auto}.finance-score-ring:after{content:"";position:absolute;inset:9px;background:#111923;border-radius:50%}.finance-score-ring b{position:relative;z-index:1;font-size:25px}.finance-privacy-on .finance-money{filter:blur(7px);user-select:none}.finance-privacy-on .finance-money:hover{filter:blur(7px)}
+.finance-coach-hero{background:radial-gradient(circle at 100% 0%,rgba(215,181,109,.12),transparent 38%),#111923}.finance-score-ring{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--score,0)*1%),#263446 0);position:relative;flex:0 0 auto}.finance-score-ring:after{content:"";position:absolute;inset:9px;background:#111923;border-radius:50%}.finance-score-ring b{position:relative;z-index:1;font-size:25px}.finance-privacy-on .finance-money{filter:blur(7px);user-select:none}.finance-privacy-on .finance-money:hover{filter:blur(7px)}.finance-privacy-on .finance-money-input{color:transparent!important;text-shadow:0 0 8px rgba(226,232,240,.8);caret-color:transparent}
 .finance-table{width:100%;border-collapse:collapse}.finance-table th,.finance-table td{text-align:left;padding:9px 7px;border-bottom:1px solid #1e2937;vertical-align:top}.finance-table th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.finance-table td:last-child,.finance-table th:last-child{text-align:right}
 .finance-pill{display:inline-flex;padding:4px 8px;border:1px solid var(--line);border-radius:99px;font-size:11px;color:#cbd7e4}.finance-empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
 .finance-bill-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
@@ -3880,8 +3880,67 @@ function financePeriod(){
   return {year:y,start:`${y}-${first}-01`,end:`${y}-${lastM}-${String(lastDay).padStart(2,'0')}`,months:sorted,monthKeys:sorted.map(m=>`${y}-${m}`),label:sorted.map(financeMonthName).join(' + ')+' '+y};
 }
 function filterFinanceTransactionsByMonths(tx,period){if(!period.months?.length)return tx;const wanted=new Set(period.monthKeys);return tx.filter(t=>wanted.has(String(t.transaction_date||'').slice(0,7)))}
-function toggleFinancePrivacy(){financeHideValues=!financeHideValues;localStorage.setItem('financeHideValues',financeHideValues?'1':'0');applyFinancePrivacy()}
-function applyFinancePrivacy(){const page=document.getElementById('financePage');if(page)page.classList.toggle('finance-privacy-on',financeHideValues);const b=document.getElementById('financePrivacyBtn');if(b)b.textContent=financeHideValues?'Mostrar valores':'Ocultar valores'}
+const financePrivacyTextCache=new WeakMap();
+let financePrivacyObserver=null;
+function toggleFinancePrivacy(){
+  financeHideValues=!financeHideValues;
+  localStorage.setItem('financeHideValues',financeHideValues?'1':'0');
+  applyFinancePrivacy();
+}
+function maskFinanceCurrencyText(root){
+  if(!root)return;
+  const rx=/R\$\s*-?\s*\d+(?:\.\d{3})*(?:,\d{2})?/g;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{
+    acceptNode(node){
+      const p=node.parentElement;
+      if(!p||['SCRIPT','STYLE','TEXTAREA','OPTION'].includes(p.tagName))return NodeFilter.FILTER_REJECT;
+      const original=financePrivacyTextCache.get(node)??node.nodeValue??'';
+      return rx.test(original)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+    }
+  });
+  const nodes=[];let n;while((n=walker.nextNode()))nodes.push(n);
+  for(const node of nodes){
+    const original=financePrivacyTextCache.get(node)??node.nodeValue??'';
+    if(!financePrivacyTextCache.has(node))financePrivacyTextCache.set(node,original);
+    node.nodeValue=original.replace(rx,'R$ ••••');
+  }
+}
+function restoreFinanceCurrencyText(root){
+  if(!root)return;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const nodes=[];let n;while((n=walker.nextNode()))nodes.push(n);
+  for(const node of nodes){
+    if(financePrivacyTextCache.has(node))node.nodeValue=financePrivacyTextCache.get(node);
+  }
+}
+function applyFinancePrivacy(){
+  const page=document.getElementById('financePage');
+  if(page){
+    page.classList.toggle('finance-privacy-on',financeHideValues);
+    if(financeHideValues){
+      maskFinanceCurrencyText(page);
+      if(!financePrivacyObserver){
+        financePrivacyObserver=new MutationObserver(mutations=>{
+          if(!financeHideValues)return;
+          for(const m of mutations){
+            for(const node of m.addedNodes){
+              if(node.nodeType===Node.TEXT_NODE){
+                const holder=node.parentElement;if(holder)maskFinanceCurrencyText(holder);
+              }else if(node.nodeType===Node.ELEMENT_NODE)maskFinanceCurrencyText(node);
+            }
+            if(m.type==='characterData'&&m.target?.parentElement)maskFinanceCurrencyText(m.target.parentElement);
+          }
+        });
+        financePrivacyObserver.observe(page,{subtree:true,childList:true,characterData:true});
+      }
+    }else{
+      if(financePrivacyObserver){financePrivacyObserver.disconnect();financePrivacyObserver=null}
+      restoreFinanceCurrencyText(page);
+    }
+  }
+  const b=document.getElementById('financePrivacyBtn');
+  if(b)b.textContent=financeHideValues?'Mostrar valores':'Ocultar valores';
+}
 function openFinanceTab(name,btn){document.querySelectorAll('[data-fin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.finPanel===name));document.querySelectorAll('[data-fin-tab]').forEach(x=>x.classList.remove('primary'));if(btn)btn.classList.add('primary');if(name==='contas')loadFinanceBills();if(name==='orcamento')loadFinanceBudgets();if(name==='patrimonio')loadFinancePatrimony()}
 async function changeWhatsAppNumber(){if(!confirm('Trocar o número conectado ao James? O número atual deixará de ficar vinculado ao Danielle OS.'))return;await resetWhatsAppPairing()}
 function financeMonthName(m){return ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][Number(m)]||m}
