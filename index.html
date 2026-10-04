@@ -3613,8 +3613,52 @@ function renderFinanceMonths(d){const el=document.getElementById('financeMonthCh
 function renderFinanceHealth(d,unc,quality){const el=document.getElementById('financeHealth');if(!el)return;const debtLeak=d.income?d.interest/d.income:0;el.innerHTML=`<div class="finance-health-item"><b>${finPct(d.rate)}</b><span>taxa de sobra</span></div><div class="finance-health-item"><b>${quality}%</b><span>dados classificados</span></div><div class="finance-health-item"><b class="finance-money">${finMoney(d.interest)}</b><span>juros e taxas</span></div><div class="finance-health-item"><b>${finPct(debtLeak)}</b><span>renda consumida por juros/taxas</span></div>`;const a=document.getElementById('financeAlerts');const alerts=[];if(unc)alerts.push({c:'high',t:`${unc} transação(ões) ainda sem categoria. Revise as maiores primeiro.`});if(d.interest>0)alerts.push({c:'high',t:`Você registrou ${finMoney(d.interest)} em juros/taxas no período. Meta recomendada: levar custo evitável a zero.`});if(d.net<0)alerts.push({c:'high',t:'O consumo ultrapassou as entradas no período selecionado.'});else if(d.income>0)alerts.push({c:'good',t:`O fluxo terminou positivo em ${finMoney(d.net)} (${finPct(d.rate)} das entradas).`});a.innerHTML=alerts.map(x=>`<div class="finance-alert ${x.c}">${finEsc(x.t)}</div>`).join('')}
 function renderFinanceRecurring(){const el=document.getElementById('financeRecurring');if(!el)return;const map={};for(const t of financeTx){if(t.direction!=='expense'||t.exclude_from_spend)continue;const k=(t.merchant||t.counterparty||t.description||'').trim();if(!k)continue;map[k]??={months:new Set(),total:0,count:0};map[k].months.add(String(t.transaction_date).slice(0,7));map[k].total+=Number(t.amount);map[k].count++}const rec=Object.entries(map).filter(([,v])=>v.months.size>=3).map(([k,v])=>({k,...v,avg:v.total/v.count})).sort((a,b)=>b.total-a.total).slice(0,8);el.innerHTML=rec.length?rec.map(x=>`<div class="task"><span><b>${finEsc(x.k)}</b><br><span class="muted tiny">${x.months.size} meses • média <span class="finance-money">${finMoney(x.avg)}</span> por lançamento</span></span></div>`).join(''):'<span class="muted">Ainda não há recorrência suficiente identificada.</span>'}
 function renderFinanceTopTransactions(){const el=document.getElementById('financeTopTransactions');if(!el)return;const top=financeTx.filter(t=>t.direction==='expense'&&!t.exclude_from_spend).sort((a,b)=>Number(b.amount)-Number(a.amount)).slice(0,8);el.innerHTML=top.length?top.map(t=>`<div class="task"><span><b>${finEsc(t.description)}</b><br><span class="muted tiny">${new Date(t.transaction_date+'T12:00:00').toLocaleDateString('pt-BR')} • ${finEsc(txCategoryName(t))}</span></span><b class="finance-money" style="margin-left:auto">${finMoney(t.amount)}</b></div>`).join(''):'<span class="muted">Sem transações.</span>'}
-function renderFinanceReview(){const el=document.getElementById('financeReviewList');if(!el)return;const tx=financeTx.filter(t=>t.classification_source==='unclassified');const groups={};for(const t of tx){const k=(t.counterparty||t.description||'Não identificado').trim();groups[k]??={ids:[],total:0,count:0,last:t.transaction_date};groups[k].ids.push(t.id);groups[k].total+=Number(t.amount);groups[k].count++;if(t.transaction_date>groups[k].last)groups[k].last=t.transaction_date}const arr=Object.entries(groups).sort((a,b)=>b[1].total-a[1].total);const opts=financeCategories.filter(c=>c.kind==='expense').map(c=>`<option value="${c.id}">${finEsc(c.name)}</option>`).join('');const manual=document.getElementById('finManualCategory');if(manual){const prev=manual.value;manual.innerHTML='<option value="">Categoria</option>'+financeCategories.map(c=>`<option value="${c.id}">${finEsc(c.name)}</option>`).join('');manual.value=prev}el.innerHTML=arr.length?arr.map(([name,g],i)=>`<div class="finance-review-row"><div class="finance-review-name"><b>${finEsc(name)}</b><small>${g.count} lançamento(ões) • último ${new Date(g.last+'T12:00:00').toLocaleDateString('pt-BR')}</small></div><b class="finance-money">${finMoney(g.total)}</b><span class="finance-pill">${g.count}x</span><select class="field" id="finCat_${i}"><option value="">Escolha a categoria</option>${opts}</select><div><label class="tiny"><input type="checkbox" id="finRule_${i}" checked> lembrar</label><br><button class="btn tiny" onclick='classifyFinanceGroup(${JSON.stringify(g.ids)},${JSON.stringify(name)},"finCat_${i}","finRule_${i}")'>Classificar</button></div></div>`).join(''):'<div class="finance-empty">Tudo classificado neste período.</div>'}
-async function classifyFinanceGroup(ids,name,selectId,ruleId){const cat=document.getElementById(selectId)?.value;if(!cat)return cloudMsg('Escolha uma categoria.');const {error}=await sb.from('finance_transactions').update({category_id:cat,classification_source:'manual',classification_confidence:1}).in('id',ids).eq('user_id',currentUserId);if(error)return cloudMsg('Financeiro: '+error.message);if(document.getElementById(ruleId)?.checked){await sb.from('finance_rules').insert({user_id:currentUserId,match_text:name,match_type:'counterparty',category_id:cat,direction:'expense',active:true}).catch(()=>{})}cloudMsg('Classificação salva',true);await loadFinance()}
+function financeDirectionLabel(d){return ({expense:'Despesa',income:'Entrada',refund:'Estorno / reembolso',transfer:'Transferência',savings:'Economia / investimento'})[d]||d}
+function renderFinanceReview(){
+  const el=document.getElementById('financeReviewList');if(!el)return;
+  const tx=financeTx.filter(t=>t.classification_source==='unclassified');
+  const groups={};
+  for(const t of tx){
+    const name=(t.counterparty||t.description||'Não identificado').trim();
+    const k=(t.direction||'expense')+'|'+name;
+    groups[k]??={ids:[],total:0,count:0,last:t.transaction_date,name,direction:t.direction||'expense',categoryId:t.category_id||'',exclude:true};
+    groups[k].ids.push(t.id);groups[k].total+=Number(t.amount);groups[k].count++;
+    if(t.transaction_date>groups[k].last)groups[k].last=t.transaction_date;
+    if(!groups[k].categoryId&&t.category_id)groups[k].categoryId=t.category_id;
+    groups[k].exclude=groups[k].exclude&&!!t.exclude_from_spend;
+  }
+  const arr=Object.values(groups).sort((a,b)=>b.total-a.total);
+  const allOpts=(selected)=>'<option value="">Escolha a categoria</option>'+financeCategories.map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${finEsc(c.name)}</option>`).join('');
+  const manual=document.getElementById('finManualCategory');
+  if(manual){const prev=manual.value;manual.innerHTML='<option value="">Categoria</option>'+financeCategories.map(c=>`<option value="${c.id}">${finEsc(c.name)}</option>`).join('');manual.value=prev}
+  el.innerHTML=arr.length?arr.map((g,i)=>`<div class="finance-review-row">
+    <div class="finance-review-name"><b>${finEsc(g.name)}</b><small>${g.count} lançamento(ões) • último ${new Date(g.last+'T12:00:00').toLocaleDateString('pt-BR')}</small></div>
+    <b class="finance-money">${finMoney(g.total)}</b>
+    <span class="finance-pill">${g.count}x</span>
+    <select class="field" id="finDir_${i}">
+      ${['expense','income','refund','transfer','savings'].map(d=>`<option value="${d}" ${d===g.direction?'selected':''}>${financeDirectionLabel(d)}</option>`).join('')}
+    </select>
+    <select class="field" id="finCat_${i}">${allOpts(g.categoryId)}</select>
+    <div>
+      <label class="tiny"><input type="checkbox" id="finRule_${i}" ${g.direction==='expense'?'checked':''}> lembrar</label><br>
+      <label class="tiny"><input type="checkbox" id="finExclude_${i}" ${g.exclude||g.direction==='transfer'?'checked':''}> não contar no consumo</label><br>
+      <button class="btn tiny" onclick='classifyFinanceGroup(${JSON.stringify(g.ids)},${JSON.stringify(g.name)},"finCat_${i}","finDir_${i}","finRule_${i}","finExclude_${i}")'>Classificar</button>
+    </div>
+  </div>`).join(''):'<div class="finance-empty">Tudo classificado neste período.</div>'
+}
+async function classifyFinanceGroup(ids,name,selectId,dirId,ruleId,excludeId){
+  const cat=document.getElementById(selectId)?.value||null;
+  const direction=document.getElementById(dirId)?.value||'expense';
+  const exclude=!!document.getElementById(excludeId)?.checked||direction==='transfer';
+  if(!cat)return cloudMsg('Escolha uma categoria.');
+  const {error}=await sb.from('finance_transactions').update({category_id:cat,direction,classification_source:'manual',classification_confidence:1,exclude_from_spend:exclude}).in('id',ids).eq('user_id',currentUserId);
+  if(error)return cloudMsg('Financeiro: '+error.message);
+  if(document.getElementById(ruleId)?.checked){
+    const {error:ruleErr}=await sb.from('finance_rules').insert({user_id:currentUserId,match_text:name,match_type:'counterparty',category_id:cat,direction,active:true});
+    if(ruleErr&&!String(ruleErr.message||'').toLowerCase().includes('duplicate'))console.warn(ruleErr);
+  }
+  cloudMsg('Classificação salva',true);await loadFinance()
+}
 async function extractPdfText(file,password){const pdfjs=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';const data=new Uint8Array(await file.arrayBuffer());const pdf=await pdfjs.getDocument({data,password:password||undefined}).promise;const lines=[];for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p),content=await page.getTextContent(),byY=new Map();for(const item of content.items){const y=Math.round(item.transform?.[5]||0),x=item.transform?.[4]||0;if(!byY.has(y))byY.set(y,[]);byY.get(y).push({x,s:item.str||''})}const ys=[...byY.keys()].sort((a,b)=>b-a);for(const y of ys){const line=byY.get(y).sort((a,b)=>a.x-b.x).map(z=>z.s).join(' ').replace(/\s+/g,' ').trim();if(line)lines.push(line)}}return lines.join('\n')}
 function inferBillMonthFromName(name,year){const n=normalizeText(String(name||''));const map={JANEIRO:'01',FEVEREIRO:'02',MARCO:'03',ABRIL:'04',MAIO:'05',JUNHO:'06',JULHO:'07',AGOSTO:'08',SETEMBRO:'09',OUTUBRO:'10',NOVEMBRO:'11',DEZEMBRO:'12'};for(const [k,v] of Object.entries(map))if(n.includes(k))return `${year}-${v}`;const m=n.match(/(?:^|[^0-9])(0?[1-9]|1[0-2])[-_ ]?(20\d{2})(?:[^0-9]|$)/);if(m)return `${m[2]}-${String(m[1]).padStart(2,'0')}`;return null}
 function normalizeText(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
