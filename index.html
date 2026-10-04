@@ -38,6 +38,14 @@
 .finance-sim-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.finance-sim-grid label span{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
 .finance-live-status{background:radial-gradient(circle at 100% 0%,rgba(120,185,149,.10),transparent 34%),#111923}.finance-live-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .finance-funding-plan{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:10px;background:#0e151e}.finance-funding-row{display:grid;grid-template-columns:minmax(140px,1fr) auto auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid #1e2937}.finance-funding-row:last-child{border-bottom:0}
+.finance-coach-profile{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}.finance-coach-profile .finance-pill{background:#0e151e}
+.finance-evidence{margin-top:8px;border:1px solid #2b3a4b;border-radius:9px;background:#0d141c}.finance-evidence summary{cursor:pointer;padding:9px 10px;font-size:12px;font-weight:800}.finance-evidence-list{padding:0 10px 9px}
+.finance-evidence-row{display:grid;grid-template-columns:80px minmax(180px,1fr) minmax(120px,.7fr) auto auto;gap:8px;align-items:center;padding:7px 0;border-top:1px solid #1e2937;font-size:12px}.finance-evidence-row:first-child{border-top:0}.finance-evidence-row .finance-money{font-weight:800}
+.finance-audit-card{margin-top:16px}.finance-audit-warning{border-left:3px solid #d7b56d;padding:9px 11px;background:#101821;border-radius:8px;margin-top:10px}
+.finance-chat-history{display:grid;gap:9px;max-height:520px;overflow:auto;margin:14px 0;padding-right:4px}.finance-chat-msg{max-width:88%;padding:10px 12px;border-radius:12px;white-space:pre-wrap;line-height:1.45}.finance-chat-msg.user{justify-self:end;background:#263446}.finance-chat-msg.ai{justify-self:start;background:#0e151e;border:1px solid var(--line)}.finance-chat-msg small{display:block;color:var(--muted);margin-bottom:4px}
+.finance-chat-compose{display:grid;grid-template-columns:1fr auto;gap:9px;align-items:end}.finance-chat-quick{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:800px){.finance-evidence-row{grid-template-columns:1fr auto}.finance-evidence-row>*:nth-child(3){grid-column:1/-1}.finance-chat-compose{grid-template-columns:1fr}}
+
 @media(max-width:900px){.finance-live-grid{grid-template-columns:repeat(2,1fr)}.finance-funding-row{grid-template-columns:1fr auto}}@media(max-width:600px){.finance-live-grid{grid-template-columns:1fr}.finance-funding-row{grid-template-columns:1fr}}
 @media(max-width:900px){.finance-sim-grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.finance-sim-grid{grid-template-columns:1fr}}
 .finance-month-chart{display:flex;align-items:flex-end;gap:9px;min-height:220px;padding-top:24px;overflow-x:auto}.finance-month{min-width:62px;text-align:center}.finance-month-bars{height:160px;display:flex;align-items:flex-end;justify-content:center;gap:5px}.finance-month-bars i{display:block;width:17px;border-radius:5px 5px 2px 2px}.finance-month-bars .in{background:#78b995}.finance-month-bars .out{background:#d7b56d}.finance-month label{display:block;font-size:11px;color:var(--muted);margin-top:7px}
@@ -1366,8 +1374,37 @@ select.field{max-width:100%}
   </div>
 
   <div class="finance-tab-panel" data-fin-panel="coach">
-    <div class="card finance-coach-hero" style="margin-top:16px"><div class="row" style="gap:18px;align-items:center"><div class="finance-score-ring" id="financeScoreRing" style="--score:0"><b id="financeCoachScore">—</b></div><div style="flex:1"><div class="kicker">AGENTE FINANCEIRO</div><h2 id="financeCoachLabel">Faça a primeira análise</h2><p id="financeCoachSummary" class="muted">Vou cruzar fluxo, consumo, categorias, juros, metas, orçamento e qualidade dos dados.</p><button class="btn primary" id="financeCoachBtn" onclick="runFinanceCoach(this)">Analisar minhas finanças</button></div></div></div>
+    <div class="card finance-coach-hero" style="margin-top:16px"><div class="row" style="gap:18px;align-items:center"><div class="finance-score-ring" id="financeScoreRing" style="--score:0"><b id="financeCoachScore">—</b></div><div style="flex:1"><div class="kicker">AGENTE FINANCEIRO</div><h2 id="financeCoachLabel">Faça a primeira análise</h2><p id="financeCoachSummary" class="muted">Vou cruzar fluxo, consumo, categorias, cobranças financeiras, metas, orçamento e qualidade dos dados.</p><button class="btn primary" id="financeCoachBtn" onclick="runFinanceCoach(this)">Analisar minhas finanças</button></div></div></div>
+
+    <div class="card finance-coach-preferences" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><div class="kicker">COMO QUERO SER ORIENTADA</div><h2>Estratégia de economia</h2><p class="muted">O agente usa isso como contexto fixo para metas e cortes.</p></div>
+        <span class="finance-pill" id="finCoachStyleLabel">carregando…</span>
+      </div>
+      <div class="finance-coach-profile" id="finCoachProfileChips"></div>
+      <textarea class="field" id="finCoachGuidance" rows="3" placeholder="Ex.: pode cortar delivery agressivamente, mas não mexa na academia; prefiro reduzir compras antes de lazer." style="margin-top:10px"></textarea>
+      <div class="row" style="margin-top:9px"><button class="btn" onclick="saveFinanceCoachGuidance()">Salvar diretrizes</button><span class="tiny muted">Você pode mudar isso quando quiser.</span></div>
+    </div>
+
+    <div id="financeCoachAudit"></div>
     <div id="financeCoachOutput" class="finance-split"></div>
+
+    <div class="card finance-agent-chat" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><div class="kicker">CONVERSE COM A ANÁLISE</div><h2>Desenrolar com a IA</h2><p class="muted">Questione a proposta, diga o que não faz sentido e peça uma versão mais agressiva ou mais realista.</p></div>
+        <button class="btn tiny" onclick="loadFinanceCoachChat()">Atualizar conversa</button>
+      </div>
+      <div class="finance-chat-quick">
+        <button class="btn tiny" onclick="sendFinanceChat('Quero economizar mais. Refaça o plano de forma mais agressiva e diga exatamente de quais categorias pode sair o aporte.')">Quero economizar mais</button>
+        <button class="btn tiny" onclick="fillFinanceChat('Essa proposta não faz sentido porque ')">Isso não faz sentido</button>
+        <button class="btn tiny" onclick="sendFinanceChat('Mostre as evidências dos principais problemas que você apontou e diga quais classificações podem estar erradas.')">Mostre as evidências</button>
+      </div>
+      <div id="financeChatHistory" class="finance-chat-history"></div>
+      <div class="finance-chat-compose">
+        <textarea class="field" id="financeChatInput" rows="3" placeholder="Ex.: não concordo em reduzir lazer; quero tirar esse valor de delivery e compras. Refaz pra mim."></textarea>
+        <button class="btn primary" id="financeChatSendBtn" onclick="sendFinanceChat()">Enviar</button>
+      </div>
+    </div>
     <div class="card" style="margin-top:16px">
       <div class="row" style="justify-content:space-between;align-items:flex-start">
         <div><h2>Simulador de metas</h2><p class="muted">Escolha o que quer descobrir. A rentabilidade é opcional — deixe 0 para simular só o dinheiro que você guarda.</p></div>
@@ -3941,7 +3978,7 @@ function applyFinancePrivacy(){
   const b=document.getElementById('financePrivacyBtn');
   if(b)b.textContent=financeHideValues?'Mostrar valores':'Ocultar valores';
 }
-function openFinanceTab(name,btn){document.querySelectorAll('[data-fin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.finPanel===name));document.querySelectorAll('[data-fin-tab]').forEach(x=>x.classList.remove('primary'));if(btn)btn.classList.add('primary');if(name==='contas')loadFinanceBills();if(name==='orcamento')loadFinanceBudgets();if(name==='patrimonio')loadFinancePatrimony()}
+function openFinanceTab(name,btn){document.querySelectorAll('[data-fin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.finPanel===name));document.querySelectorAll('[data-fin-tab]').forEach(x=>x.classList.remove('primary'));if(btn)btn.classList.add('primary');if(name==='contas')loadFinanceBills();if(name==='orcamento')loadFinanceBudgets();if(name==='patrimonio')loadFinancePatrimony();if(name==='coach')loadFinanceCoachWorkspace()}
 async function changeWhatsAppNumber(){if(!confirm('Trocar o número conectado ao James? O número atual deixará de ficar vinculado ao Danielle OS.'))return;await resetWhatsAppPairing()}
 function financeMonthName(m){return ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][Number(m)]||m}
 function txCategoryName(t){return t.finance_categories?.name||'Não classificado'}
