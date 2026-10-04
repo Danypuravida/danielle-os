@@ -4137,6 +4137,58 @@ async function saveFinanceCorrection(id,i){
   cloudMsg(similar?'Classificação corrigida nos lançamentos iguais':'Classificação corrigida',true);await loadFinance();
 }
 function financeDirectionLabel(d){return ({expense:'Despesa',income:'Entrada',refund:'Estorno / reembolso',transfer:'Transferência',savings:'Economia / investimento'})[d]||d}
+const FINANCE_CREATE_CATEGORY='__create_category__';
+let financeCategoryCreationPending=false;
+function financeReviewCategoryOptions(selected){
+  return '<option value="">Escolha a categoria</option>'+financeCategories.map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${finEsc(c.name)}</option>`).join('')+`<option value="${FINANCE_CREATE_CATEGORY}">+ Criar categoria</option>`;
+}
+function refreshFinanceCategorySelects(){
+  document.querySelectorAll('#financeReviewList select[id^="finCat_"],#financeCorrections select[id^="finCorrCat_"],select[id^="finBillCat_"],#finManualCategory,#finBillNewCategory').forEach(select=>{
+    const value=select.value;
+    const review=select.id.startsWith('finCat_');
+    select.innerHTML=review?financeReviewCategoryOptions(value):financeBillCategoryOptions(value);
+    select.value=value;
+    if(review)select.dataset.previousCategory=select.value;
+  });
+}
+async function handleFinanceReviewCategoryChange(select,index){
+  if(select.value!==FINANCE_CREATE_CATEGORY){select.dataset.previousCategory=select.value;return}
+  const previous=select.dataset.previousCategory||'';
+  select.value=previous;
+  if(!currentUserId)return cloudMsg('Entre na sua conta para criar uma categoria.');
+  if(financeCategoryCreationPending)return cloudMsg('Aguarde a categoria atual terminar de salvar.');
+  const answer=prompt('Nome da nova categoria:');
+  if(answer===null)return;
+  const name=answer.trim().replace(/\s+/g,' ');
+  if(!name)return cloudMsg('Informe o nome da categoria.');
+  const direction=document.getElementById('finDir_'+index)?.value||'expense';
+  const kind=['expense','income','refund','transfer','savings'].includes(direction)?direction:'expense';
+  const userId=currentUserId;
+  financeCategoryCreationPending=true;select.disabled=true;
+  try{
+    // Refresh before inserting so a category created on another device is reused.
+    const {data:categories,error:readError}=await sb.from('finance_categories').select('id,name,kind,essential_default').eq('user_id',userId).eq('active',true).order('name');
+    if(readError)throw readError;
+    let category=(categories||[]).find(c=>c.kind===kind&&normalizeText(c.name.trim().replace(/\s+/g,' '))===normalizeText(name));
+    const existed=!!category;
+    if(!category){
+      const {data,error}=await sb.from('finance_categories').insert({user_id:userId,name,kind,essential_default:false,active:true}).select('id,name,kind,essential_default').single();
+      if(error)throw error;
+      if(!data)throw new Error('Não consegui confirmar o salvamento da categoria.');
+      category=data;
+    }
+    if(currentUserId!==userId)return;
+    financeCategories=[...(categories||[]).filter(c=>c.id!==category.id),category].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+    refreshFinanceCategorySelects();
+    if(select.isConnected){select.value=category.id;select.dataset.previousCategory=category.id}
+    cloudMsg(existed?'Essa categoria já existe e foi selecionada.':'Categoria criada e selecionada.',true);
+  }catch(e){
+    select.value=previous;
+    cloudMsg('Categoria: '+(e?.message||String(e)));
+  }finally{
+    financeCategoryCreationPending=false;select.disabled=false;
+  }
+}
 function renderFinanceReview(){
   const el=document.getElementById('financeReviewList');if(!el)return;
   const search=(document.getElementById('financeReviewSearch')?.value||'').trim().toLowerCase();
@@ -4155,7 +4207,6 @@ function renderFinanceReview(){
     groups[k].exclude=groups[k].exclude&&!!t.exclude_from_spend;
   }
   const arr=Object.values(groups).sort((a,b)=>b.total-a.total);
-  const allOpts=(selected)=>'<option value="">Escolha a categoria</option>'+financeCategories.map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${finEsc(c.name)}</option>`).join('');
   const manual=document.getElementById('finManualCategory');
   if(manual){const prev=manual.value;manual.innerHTML='<option value="">Categoria</option>'+financeCategories.map(c=>`<option value="${c.id}">${finEsc(c.name)}</option>`).join('');manual.value=prev}
   el.innerHTML=arr.length?arr.map((g,i)=>`<div class="finance-review-row">
@@ -4165,7 +4216,7 @@ function renderFinanceReview(){
     <select class="field" id="finDir_${i}">
       ${['expense','income','refund','transfer','savings'].map(d=>`<option value="${d}" ${d===g.direction?'selected':''}>${financeDirectionLabel(d)}</option>`).join('')}
     </select>
-    <select class="field" id="finCat_${i}">${allOpts(g.categoryId)}</select>
+    <select class="field" id="finCat_${i}" data-previous-category="${g.categoryId}" onchange="handleFinanceReviewCategoryChange(this,${i})">${financeReviewCategoryOptions(g.categoryId)}</select>
     <div>
       <label class="tiny"><input type="checkbox" id="finRule_${i}" ${g.direction==='expense'?'checked':''}> lembrar</label><br>
       <label class="tiny"><input type="checkbox" id="finExclude_${i}" ${g.exclude||g.direction==='transfer'?'checked':''}> não contar no consumo</label><br>
@@ -4174,10 +4225,11 @@ function renderFinanceReview(){
   </div>`).join(''):'<div class="finance-empty">Tudo classificado neste período.</div>'
 }
 async function classifyFinanceGroup(ids,name,selectId,dirId,ruleId,excludeId){
+  if(document.getElementById(selectId)?.disabled)return cloudMsg('Aguarde a categoria terminar de salvar.');
   const cat=document.getElementById(selectId)?.value||null;
   const direction=document.getElementById(dirId)?.value||'expense';
   const exclude=!!document.getElementById(excludeId)?.checked||direction==='transfer';
-  if(!cat)return cloudMsg('Escolha uma categoria.');
+  if(!cat||cat===FINANCE_CREATE_CATEGORY)return cloudMsg('Escolha uma categoria.');
   const {error}=await sb.from('finance_transactions').update({category_id:cat,direction,classification_source:'manual',classification_confidence:1,exclude_from_spend:exclude}).in('id',ids).eq('user_id',currentUserId);
   if(error)return cloudMsg('Financeiro: '+error.message);
   if(document.getElementById(ruleId)?.checked){
