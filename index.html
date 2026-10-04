@@ -54,6 +54,16 @@
 .finance-bill-row:last-child{border-bottom:0}.finance-bill-name b{display:block}.finance-bill-name small{display:block;color:var(--muted);margin-top:3px}
 .finance-bill-new{display:grid;grid-template-columns:1.5fr 1.2fr 120px 85px 150px;gap:9px}
 .finance-bill-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.finance-bill-row .field{padding:8px}.finance-bill-status-paid{color:#78b995}
+.finance-bill-row.bill-paid{border-left:4px solid #78b995;padding-left:10px;background:rgba(120,185,149,.055)}
+.finance-bill-row.bill-pending{border-left:4px solid #d7b56d;padding-left:10px;background:rgba(215,181,109,.05)}
+.finance-bill-row.bill-overdue{border-left:4px solid #df887f;padding-left:10px;background:rgba(223,136,127,.06)}
+.finance-bill-status{display:inline-flex;padding:4px 8px;border-radius:99px;font-size:11px;font-weight:800}
+.finance-bill-status.paid{background:rgba(120,185,149,.15);color:#9cdbb9;border:1px solid rgba(120,185,149,.35)}
+.finance-bill-status.pending{background:rgba(215,181,109,.14);color:#e5c87f;border:1px solid rgba(215,181,109,.34)}
+.finance-bill-status.overdue{background:rgba(223,136,127,.14);color:#efaaa2;border:1px solid rgba(223,136,127,.34)}
+.finance-weekly-target{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:12px;align-items:center;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:11px;background:#0e151e}
+@media(max-width:700px){.finance-weekly-target{grid-template-columns:1fr}}
+
 .finance-correction-row{display:grid;grid-template-columns:minmax(220px,1.5fr) 110px 150px minmax(170px,1fr) auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid #1e2937}
 .finance-correction-row:last-child{border-bottom:0}.finance-correction-name b{display:block}.finance-correction-name small{color:var(--muted)}
 .finance-correction-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
@@ -62,6 +72,15 @@
 
 @media(max-width:1050px){.finance-kpis{grid-template-columns:repeat(2,1fr)}.finance-split{grid-template-columns:1fr}.finance-health{grid-template-columns:repeat(2,1fr)}.finance-pie-wrap{grid-template-columns:1fr}.finance-pie-legend{grid-template-columns:1fr 1fr}}
 @media(max-width:700px){.finance-kpis,.finance-import-grid,.finance-health{grid-template-columns:1fr}.finance-review-row{grid-template-columns:1fr}.finance-review-row>div:last-child{text-align:left}.finance-bar-row{grid-template-columns:1fr}.finance-bar-track{grid-column:1}.finance-toolbar{align-items:stretch}.finance-pie-legend{grid-template-columns:1fr}.finance-pie{width:200px;height:200px}}
+
+.growth-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px;margin-top:18px}.growth-c4{grid-column:span 4}.growth-c5{grid-column:span 5}.growth-c6{grid-column:span 6}.growth-c7{grid-column:span 7}.growth-c8{grid-column:span 8}.growth-c12{grid-column:span 12}
+.growth-card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px}.growth-list{display:grid;gap:10px}.growth-item{border:1px solid var(--line);border-radius:12px;padding:13px;background:#0e151e}.growth-item h3{color:var(--text);text-transform:none;letter-spacing:0;font-size:16px;margin-bottom:6px}
+.growth-progress{height:8px;background:#253142;border-radius:99px;overflow:hidden;margin:9px 0}.growth-progress i{display:block;height:100%;background:#78b995}.growth-meta{display:flex;gap:7px;flex-wrap:wrap;align-items:center}.growth-chip{display:inline-flex;padding:4px 8px;border:1px solid var(--line);border-radius:99px;font-size:11px;color:#cbd7e4}
+.mentor-suggestions{display:grid;grid-template-columns:1fr 1fr;gap:9px}.mentor-suggestion{border:1px dashed #38506a;border-radius:11px;padding:12px;background:#0e151e}
+.freehand-card{margin-top:22px}.freehand-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px}.freehand-canvas-wrap{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#f7f3ea}
+.freehand-canvas{display:block;width:100%;height:440px;touch-action:none;cursor:crosshair}.freehand-save-state{font-size:11px;color:var(--muted);margin-left:auto}
+.freehand-color{width:32px;height:32px;border-radius:50%;border:2px solid transparent;cursor:pointer}.freehand-color.active{border-color:var(--accent);box-shadow:0 0 0 2px #111923 inset}
+@media(max-width:900px){.growth-c4,.growth-c5,.growth-c6,.growth-c7,.growth-c8{grid-column:span 12}.mentor-suggestions{grid-template-columns:1fr}.freehand-canvas{height:360px}}
 
 </style>
 <style>
@@ -1211,6 +1230,14 @@ select.field{max-width:100%}
       <div class="finance-health-item"><b class="finance-money" id="finLiveFree">—</b><span>realmente livre</span></div>
       <div class="finance-health-item"><b id="finLiveDue">—</b><span>contas próximas / vencidas</span></div>
     </div>
+    <div class="finance-weekly-target">
+      <div><b>Meta mínima de caixa desta semana</b><div class="tiny muted">O James te alerta se o valor realmente livre cair abaixo deste piso.</div></div>
+      <div class="row" style="gap:7px">
+        <input class="field finance-money-input" id="finWeeklyCashTarget" type="number" step="0.01" min="0" placeholder="Ex.: 3000" style="width:150px">
+        <button class="btn" onclick="saveFinanceWeeklyCashTarget()">Salvar meta</button>
+      </div>
+      <div class="tiny" id="finWeeklyCashTargetState"></div>
+    </div>
     <div id="financeLiveAlerts" style="margin-top:10px"></div>
   </div>
 
@@ -1292,7 +1319,7 @@ select.field{max-width:100%}
 
     <div class="card" style="margin-top:16px">
       <div class="row" style="justify-content:space-between;align-items:center">
-        <div><h2>Contas de sempre</h2><p class="muted">Salvar altera o mês escolhido. Marcar “fixo” também passa esse valor para os próximos meses.</p></div>
+        <div><h2>Contas a pagar</h2><p class="muted">Suas contas recorrentes do mês. Pago fica verde, pendente amarelo e atrasado vermelho.</p></div>
         <span class="finance-pill">recorrentes</span>
       </div>
       <div id="financeBillsRecurring"></div>
@@ -1479,6 +1506,76 @@ select.field{max-width:100%}
       <h2>Próximas / recentes</h2>
       <div id="meetingList" class="mini-list"></div>
     </div>
+  </div>
+</section>
+
+
+<section class="page" data-page="metas-pessoais" id="personalGoalsPage">
+  <h1>Metas pessoais</h1>
+  <p class="lead">Sonhos e metas fora do trabalho, com horizonte claro, próxima ação e acompanhamento do progresso.</p>
+  <div class="growth-grid">
+    <div class="growth-card growth-c5">
+      <h2>Criar meta ou sonho</h2>
+      <div class="row">
+        <select class="field" id="pgKind" style="max-width:150px"><option value="goal">Meta</option><option value="dream">Sonho</option></select>
+        <select class="field" id="pgHorizon" style="flex:1"><option value="weekly">Semanal</option><option value="monthly">Mensal</option><option value="semiannual">Semestral</option><option value="medium">Médio prazo</option><option value="long">Longo prazo</option></select>
+      </div>
+      <input class="field" id="pgTitle" placeholder="Ex.: organizar uma viagem / completar um curso / comprar algo" style="margin-top:9px">
+      <div class="row" style="margin-top:9px">
+        <select class="field" id="pgCategory" style="flex:1"><option value="Pessoal">Pessoal</option><option value="Saúde">Saúde</option><option value="Carreira">Carreira</option><option value="Financeiro">Financeiro</option><option value="Relacionamentos">Relacionamentos</option><option value="Experiências">Experiências</option><option value="Viagem">Viagem</option><option value="Casa">Casa</option><option value="Outro">Outro</option></select>
+        <input class="field" id="pgDate" type="date" style="flex:1">
+      </div>
+      <textarea class="field" id="pgWhy" rows="2" placeholder="Por que isso importa para mim?" style="margin-top:9px"></textarea>
+      <textarea class="field" id="pgNext" rows="2" placeholder="Qual é a próxima ação concreta?" style="margin-top:9px"></textarea>
+      <button class="btn primary" style="margin-top:10px" onclick="createPersonalGoal()">Criar</button>
+    </div>
+    <div class="growth-card growth-c7">
+      <h2>Como usar</h2>
+      <div class="callout">A aba não é uma wishlist parada. Toda meta precisa de <b>próxima ação</b>. Quando avançar, use “Atualizar” para registrar percentual + o que mudou.</div>
+      <div class="finance-health" style="margin-top:12px">
+        <div class="finance-health-item"><b>Curto</b><span>semana • mês • semestre</span></div>
+        <div class="finance-health-item"><b>Médio</b><span>objetivos que pedem construção</span></div>
+        <div class="finance-health-item"><b>Longo</b><span>sonhos e direção de vida</span></div>
+        <div class="finance-health-item"><b>Check-in</b><span>progresso + evidência do avanço</span></div>
+      </div>
+    </div>
+    <div class="growth-card growth-c12"><h2>Minhas metas e sonhos</h2><div id="personalGoalsList" class="growth-list"></div></div>
+  </div>
+</section>
+
+<section class="page" data-page="mentoria" id="mentorshipPage">
+  <h1>Mentoria</h1>
+  <p class="lead">Um lugar para transformar cada sessão em desenvolvimento observável: tema → conversa → insight → ação → evidência.</p>
+  <div class="growth-grid">
+    <div class="growth-card growth-c5">
+      <h2>Ponto que quero desenvolver</h2>
+      <input class="field" id="mentorFocusTitle" placeholder="Ex.: comunicação executiva">
+      <textarea class="field" id="mentorFocusWhy" rows="2" placeholder="Por que quero desenvolver isso?" style="margin-top:9px"></textarea>
+      <textarea class="field" id="mentorFocusEvidence" rows="2" placeholder="Como vou saber que melhorei?" style="margin-top:9px"></textarea>
+      <div class="row" style="margin-top:9px"><select class="field" id="mentorFocusPriority" style="max-width:180px"><option value="1">Prioridade alta</option><option value="2" selected>Prioridade média</option><option value="3">Prioridade baixa</option></select><button class="btn primary" onclick="addMentorshipFocus()">Adicionar</button></div>
+    </div>
+    <div class="growth-card growth-c7">
+      <h2>Por onde começar</h2>
+      <p class="muted">Você não precisa chegar na mentoria com tudo definido. Estes são bons temas para transformar em experimentos concretos.</p>
+      <div class="mentor-suggestions">
+        <div class="mentor-suggestion"><b>Comunicação executiva</b><p class="tiny muted">Ser mais sintética, defender recomendação, risco e pedido com clareza.</p><button class="btn tiny" onclick="addMentorshipSuggestion('Comunicação executiva','Ganhar síntese e influência em conversas com liderança e stakeholders.','Consigo apresentar contexto, recomendação, risco e pedido em poucos minutos e destravar decisões.')">Adicionar</button></div>
+        <div class="mentor-suggestion"><b>Delegação e autonomia</b><p class="tiny muted">Delegar resultado e critério, sem reassumir tudo sob pressão.</p><button class="btn tiny" onclick="addMentorshipSuggestion('Delegação e autonomia','Aumentar autonomia da equipe e reduzir dependência direta de mim.','Mais entregas relevantes são resolvidas sem eu precisar assumir a execução.')">Adicionar</button></div>
+        <div class="mentor-suggestion"><b>Influência e negociação</b><p class="tiny muted">Conduzir contrapontos sem perder firmeza nem relacionamento.</p><button class="btn tiny" onclick="addMentorshipSuggestion('Influência e negociação','Aumentar minha capacidade de alinhar interesses e sustentar decisões difíceis.','Consigo chegar a acordos claros e manter governança mesmo com pressão externa.')">Adicionar</button></div>
+        <div class="mentor-suggestion"><b>Visão estratégica</b><p class="tiny muted">Sair do problema imediato e conectar operação, causa, impacto e decisão.</p><button class="btn tiny" onclick="addMentorshipSuggestion('Visão estratégica','Transformar experiência operacional em leitura de negócio e prioridade.','Minhas propostas conectam dado, causa, impacto, trade-off e resultado esperado.')">Adicionar</button></div>
+      </div>
+    </div>
+    <div class="growth-card growth-c12"><h2>Focos de desenvolvimento</h2><div id="mentorshipFocusList" class="growth-list"></div></div>
+    <div class="growth-card growth-c6">
+      <h2>Registrar sessão</h2>
+      <div class="row"><input class="field" id="mentorSessionDate" type="date" style="max-width:170px"><input class="field" id="mentorSessionTitle" placeholder="Tema / sessão" style="flex:1"></div>
+      <textarea class="field" id="mentorSessionPrep" rows="2" placeholder="O que eu quero levar / perguntar?" style="margin-top:9px"></textarea>
+      <textarea class="field" id="mentorSessionNotes" rows="4" placeholder="Anotações da conversa" style="margin-top:9px"></textarea>
+      <textarea class="field" id="mentorSessionInsights" rows="3" placeholder="Principais insights" style="margin-top:9px"></textarea>
+      <textarea class="field" id="mentorSessionActions" rows="3" placeholder="O que vou testar / fazer antes da próxima sessão?" style="margin-top:9px"></textarea>
+      <textarea class="field" id="mentorSessionNext" rows="2" placeholder="Próximo foco" style="margin-top:9px"></textarea>
+      <button class="btn primary" style="margin-top:10px" onclick="saveMentorshipSession()">Salvar sessão</button>
+    </div>
+    <div class="growth-card growth-c6"><h2>Histórico da mentoria</h2><div id="mentorshipSessions" class="growth-list"></div></div>
   </div>
 </section>
 
