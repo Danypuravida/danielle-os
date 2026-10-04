@@ -1666,8 +1666,9 @@ sb.auth.onAuthStateChange((_event, session) => {
 </script>
 
 <script>
-const pages=[['overview','Overview'],['painel','Painel'],['james','James'],['financeiro','Financeiro'],['rotina','Hoje'],['todoist','Todoist'],['reunioes','Reuniões'],['gestao','Gestão'],['reflexao','Decisões'],['senioridade','Resultados'],['desenvolvimento','Desenvolvimento'],['score','Scorecard'],['perfil','Perfil'],['plano','Plano até dezembro'],['coach','Conselheiro IA']];
-const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist();loadWhatsAppStatus()}if(id==='financeiro')loadFinance();if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}if(id==='overview')loadOverview()};nav.appendChild(b)});
+const pages=[['overview','Overview'],['painel','Painel'],['james','James'],['financeiro','Financeiro'],['metas-pessoais','Metas pessoais'],['mentoria','Mentoria'],['rotina','Hoje'],['todoist','Todoist'],['reunioes','Reuniões'],['gestao','Gestão'],['reflexao','Decisões'],['senioridade','Resultados'],['desenvolvimento','Desenvolvimento'],['score','Scorecard'],['perfil','Perfil'],['plano','Plano até dezembro'],['coach','Conselheiro IA']];
+const freehandStartIndex=pages.findIndex(x=>x[0]==='financeiro');
+const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist();loadWhatsAppStatus()}if(id==='financeiro')loadFinance();if(id==='metas-pessoais')loadPersonalGoals();if(id==='mentoria')loadMentorship();if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}if(id==='overview')loadOverview();if(i>=freehandStartIndex)setTimeout(()=>ensureFreehandBoard(id),40)};nav.appendChild(b)});
 
 function openOSPage(id){
   const btn=document.querySelector(`#nav button[data-page="${id}"]`);
@@ -3346,6 +3347,7 @@ function assistantSourceIcon(source){
   if(source==='slack')return '💬 Slack';
   if(source==='whatsapp')return 'WhatsApp';
   if(source==='todoist')return 'Todoist';
+  if(source==='finance')return '💰 Financeiro';
   return esc(source||'Fonte');
 }
 function assistantDueLabel(value){
@@ -3409,6 +3411,7 @@ function assistantItemHtml(item){
 let assistantCache={};
 async function loadJames(){
   if(!currentUserId)return;
+  try{await callEdge('finance-status',{})}catch(e){console.warn('finance sync for James',e)}
   const [{data:scan,error:scanErr},{data:items,error:itemErr}]=await Promise.all([
     sb.from('assistant_scans').select('*').order('scan_time',{ascending:false}).limit(1).maybeSingle(),
     sb.from('assistant_items').select('*').order('due_at',{ascending:true,nullsFirst:false}).order('last_seen_at',{ascending:false}).limit(120)
@@ -3914,12 +3917,31 @@ async function loadFinanceStatus(){
     setTextSafe('finLiveBalance',data.balance==null?'—':finMoney(data.balance));
     setTextSafe('finLiveCommitted',finMoney(data.pending||0));
     setTextSafe('finLiveFree',data.free_after_pending==null?'—':finMoney(data.free_after_pending));
-    const due=(data.due_soon||[]).length,over=(data.overdue||[]).length;
-    setTextSafe('finLiveDue',over?over+' vencida(s)':due?due+' próxima(s)':'0');
+    const due=(data.due_soon||[]).length,over=(data.overdue||[]).length,today=(data.due_today||[]).length;
+    setTextSafe('finLiveDue',over?over+' vencida(s)':today?today+' para hoje':due?due+' próxima(s)':'0');
+    const targetInput=document.getElementById('finWeeklyCashTarget');if(targetInput&&document.activeElement!==targetInput)targetInput.value=data.weekly_target==null?'':Number(data.weekly_target).toFixed(2);
+    const targetState=document.getElementById('finWeeklyCashTargetState');
+    if(targetState){
+      if(data.weekly_target==null)targetState.innerHTML='<span class="muted">Defina um piso para o caixa livre desta semana.</span>';
+      else if(data.target_gap!=null&&data.target_gap<0)targetState.innerHTML='<span class="danger">Abaixo da meta em <span class="finance-money">'+finMoney(Math.abs(data.target_gap))+'</span>.</span>';
+      else if(data.target_gap!=null)targetState.innerHTML='<span class="good">Acima da meta em <span class="finance-money">'+finMoney(data.target_gap)+'</span>.</span>';
+      else targetState.innerHTML='<span class="muted">Meta semanal: <span class="finance-money">'+finMoney(data.weekly_target)+'</span>.</span>';
+    }
     const el=document.getElementById('financeLiveAlerts');
     if(el)el.innerHTML=(data.alerts||[]).slice(0,4).map(a=>`<div class="finance-alert ${a.severity==='critical'||a.severity==='warning'?'high':'good'}"><b>${finEsc(a.title)}</b><div class="muted">${finEsc(a.message)}</div></div>`).join('');
     if(data.free_after_pending!=null&&data.free_after_pending<0)box.style.borderColor='#80514c';else box.style.borderColor='';
   }catch(e){console.warn('finance-status',e)}
+}
+async function saveFinanceWeeklyCashTarget(){
+  if(!currentUserId)return;
+  const input=document.getElementById('finWeeklyCashTarget'),amount=Number(input?.value||NaN);
+  if(!Number.isFinite(amount)||amount<0)return cloudMsg('Informe um valor válido para a meta semanal de caixa.');
+  const week=mondayOf(new Date());
+  const {error}=await sb.from('finance_weekly_cash_targets').upsert({user_id:currentUserId,week_start:week,target_amount:amount,updated_at:new Date().toISOString()},{onConflict:'user_id,week_start'});
+  if(error)return cloudMsg('Meta semanal: '+error.message);
+  cloudMsg('Meta semanal de caixa salva',true);
+  await loadFinanceStatus();
+  try{await loadJames()}catch{}
 }
 let financeAccountBalanceCache=null;
 async function loadFinanceBalance(){
@@ -4072,6 +4094,13 @@ async function loadFinanceBills(){
   renderFinanceBills();
 }
 
+function financeBillVisualStatus(status,dueDate){
+  if(status==='paid')return {key:'paid',label:'PAGO'};
+  if(status==='skipped')return {key:'pending',label:'IGNORADO'};
+  if(dueDate&&dueDate<isoDateLocal())return {key:'overdue',label:'ATRASADO'};
+  if(dueDate===isoDateLocal())return {key:'pending',label:'VENCE HOJE'};
+  return {key:'pending',label:'PENDENTE'};
+}
 function renderFinanceBills(){
   const recurringEl=document.getElementById('financeBillsRecurring'),oneEl=document.getElementById('financeBillsOneOff');if(!recurringEl||!oneEl)return;
   const byTemplate=new Map(financeBillMonthlyCache.filter(x=>x.template_id).map(x=>[x.template_id,x]));
@@ -4080,31 +4109,30 @@ function renderFinanceBills(){
     const o=byTemplate.get(t.id)||null,amount=o?.planned_amount??(t.fixed_amount?t.default_amount:null);
     if(Number(amount)>0){planned+=Number(amount);count++}if(o?.status==='paid')paid+=Number(o.paid_amount??amount??0);
     const day=o?.due_date?Number(String(o.due_date).slice(-2)):(t.due_day||''),status=o?.status||'pending',source=o?.payment_source||t.payment_source||'money';
-    const catName=o?.finance_categories?.name||t.finance_categories?.name||'Sem categoria';
-    return `<div class="finance-bill-row"><input class="field" id="finBillName_${i}" value="${finEsc(t.name)}" aria-label="Nome da conta"><select class="field" id="finBillCat_${i}">${financeBillCategoryOptions(o?.category_id||t.category_id||'')}</select><input class="field finance-money" id="finBillAmt_${i}" type="number" step="0.01" min="0" placeholder="Valor" value="${amount??''}"><input class="field" id="finBillDay_${i}" type="number" min="1" max="31" placeholder="Dia" value="${day}"><select class="field" id="finBillSource_${i}">${financeBillSourceOptions(source)}</select><select class="field ${status==='paid'?'finance-bill-status-paid':''}" id="finBillStatus_${i}">${financeBillStatusOptions(status)}</select><div class="finance-bill-actions"><label class="tiny"><input type="checkbox" id="finBillFixed_${i}" ${t.fixed_amount?'checked':''}> fixo</label><button class="btn tiny" onclick="saveFinanceBillRow('${t.id}','${o?.id||''}',${i})">Salvar</button><button class="btn tiny" onclick="deleteFinanceBillTemplate('${t.id}')">Excluir</button><span class="tiny muted">${t.fixed_amount?'fixo':'variável'}${t.exclude_from_consumption?' • não entra no consumo':''}</span></div></div>`
+    const dueDate=o?.due_date||financeBillDueDate(ym,day),visual=financeBillVisualStatus(status,dueDate);
+    return `<div class="finance-bill-row bill-${visual.key}"><input class="field" id="finBillName_${i}" value="${finEsc(t.name)}" aria-label="Nome da conta"><select class="field" id="finBillCat_${i}">${financeBillCategoryOptions(o?.category_id||t.category_id||'')}</select><input class="field finance-money" id="finBillAmt_${i}" type="number" step="0.01" min="0" placeholder="Valor" value="${amount??''}"><input class="field" id="finBillDay_${i}" type="number" min="1" max="31" placeholder="Dia" value="${day}"><select class="field" id="finBillSource_${i}">${financeBillSourceOptions(source)}</select><select class="field ${status==='paid'?'finance-bill-status-paid':''}" id="finBillStatus_${i}">${financeBillStatusOptions(status)}</select><div class="finance-bill-actions"><span class="finance-bill-status ${visual.key}">${visual.label}</span><label class="tiny"><input type="checkbox" id="finBillFixed_${i}" ${t.fixed_amount?'checked':''}> fixo</label><button class="btn tiny" onclick="saveFinanceBillRow('${t.id}','${o?.id||''}',${i})">Salvar</button><button class="btn tiny" onclick="deleteFinanceBillTemplate('${t.id}')">Excluir</button></div></div>`
   }).join('');
   const oneOffs=financeBillMonthlyCache.filter(x=>!x.template_id);
   for(const o of oneOffs){const a=Number(o.planned_amount||0);if(a>0){planned+=a;count++}if(o.status==='paid')paid+=Number(o.paid_amount??a)}
   recurringEl.innerHTML=recurring||'<div class="finance-empty">Nenhuma conta recorrente cadastrada.</div>';
   oneEl.innerHTML=oneOffs.length?oneOffs.map((o,i)=>{
-    const day=o.due_date?Number(String(o.due_date).slice(-2)):'',catName=o.finance_categories?.name||'Sem categoria';
-    return `<div class="finance-bill-row"><div class="finance-bill-name"><b>${finEsc(o.name)}</b><small>${finEsc(catName)} • só ${financeMonthName(ym.slice(5,7))}</small></div><input class="field finance-money" id="finOneAmt_${i}" type="number" step="0.01" min="0" value="${o.planned_amount??''}"><input class="field" id="finOneDay_${i}" type="number" min="1" max="31" value="${day}"><select class="field" id="finOneSource_${i}">${financeBillSourceOptions(o.payment_source||'money')}</select><select class="field" id="finOneStatus_${i}">${financeBillStatusOptions(o.status||'pending')}</select><div class="finance-bill-actions"><button class="btn tiny" onclick="saveFinanceOneOff('${o.id}',${i})">Salvar</button><button class="btn tiny" onclick="deleteFinanceOneOff('${o.id}')">Excluir</button></div></div>`
+    const day=o.due_date?Number(String(o.due_date).slice(-2)):'',catName=o.finance_categories?.name||'Sem categoria',visual=financeBillVisualStatus(o.status||'pending',o.due_date);
+    return `<div class="finance-bill-row bill-${visual.key}"><div class="finance-bill-name"><b>${finEsc(o.name)}</b><small>${finEsc(catName)} • só ${financeMonthName(ym.slice(5,7))}</small></div><input class="field finance-money" id="finOneAmt_${i}" type="number" step="0.01" min="0" value="${o.planned_amount??''}"><input class="field" id="finOneDay_${i}" type="number" min="1" max="31" value="${day}"><select class="field" id="finOneSource_${i}">${financeBillSourceOptions(o.payment_source||'money')}</select><select class="field" id="finOneStatus_${i}">${financeBillStatusOptions(o.status||'pending')}</select><div class="finance-bill-actions"><span class="finance-bill-status ${visual.key}">${visual.label}</span><button class="btn tiny" onclick="saveFinanceOneOff('${o.id}',${i})">Salvar</button><button class="btn tiny" onclick="deleteFinanceOneOff('${o.id}')">Excluir</button></div></div>`
   }).join(''):'<div class="finance-empty">Nenhuma conta pontual neste mês.</div>';
   setTextSafe('finBillsPlanned',finMoney(planned));setTextSafe('finBillsPaid',finMoney(paid));setTextSafe('finBillsPending',finMoney(Math.max(0,planned-paid)));setTextSafe('finBillsCount',String(count));applyFinancePrivacy();
 }
-
 async function saveFinanceBillRow(templateId,monthlyId,i){
   const ym=financeBillMonthValue(),month=ym+'-01',name=document.getElementById('finBillName_'+i)?.value.trim(),categoryId=document.getElementById('finBillCat_'+i)?.value||null,amountRaw=document.getElementById('finBillAmt_'+i)?.value,amount=amountRaw===''?null:Number(amountRaw),day=Number(document.getElementById('finBillDay_'+i)?.value||0)||null,source=document.getElementById('finBillSource_'+i)?.value||'money',status=document.getElementById('finBillStatus_'+i)?.value||'pending',fixed=!!document.getElementById('finBillFixed_'+i)?.checked,t=financeBillTemplatesCache.find(x=>x.id===templateId);if(!t)return;if(!name)return cloudMsg('A conta precisa ter um nome.');
   const row={user_id:currentUserId,template_id:templateId,month,name,category_id:categoryId,due_date:financeBillDueDate(ym,day),planned_amount:amount,payment_source:source,status,paid_amount:status==='paid'?(amount||0):null,paid_at:status==='paid'?new Date().toISOString():null,exclude_from_consumption:!!t.exclude_from_consumption};
   let q=monthlyId?sb.from('finance_bill_monthly').update(row).eq('id',monthlyId).eq('user_id',currentUserId):sb.from('finance_bill_monthly').insert(row);const {error}=await q;if(error)return cloudMsg('Contas a pagar: '+error.message);
   const patch={name,category_id:categoryId,fixed_amount:fixed,payment_source:source,due_day:day};if(fixed)patch.default_amount=amount;else patch.default_amount=null;const {error:te}=await sb.from('finance_bill_templates').update(patch).eq('id',templateId).eq('user_id',currentUserId);if(te)return cloudMsg('Conta recorrente: '+te.message);
-  cloudMsg('Conta salva',true);await loadFinanceBills();
+  cloudMsg('Conta salva',true);await loadFinanceBills();await loadFinanceStatus();
 }
 
 async function saveFinanceOneOff(id,i){
   const ym=financeBillMonthValue(),amount=Number(document.getElementById('finOneAmt_'+i)?.value||0),day=Number(document.getElementById('finOneDay_'+i)?.value||0)||null,source=document.getElementById('finOneSource_'+i)?.value||'money',status=document.getElementById('finOneStatus_'+i)?.value||'pending';
   const {error}=await sb.from('finance_bill_monthly').update({planned_amount:amount||null,due_date:financeBillDueDate(ym,day),payment_source:source,status,paid_amount:status==='paid'?amount:null,paid_at:status==='paid'?new Date().toISOString():null}).eq('id',id).eq('user_id',currentUserId);
-  if(error)return cloudMsg('Contas a pagar: '+error.message);cloudMsg('Conta atualizada',true);await loadFinanceBills();
+  if(error)return cloudMsg('Contas a pagar: '+error.message);cloudMsg('Conta atualizada',true);await loadFinanceBills();await loadFinanceStatus();
 }
 
 async function addFinanceBill(){
