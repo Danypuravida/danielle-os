@@ -3985,7 +3985,7 @@ function txCategoryName(t){return t.finance_categories?.name||'Não classificado
 function financeMetricData(tx){let income=0,expense=0,refund=0,savings=0,interest=0,cashIn=0,cashOut=0,cardPayments=0;const cats={},months={};for(const t of tx){const a=Number(t.amount||0),m=String(t.transaction_date||'').slice(0,7),isCard=t.source_document_kind==='monthly_credit_card_bill';months[m]??={income:0,expense:0,refund:0,savings:0};if(t.direction==='income'){income+=a;months[m].income+=a;if(!isCard)cashIn+=a}else if(t.direction==='expense'&&!t.exclude_from_spend){expense+=a;months[m].expense+=a;const c=txCategoryName(t);cats[c]=(cats[c]||0)+a;if(c==='Taxas e juros')interest+=a;if(!isCard)cashOut+=a}else if(t.direction==='refund'){refund+=a;months[m].refund+=a;if(!isCard)cashIn+=a}else if(t.direction==='savings'){savings+=a;months[m].savings+=a;if(!isCard)cashOut+=a}else if(t.direction==='transfer'&&t.is_card_payment&&!isCard){cashOut+=a;cardPayments+=a}}const netSpend=Math.max(0,expense-refund),net=income-netSpend,cashNet=cashIn-cashOut;return {income,expense,refund,netSpend,net,savings,interest,cats,months,rate:income?net/income:0,cashIn,cashOut,cashNet,cardPayments}}
 async function fetchAllFinanceTransactions(start,end){const all=[];let from=0;const page=1000;while(true){const r=await sb.from('finance_transactions').select('id,transaction_date,purchase_date,billing_month,description,counterparty,merchant,amount,direction,category_id,classification_source,exclude_from_spend,is_card_payment,installment_number,installment_total,source_document_kind,raw_type,finance_categories(name,kind)').eq('user_id',currentUserId).gte('transaction_date',start).lte('transaction_date',end).order('transaction_date',{ascending:false}).range(from,from+page-1);if(r.error)return r;all.push(...(r.data||[]));if(!r.data||r.data.length<page)break;from+=page}return {data:all,error:null}}
 let financeGoalFundingCache=[];
-async function loadFinance(){if(!currentUserId)return;applyFinancePrivacy();renderFinanceMonthPicker();const md=document.getElementById('finManualDate');if(md&&!md.value)md.value=isoDateLocal();const period=financePeriod(),{start,end}=period;const [txR,cR,gR,faR]=await Promise.all([fetchAllFinanceTransactions(start,end),sb.from('finance_categories').select('id,name,kind,essential_default').eq('user_id',currentUserId).eq('active',true).order('name'),sb.from('finance_goals').select('*').eq('user_id',currentUserId).order('created_at',{ascending:false}),sb.from('finance_goal_funding_actions').select('*').eq('user_id',currentUserId).eq('status','active').order('monthly_savings',{ascending:false})]);if(txR.error){cloudMsg('Financeiro: '+txR.error.message);return}financeTx=filterFinanceTransactionsByMonths(txR.data||[],period);financeCategories=cR.data||[];financeGoalsCache=gR.data||[];financeGoalFundingCache=faR.data||[];renderFinanceSummary();setTextSafe('finIncomeSub',period.label);renderFinanceReview();renderFinanceCorrections();renderFinanceGoals();await Promise.all([loadFinancePatrimony(),loadFinanceBalance(),loadFinanceStatus()]);applyFinancePrivacy()}
+async function loadFinance(){if(!currentUserId)return;applyFinancePrivacy();renderFinanceMonthPicker();const md=document.getElementById('finManualDate');if(md&&!md.value)md.value=isoDateLocal();const period=financePeriod(),{start,end}=period;const [txR,cR,gR,faR]=await Promise.all([fetchAllFinanceTransactions(start,end),sb.from('finance_categories').select('id,name,kind,essential_default').eq('user_id',currentUserId).eq('active',true).order('name'),sb.from('finance_goals').select('*').eq('user_id',currentUserId).order('created_at',{ascending:false}),sb.from('finance_goal_funding_actions').select('*').eq('user_id',currentUserId).eq('status','active').order('monthly_savings',{ascending:false})]);if(txR.error){cloudMsg('Financeiro: '+txR.error.message);return}financeTx=filterFinanceTransactionsByMonths(txR.data||[],period);financeCategories=cR.data||[];financeGoalsCache=gR.data||[];financeGoalFundingCache=faR.data||[];renderFinanceSummary();setTextSafe('finIncomeSub',period.label);renderFinanceReview();renderFinanceCorrections();renderFinanceGoals();renderFinanceCoachAudit();await Promise.all([loadFinancePatrimony(),loadFinanceBalance(),loadFinanceStatus()]);applyFinancePrivacy()
 function renderFinanceSummary(){const d=financeMetricData(financeTx);setTextSafe('finIncome',finMoney(d.income));setTextSafe('finSpend',finMoney(d.netSpend));setTextSafe('finNet',finMoney(d.net));setTextSafe('finSavingsRate',finPct(d.rate));setTextSafe('finInterest',finMoney(d.interest));setTextSafe('finCashIn',finMoney(d.cashIn));setTextSafe('finCashOut',finMoney(d.cashOut));setTextSafe('finCashNet',finMoney(d.cashNet));setTextSafe('finCardPayments',finMoney(d.cardPayments));const unc=financeTx.filter(t=>t.classification_source==='unclassified').length,quality=financeTx.length?Math.round((1-unc/financeTx.length)*100):0;setTextSafe('financeDataQuality',financeTx.length?`Qualidade dos dados: ${quality}% • ${unc} transação(ões) sem classificação`:'Sem dados importados neste período.');setTextSafe('finReviewBadge',unc?`• ${unc}`:'');renderFinanceCategories(d);renderFinanceMonths(d);renderFinanceHealth(d,unc,quality);renderFinanceRecurring();renderFinanceTopTransactions()}
 function renderFinanceCategories(d){
   const el=document.getElementById('financeCategoryBars');if(!el)return;
@@ -4265,6 +4265,91 @@ async function completeFinanceGoal(id){await sb.from('finance_goals').update({st
 async function loadFinancePatrimony(){if(!currentUserId)return;const [aR,lR]=await Promise.all([sb.from('finance_assets').select('*').eq('user_id',currentUserId).eq('active',true).order('current_value',{ascending:false}),sb.from('finance_liabilities').select('*').eq('user_id',currentUserId).eq('status','active').order('outstanding_balance',{ascending:false})]);financeAssetsCache=aR.data||[];financeLiabilitiesCache=lR.data||[];const at=financeAssetsCache.reduce((s,x)=>s+Number(x.current_value||0),0),lt=financeLiabilitiesCache.reduce((s,x)=>s+Number(x.outstanding_balance||0),0);setTextSafe('finAssetsTotal',finMoney(at));setTextSafe('finLiabilitiesTotal',finMoney(lt));setTextSafe('finNetWorth',finMoney(at-lt));const ae=document.getElementById('financeAssets'),le=document.getElementById('financeLiabilities');if(ae)ae.innerHTML=financeAssetsCache.length?financeAssetsCache.map(x=>`<div class="task"><span><b>${finEsc(x.name)}</b><br><span class="muted tiny">${finEsc(x.asset_type)}</span></span><b class="finance-money" style="margin-left:auto">${finMoney(x.current_value)}</b></div>`).join(''):'<span class="muted">Cadastre reserva, investimentos e outros ativos.</span>';if(le)le.innerHTML=financeLiabilitiesCache.length?financeLiabilitiesCache.map(x=>`<div class="task"><span><b>${finEsc(x.name)}</b><br><span class="muted tiny">${finEsc(x.liability_type)}</span></span><b class="finance-money" style="margin-left:auto">${finMoney(x.outstanding_balance)}</b></div>`).join(''):'<span class="muted">Nenhuma dívida cadastrada.</span>';applyFinancePrivacy()}
 async function addFinanceAsset(){const name=document.getElementById('finAssetName')?.value.trim(),value=Number(document.getElementById('finAssetValue')?.value||0);if(!name||value<0)return;await sb.from('finance_assets').insert({user_id:currentUserId,name,asset_type:'investment',current_value:value,liquidity:'short',updated_value_at:new Date().toISOString()});document.getElementById('finAssetName').value='';document.getElementById('finAssetValue').value='';loadFinancePatrimony()}
 async function addFinanceLiability(){const name=document.getElementById('finDebtName')?.value.trim(),value=Number(document.getElementById('finDebtValue')?.value||0);if(!name||value<0)return;await sb.from('finance_liabilities').insert({user_id:currentUserId,name,liability_type:'other',outstanding_balance:value,status:'active'});document.getElementById('finDebtName').value='';document.getElementById('finDebtValue').value='';loadFinancePatrimony()}
+let financeCoachPreferencesCache=null;
+function financeEvidenceHtml(refs){
+  const ids=[...(refs||[])].filter(Boolean);
+  if(!ids.length)return '';
+  const items=ids.map(id=>financeTx.find(t=>t.id===id)).filter(Boolean);
+  if(!items.length)return '';
+  return `<details class="finance-evidence"><summary>Ver ${items.length} lançamento(s) que sustentam isso</summary><div class="finance-evidence-list">${items.map(t=>`
+    <div class="finance-evidence-row">
+      <span>${new Date(t.transaction_date+'T12:00:00').toLocaleDateString('pt-BR')}</span>
+      <span><b>${finEsc(t.description||t.counterparty||'Movimentação')}</b></span>
+      <span class="muted">${finEsc(txCategoryName(t))}${t.classification_source==='unclassified'?' • não classificado':t.classification_source==='rule'?' • regra automática':''}</span>
+      <span class="finance-money">${finMoney(t.amount)}</span>
+      <button class="btn tiny" onclick="openFinanceCorrectionForTx('${t.id}')">Corrigir</button>
+    </div>`).join('')}</div></details>`;
+}
+function openFinanceCorrectionForTx(id){
+  const t=financeTx.find(x=>x.id===id);if(!t)return;
+  const btn=document.querySelector('[data-fin-tab="revisao"]');openFinanceTab('revisao',btn);
+  const term=t.counterparty||t.description||'';
+  if(t.classification_source==='unclassified'){
+    const s=document.getElementById('financeReviewSearch');if(s)s.value=term;renderFinanceReview();
+    document.getElementById('financeReviewList')?.scrollIntoView({behavior:'smooth',block:'center'});
+  }else{
+    const s=document.getElementById('financeCorrectionSearch');if(s)s.value=term;renderFinanceCorrections();
+    document.getElementById('financeCorrections')?.scrollIntoView({behavior:'smooth',block:'center'});
+  }
+}
+function renderFinanceCoachAudit(){
+  const el=document.getElementById('financeCoachAudit');if(!el)return;
+  const rows=financeTx.filter(t=>t.direction==='expense'&&!t.exclude_from_spend&&txCategoryName(t)==='Taxas e juros')
+    .sort((a,b)=>String(b.transaction_date).localeCompare(String(a.transaction_date))||Number(b.amount)-Number(a.amount));
+  if(!rows.length){el.innerHTML='';return}
+  const total=rows.reduce((s,t)=>s+Number(t.amount||0),0);
+  el.innerHTML=`<div class="card finance-audit-card"><div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="kicker">RASTREABILIDADE</div><h2>O que está dentro de “Taxas e juros”</h2><p class="muted">O agente não deve mais chamar tudo isso simplesmente de juros. Veja exatamente os lançamentos usados e corrija o que estiver classificado errado.</p></div><b class="finance-money">${finMoney(total)}</b></div><div class="finance-audit-warning">Parcelamento, anuidade, multa, encargo e juros são coisas diferentes. Se um item estiver na categoria errada, use <b>Corrigir</b> — a próxima análise já parte da classificação nova.</div><div class="finance-evidence-list" style="margin-top:9px">${rows.map(t=>`<div class="finance-evidence-row"><span>${new Date(t.transaction_date+'T12:00:00').toLocaleDateString('pt-BR')}</span><span><b>${finEsc(t.description||t.counterparty||'Movimentação')}</b></span><span class="muted">${t.source_document_kind==='monthly_credit_card_bill'?'fatura do cartão':'extrato'} • ${t.classification_source==='rule'?'regra automática':finEsc(t.classification_source||'')}</span><span class="finance-money">${finMoney(t.amount)}</span><button class="btn tiny" onclick="openFinanceCorrectionForTx('${t.id}')">Corrigir</button></div>`).join('')}</div></div>`;
+  applyFinancePrivacy();
+}
+async function loadFinanceCoachWorkspace(){
+  if(!currentUserId)return;
+  renderFinanceCoachAudit();
+  const {data,error}=await sb.from('finance_coach_preferences').select('*').eq('user_id',currentUserId).limit(1).maybeSingle();
+  if(!error&&data){
+    financeCoachPreferencesCache=data;
+    const style=document.getElementById('finCoachStyleLabel');if(style)style.textContent=data.savings_style==='aggressive'?'estratégia agressiva':data.savings_style==='conservative'?'estratégia conservadora':'estratégia equilibrada';
+    const chips=document.getElementById('finCoachProfileChips');if(chips)chips.innerHTML=[
+      data.homeowner===true?'moradia própria':null,
+      data.work_from_home===true?'home office':null,
+      data.dependents===0?'0 dependentes':data.dependents!=null?String(data.dependents)+' dependente(s)':null,
+      data.discretionary_reduction_min_pct!=null&&data.discretionary_reduction_max_pct!=null?Number(data.discretionary_reduction_min_pct).toFixed(0)+'–'+Number(data.discretionary_reduction_max_pct).toFixed(0)+'% de corte discricionário como faixa de referência':null
+    ].filter(Boolean).map(x=>`<span class="finance-pill">${finEsc(x)}</span>`).join('');
+    const g=document.getElementById('finCoachGuidance');if(g&&document.activeElement!==g)g.value=data.guidance||'';
+  }
+  await loadFinanceCoachChat();
+  applyFinancePrivacy();
+}
+async function saveFinanceCoachGuidance(){
+  if(!currentUserId)return;
+  const guidance=document.getElementById('finCoachGuidance')?.value.trim()||null;
+  const base=financeCoachPreferencesCache||{user_id:currentUserId,savings_style:'aggressive',homeowner:true,work_from_home:true,dependents:0,discretionary_reduction_min_pct:20,discretionary_reduction_max_pct:45};
+  const {error}=await sb.from('finance_coach_preferences').upsert({...base,user_id:currentUserId,guidance,updated_at:new Date().toISOString()},{onConflict:'user_id'});
+  if(error)return cloudMsg('Diretrizes do agente: '+error.message);
+  cloudMsg('Diretrizes financeiras salvas',true);await loadFinanceCoachWorkspace();
+}
+function fillFinanceChat(text){const el=document.getElementById('financeChatInput');if(el){el.value=text;el.focus()}}
+async function loadFinanceCoachChat(){
+  const el=document.getElementById('financeChatHistory');if(!el||!currentUserId)return;
+  const {data,error}=await sb.from('ai_conversations').select('id,user_question,assistant_response,created_at').eq('user_id',currentUserId).eq('conversation_type','finance_agent_chat').order('created_at',{ascending:true}).limit(30);
+  if(error){el.innerHTML='<div class="muted">Não consegui carregar a conversa.</div>';return}
+  const rows=data||[];
+  el.innerHTML=rows.length?rows.map(x=>`<div class="finance-chat-msg user"><small>Você</small>${finEsc(x.user_question||'')}</div><div class="finance-chat-msg ai"><small>Agente financeiro</small>${finEsc(x.assistant_response||'')}</div>`).join(''):'<div class="muted">Ainda não há conversa. Faça a análise e questione o que quiser aqui.</div>';
+  el.scrollTop=el.scrollHeight;applyFinancePrivacy();
+}
+async function sendFinanceChat(prefill){
+  if(!currentUserId)return;
+  const input=document.getElementById('financeChatInput'),message=String(prefill||input?.value||'').trim();if(!message)return cloudMsg('Escreva o que quer discutir com o agente.');
+  const btn=document.getElementById('financeChatSendBtn');if(btn){btn.disabled=true;btn.textContent='Pensando…'}
+  try{
+    const period=financePeriod();
+    const data=await callEdge('finance-chat',{message,start_date:period.start,end_date:period.end,selected_months:period.monthKeys});
+    if(input&&!prefill)input.value='';
+    await loadFinanceCoachChat();
+    applyFinancePrivacy();
+  }catch(e){cloudMsg('Conversa financeira: '+(e?.message||String(e)))}
+  finally{if(btn){btn.disabled=false;btn.textContent='Enviar'}}
+}
+
 async function runFinanceCoach(btn){
   const period=financePeriod(),{start,end}=period;
   if(btn){btn.disabled=true;btn.textContent='Analisando…'}
@@ -4276,8 +4361,8 @@ async function runFinanceCoach(btn){
     const ring=document.getElementById('financeScoreRing');if(ring)ring.style.setProperty('--score',Math.max(0,Math.min(100,Number(r.score||0))));
     const out=document.getElementById('financeCoachOutput');
     const wins=(r.wins||[]).map(x=>`<div class="finance-alert good"><b>${finEsc(x.title)}</b><div class="muted">${finEsc(x.detail)}</div></div>`).join('');
-    const actions=(r.actions||[]).map(x=>`<div class="finance-alert ${x.priority==='high'?'high':''}"><b>${finEsc(x.title)}</b><div class="muted">${finEsc(x.why)}</div>${x.estimated_monthly_impact!=null?`<div class="tiny good">Impacto estimado: <span class="finance-money">${finMoney(x.estimated_monthly_impact)}/mês</span></div>`:''}</div>`).join('');
-    const risks=(r.risks||[]).map(x=>`<div class="finance-alert ${x.severity==='high'?'high':''}"><b>${finEsc(x.title)}</b><div class="muted">${finEsc(x.detail)}</div></div>`).join('');
+    const actions=(r.actions||[]).map(x=>`<div class="finance-alert ${x.priority==='high'?'high':''}"><b>${finEsc(x.title)}</b><div class="muted">${finEsc(x.why)}</div>${x.estimated_monthly_impact!=null?`<div class="tiny good">Impacto estimado: <span class="finance-money">${finMoney(x.estimated_monthly_impact)}/mês</span></div>`:''}${financeEvidenceHtml(x.evidence_refs)}</div>`).join('');
+    const risks=(r.risks||[]).map(x=>`<div class="finance-alert ${x.severity==='high'?'high':''}"><b>${finEsc(x.title)}</b><div class="muted">${finEsc(x.detail)}</div>${financeEvidenceHtml(x.evidence_refs)}</div>`).join('');
     const goals=(r.suggested_goals||[]).map((g,i)=>{
       const target=g.target_amount!=null?`<b class="finance-money">${finMoney(g.target_amount)}</b>`:g.target_percent!=null?`<b>${Number(g.target_percent).toFixed(1)}%</b>`:'';
       const date=g.target_date?new Date(g.target_date+'T12:00:00').toLocaleDateString('pt-BR'):'';
@@ -4296,6 +4381,8 @@ async function runFinanceCoach(btn){
     const cash=r.cash_message?`<div class="callout" style="margin-bottom:12px"><b>Caixa agora</b><div style="margin-top:5px">${finEsc(r.cash_message)}</div></div>`:'';
     const confidence=r.confidence?`<span class="finance-pill">confiança ${finEsc(r.confidence)}</span>`:'';
     out.innerHTML=`<div class="card">${cash}<div class="row" style="justify-content:space-between"><h2>Diagnóstico e prioridades</h2>${confidence}</div><h3>O que está funcionando</h3>${wins||'<span class="muted">Sem destaque positivo suficiente nos dados.</span>'}<h3 style="margin-top:18px">Prioridades</h3>${actions||'<span class="muted">Nenhuma ação prioritária.</span>'}<h3 style="margin-top:18px">Riscos</h3>${risks||'<span class="muted">Nenhum risco relevante identificado.</span>'}${questions?`<h3 style="margin-top:18px">O que melhora a próxima análise</h3><ul class="muted">${questions}</ul>`:''}</div><div class="card"><div class="kicker">PLANO PROPOSTO</div><h2>Metas que o agente propõe</h2><p class="muted">Não são só ideias: devem ter número, prazo e primeira ação. Você escolhe quais entram no seu plano.</p>${goals||'<span class="muted">Ainda não há base suficiente para propor uma meta responsável.</span>'}</div>`;
+    renderFinanceCoachAudit();
+    await loadFinanceCoachChat();
     applyFinancePrivacy();
   }catch(e){cloudMsg('Agente financeiro: '+(e?.message||String(e)))}
   finally{if(btn){btn.disabled=false;btn.textContent='Analisar minhas finanças'}}
