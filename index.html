@@ -70,6 +70,7 @@
 .finance-bill-status.pending{background:rgba(215,181,109,.14);color:#e5c87f;border:1px solid rgba(215,181,109,.34)}
 .finance-bill-status.overdue{background:rgba(223,136,127,.14);color:#efaaa2;border:1px solid rgba(223,136,127,.34)}
 .finance-weekly-target{display:grid;grid-template-columns:minmax(220px,1fr) auto;gap:12px;align-items:center;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:11px;background:#0e151e}
+.finance-weekly-suggestion{display:none;padding:8px 10px;border:1px dashed #3b5168;border-radius:9px;background:#0b1219}.finance-weekly-suggestion.show{display:block}.finance-weekly-suggestion b{color:#a7d8bd}
 @media(max-width:700px){.finance-weekly-target{grid-template-columns:1fr}}
 
 .finance-correction-row{display:grid;grid-template-columns:minmax(220px,1.5fr) 110px 150px minmax(170px,1fr) auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid #1e2937}
@@ -1239,10 +1240,15 @@ select.field{max-width:100%}
       <div class="finance-health-item"><b id="finLiveDue">—</b><span>contas próximas / vencidas</span></div>
     </div>
     <div class="finance-weekly-target">
-      <div><b>Meta mínima de caixa desta semana</b><div class="tiny muted">O James te alerta se o valor realmente livre cair abaixo deste piso.</div></div>
+      <div>
+        <b>Meta mínima de caixa desta semana</b>
+        <div class="tiny muted">O James te alerta se o valor realmente livre cair abaixo deste piso.</div>
+        <div class="finance-weekly-suggestion" id="finWeeklyCashSuggestion" style="margin-top:7px"></div>
+      </div>
       <div class="row" style="gap:7px">
-        <input class="field finance-money-input" id="finWeeklyCashTarget" type="number" step="0.01" min="0" placeholder="Ex.: 3000" style="width:150px">
-        <button class="btn" onclick="saveFinanceWeeklyCashTarget()">Salvar meta</button>
+        <input class="field finance-money-input" id="finWeeklyCashTarget" type="number" step="0.01" min="0" placeholder="Ex.: 1500" style="width:150px">
+        <button class="btn" id="finWeeklyUseSuggestion" onclick="useFinanceSuggestedCashTarget()" style="display:none">Usar sugestão</button>
+        <button class="btn primary" onclick="saveFinanceWeeklyCashTarget()">Salvar meta</button>
       </div>
       <div class="tiny" id="finWeeklyCashTargetState"></div>
     </div>
@@ -4016,6 +4022,13 @@ async function loadFinanceStatus(){
     const due=(data.due_soon||[]).length,over=(data.overdue||[]).length,today=(data.due_today||[]).length;
     setTextSafe('finLiveDue',over?over+' vencida(s)':today?today+' para hoje':due?due+' próxima(s)':'0');
     const targetInput=document.getElementById('finWeeklyCashTarget');if(targetInput&&document.activeElement!==targetInput)targetInput.value=data.weekly_target==null?'':Number(data.weekly_target).toFixed(2);
+    const suggestion=document.getElementById('finWeeklyCashSuggestion'),useBtn=document.getElementById('finWeeklyUseSuggestion');
+    if(suggestion&&data.suggested_weekly_target!=null){
+      const same=data.weekly_target!=null&&Math.abs(Number(data.weekly_target)-Number(data.suggested_weekly_target))<0.01;
+      suggestion.classList.add('show');
+      suggestion.innerHTML='<b>Sugestão do agente: <span class="finance-money">'+finMoney(data.suggested_weekly_target)+'</span></b><div class="tiny muted" style="margin-top:3px">Baseada nos últimos 90 dias: cerca de 1,5 semana de gastos essenciais ou 10% da renda mensal média — o maior dos dois, arredondado para cima.</div>';
+      if(useBtn){useBtn.style.display=same?'none':'inline-flex';useBtn.dataset.suggested=String(data.suggested_weekly_target)}
+    }
     const targetState=document.getElementById('finWeeklyCashTargetState');
     if(targetState){
       if(data.weekly_target==null)targetState.innerHTML='<span class="muted">Defina um piso para o caixa livre desta semana.</span>';
@@ -4027,6 +4040,12 @@ async function loadFinanceStatus(){
     if(el)el.innerHTML=(data.alerts||[]).slice(0,4).map(a=>`<div class="finance-alert ${a.severity==='critical'||a.severity==='warning'?'high':'good'}"><b>${finEsc(a.title)}</b><div class="muted">${finEsc(a.message)}</div></div>`).join('');
     if(data.free_after_pending!=null&&data.free_after_pending<0)box.style.borderColor='#80514c';else box.style.borderColor='';
   }catch(e){console.warn('finance-status',e)}
+}
+function useFinanceSuggestedCashTarget(){
+  const btn=document.getElementById('finWeeklyUseSuggestion'),input=document.getElementById('finWeeklyCashTarget');
+  const v=Number(btn?.dataset.suggested||0);if(!input||!v)return;
+  input.value=v.toFixed(2);input.focus();
+  const state=document.getElementById('finWeeklyCashTargetState');if(state)state.innerHTML='<span class="muted">Sugestão preenchida. Salve para ativar o alerta do James.</span>';
 }
 async function saveFinanceWeeklyCashTarget(){
   if(!currentUserId)return;
