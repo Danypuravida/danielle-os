@@ -3933,19 +3933,22 @@ function toggleFinancePrivacy(){
 function maskFinanceCurrencyText(root){
   if(!root)return;
   const rx=/R\$\s*-?\s*\d+(?:\.\d{3})*(?:,\d{2})?/g;
-  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{
-    acceptNode(node){
-      const p=node.parentElement;
-      if(!p||['SCRIPT','STYLE','TEXTAREA','OPTION'].includes(p.tagName))return NodeFilter.FILTER_REJECT;
-      const original=financePrivacyTextCache.get(node)??node.nodeValue??'';
-      return rx.test(original)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
-    }
-  });
-  const nodes=[];let n;while((n=walker.nextNode()))nodes.push(n);
+  const nodes=[];
+  if(root.nodeType===Node.TEXT_NODE)nodes.push(root);
+  else{
+    const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+    let n;while((n=walker.nextNode()))nodes.push(n);
+  }
   for(const node of nodes){
-    const original=financePrivacyTextCache.get(node)??node.nodeValue??'';
-    if(!financePrivacyTextCache.has(node))financePrivacyTextCache.set(node,original);
-    node.nodeValue=original.replace(rx,'R$ ••••');
+    const p=node.parentElement;
+    if(!p||p.closest('script,style,textarea,option'))continue;
+    const current=node.nodeValue??'',cached=financePrivacyTextCache.get(node);
+    const original=cached&&current===cached.masked?cached.original:current;
+    const masked=original.replace(rx,'R$ ••••');
+    if(masked===original){financePrivacyTextCache.delete(node);continue}
+    financePrivacyTextCache.set(node,{original,masked});
+    // Writing an unchanged text node still triggers MutationObserver.
+    if(current!==masked)node.nodeValue=masked;
   }
 }
 function restoreFinanceCurrencyText(root){
@@ -3953,36 +3956,48 @@ function restoreFinanceCurrencyText(root){
   const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
   const nodes=[];let n;while((n=walker.nextNode()))nodes.push(n);
   for(const node of nodes){
-    if(financePrivacyTextCache.has(node))node.nodeValue=financePrivacyTextCache.get(node);
+    const cached=financePrivacyTextCache.get(node);
+    if(!cached)continue;
+    // Do not restore an old amount over a newer update from the page.
+    if(node.nodeValue===cached.masked)node.nodeValue=cached.original;
+    financePrivacyTextCache.delete(node);
   }
 }
 function applyFinancePrivacy(){
   const page=document.getElementById('financePage');
   if(page){
+    // Mask our own writes without observing them; resume for external updates.
+    if(financePrivacyObserver)financePrivacyObserver.disconnect();
     page.classList.toggle('finance-privacy-on',financeHideValues);
     if(financeHideValues){
       maskFinanceCurrencyText(page);
       if(!financePrivacyObserver){
         financePrivacyObserver=new MutationObserver(mutations=>{
           if(!financeHideValues)return;
-          for(const m of mutations){
-            for(const node of m.addedNodes){
-              if(node.nodeType===Node.TEXT_NODE){
-                const holder=node.parentElement;if(holder)maskFinanceCurrencyText(holder);
-              }else if(node.nodeType===Node.ELEMENT_NODE)maskFinanceCurrencyText(node);
+          financePrivacyObserver.disconnect();
+          try{
+            const roots=new Set();
+            for(const m of mutations){
+              for(const node of m.addedNodes)roots.add(node);
+              if(m.type==='characterData')roots.add(m.target);
             }
-            if(m.type==='characterData'&&m.target?.parentElement)maskFinanceCurrencyText(m.target.parentElement);
+            for(const node of roots){
+              if(page.contains(node))maskFinanceCurrencyText(node);
+            }
+          }finally{
+            if(financeHideValues)financePrivacyObserver.observe(page,{subtree:true,childList:true,characterData:true});
           }
         });
-        financePrivacyObserver.observe(page,{subtree:true,childList:true,characterData:true});
       }
+      financePrivacyObserver.observe(page,{subtree:true,childList:true,characterData:true});
     }else{
       if(financePrivacyObserver){financePrivacyObserver.disconnect();financePrivacyObserver=null}
       restoreFinanceCurrencyText(page);
     }
   }
   const b=document.getElementById('financePrivacyBtn');
-  if(b)b.textContent=financeHideValues?'Mostrar valores':'Ocultar valores';
+  const label=financeHideValues?'Mostrar valores':'Ocultar valores';
+  if(b&&b.textContent!==label)b.textContent=label;
 }
 function openFinanceTab(name,btn){document.querySelectorAll('[data-fin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.finPanel===name));document.querySelectorAll('[data-fin-tab]').forEach(x=>x.classList.remove('primary'));if(btn)btn.classList.add('primary');if(name==='contas')loadFinanceBills();if(name==='orcamento')loadFinanceBudgets();if(name==='patrimonio')loadFinancePatrimony();if(name==='coach')loadFinanceCoachWorkspace()}
 async function changeWhatsAppNumber(){if(!confirm('Trocar o número conectado ao James? O número atual deixará de ficar vinculado ao Danielle OS.'))return;await resetWhatsAppPairing()}
