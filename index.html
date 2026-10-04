@@ -31,6 +31,8 @@
 .finance-pie-legend{display:grid;gap:8px}.finance-pie-item{display:grid;grid-template-columns:12px minmax(0,1fr) auto;gap:9px;align-items:center;padding:6px 0}
 .finance-pie-dot{width:10px;height:10px;border-radius:3px}.finance-pie-label{min-width:0}.finance-pie-label b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.finance-pie-label small{color:var(--muted)}
 .finance-balance-edit{display:grid;gap:6px;margin-top:8px}.finance-balance-edit .field{padding:7px;font-size:12px}
+.finance-sim-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}.finance-sim-grid label span{display:block;font-size:12px;color:var(--muted);margin-bottom:5px}
+@media(max-width:900px){.finance-sim-grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.finance-sim-grid{grid-template-columns:1fr}}
 .finance-month-chart{display:flex;align-items:flex-end;gap:9px;min-height:220px;padding-top:24px;overflow-x:auto}.finance-month{min-width:62px;text-align:center}.finance-month-bars{height:160px;display:flex;align-items:flex-end;justify-content:center;gap:5px}.finance-month-bars i{display:block;width:17px;border-radius:5px 5px 2px 2px}.finance-month-bars .in{background:#78b995}.finance-month-bars .out{background:#d7b56d}.finance-month label{display:block;font-size:11px;color:var(--muted);margin-top:7px}
 .finance-health{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.finance-health-item{padding:13px;border:1px solid var(--line);border-radius:11px;background:#0e151e}.finance-health-item b{font-size:18px;display:block}.finance-health-item span{font-size:11px;color:var(--muted)}
 .finance-alert{border-left:3px solid var(--accent);padding:10px 12px;background:#101821;border-radius:8px;margin:8px 0}.finance-alert.high{border-left-color:#df887f}.finance-alert.good{border-left-color:#78b995}
@@ -1296,7 +1298,35 @@ select.field{max-width:100%}
   <div class="finance-tab-panel" data-fin-panel="coach">
     <div class="card finance-coach-hero" style="margin-top:16px"><div class="row" style="gap:18px;align-items:center"><div class="finance-score-ring" id="financeScoreRing" style="--score:0"><b id="financeCoachScore">—</b></div><div style="flex:1"><div class="kicker">AGENTE FINANCEIRO</div><h2 id="financeCoachLabel">Faça a primeira análise</h2><p id="financeCoachSummary" class="muted">Vou cruzar fluxo, consumo, categorias, juros, metas, orçamento e qualidade dos dados.</p><button class="btn primary" id="financeCoachBtn" onclick="runFinanceCoach(this)">Analisar minhas finanças</button></div></div></div>
     <div id="financeCoachOutput" class="finance-split"></div>
-    <div class="card" style="margin-top:16px"><h2>Simulador direto</h2><p class="muted">Sem promessa de retorno: use para enxergar efeito de hábito e prazo.</p><div class="row"><input class="field" id="finSimInitial" type="number" step="0.01" placeholder="Valor inicial"><input class="field" id="finSimMonthly" type="number" step="0.01" placeholder="Aporte mensal"><input class="field" id="finSimMonths" type="number" value="12" min="1" placeholder="Meses"><input class="field" id="finSimRate" type="number" step="0.01" value="0" placeholder="% a.a. opcional"><button class="btn" onclick="runFinanceScenario()">Simular</button></div><div id="financeScenarioResult" class="callout" style="margin-top:12px">Preencha os campos para simular.</div></div>
+    <div class="card" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><h2>Simulador de metas</h2><p class="muted">Escolha o que quer descobrir. A rentabilidade é opcional — deixe 0 para simular só o dinheiro que você guarda.</p></div>
+        <select class="field" id="finSimMode" style="max-width:285px" onchange="updateFinanceSimulatorMode()">
+          <option value="future">Quanto vou ter no futuro?</option>
+          <option value="monthly_needed">Quanto preciso guardar por mês?</option>
+        </select>
+      </div>
+      <div id="finSimFutureFields" class="finance-sim-grid">
+        <label><span>Quanto já tenho</span><input class="field" id="finSimInitial" type="number" step="0.01" placeholder="Ex.: 8000"></label>
+        <label><span>Quanto vou guardar por mês</span><input class="field" id="finSimMonthly" type="number" step="0.01" placeholder="Ex.: 1000"></label>
+        <label><span>Por quanto tempo</span><div class="row" style="gap:6px"><input class="field" id="finSimMonths" type="number" value="12" min="1" placeholder="Meses"><span class="tiny muted">meses</span></div></label>
+        <label><span>Rentabilidade anual (opcional)</span><input class="field" id="finSimRate" type="number" step="0.01" value="0" placeholder="Ex.: 10"></label>
+      </div>
+      <div id="finSimNeededFields" class="finance-sim-grid" hidden>
+        <label><span>Meta que quero alcançar</span><input class="field" id="finSimTarget" type="number" step="0.01" placeholder="Ex.: 24000"></label>
+        <label><span>Quanto já tenho para essa meta</span><input class="field" id="finSimCurrent" type="number" step="0.01" placeholder="Ex.: 8000"></label>
+        <label><span>Em quanto tempo</span><div class="row" style="gap:6px"><input class="field" id="finSimNeededMonths" type="number" value="12" min="1" placeholder="Meses"><span class="tiny muted">meses</span></div></label>
+        <label><span>Rentabilidade anual (opcional)</span><input class="field" id="finSimNeededRate" type="number" step="0.01" value="0" placeholder="Ex.: 10"></label>
+      </div>
+      <div class="row" style="margin-top:10px;gap:7px">
+        <button class="btn" onclick="setFinanceSimMonths(12)">1 ano</button>
+        <button class="btn" onclick="setFinanceSimMonths(24)">2 anos</button>
+        <button class="btn" onclick="setFinanceSimMonths(60)">5 anos</button>
+        <button class="btn primary" onclick="runFinanceScenario()">Simular</button>
+      </div>
+      <div class="tiny muted" style="margin-top:10px">Exemplo: se você tem R$ 8.000 e guarda R$ 1.000 por mês durante 24 meses, escolha “Quanto vou ter no futuro?”. Se quer chegar a R$ 24.000 em 12 meses, escolha “Quanto preciso guardar por mês?”.</div>
+      <div id="financeScenarioResult" class="callout" style="margin-top:12px">Escolha o tipo de simulação e preencha os campos.</div>
+    </div>
   </div>
 </section>
 
@@ -3912,9 +3942,94 @@ async function completeFinanceGoal(id){await sb.from('finance_goals').update({st
 async function loadFinancePatrimony(){if(!currentUserId)return;const [aR,lR]=await Promise.all([sb.from('finance_assets').select('*').eq('user_id',currentUserId).eq('active',true).order('current_value',{ascending:false}),sb.from('finance_liabilities').select('*').eq('user_id',currentUserId).eq('status','active').order('outstanding_balance',{ascending:false})]);financeAssetsCache=aR.data||[];financeLiabilitiesCache=lR.data||[];const at=financeAssetsCache.reduce((s,x)=>s+Number(x.current_value||0),0),lt=financeLiabilitiesCache.reduce((s,x)=>s+Number(x.outstanding_balance||0),0);setTextSafe('finAssetsTotal',finMoney(at));setTextSafe('finLiabilitiesTotal',finMoney(lt));setTextSafe('finNetWorth',finMoney(at-lt));const ae=document.getElementById('financeAssets'),le=document.getElementById('financeLiabilities');if(ae)ae.innerHTML=financeAssetsCache.length?financeAssetsCache.map(x=>`<div class="task"><span><b>${finEsc(x.name)}</b><br><span class="muted tiny">${finEsc(x.asset_type)}</span></span><b class="finance-money" style="margin-left:auto">${finMoney(x.current_value)}</b></div>`).join(''):'<span class="muted">Cadastre reserva, investimentos e outros ativos.</span>';if(le)le.innerHTML=financeLiabilitiesCache.length?financeLiabilitiesCache.map(x=>`<div class="task"><span><b>${finEsc(x.name)}</b><br><span class="muted tiny">${finEsc(x.liability_type)}</span></span><b class="finance-money" style="margin-left:auto">${finMoney(x.outstanding_balance)}</b></div>`).join(''):'<span class="muted">Nenhuma dívida cadastrada.</span>';applyFinancePrivacy()}
 async function addFinanceAsset(){const name=document.getElementById('finAssetName')?.value.trim(),value=Number(document.getElementById('finAssetValue')?.value||0);if(!name||value<0)return;await sb.from('finance_assets').insert({user_id:currentUserId,name,asset_type:'investment',current_value:value,liquidity:'short',updated_value_at:new Date().toISOString()});document.getElementById('finAssetName').value='';document.getElementById('finAssetValue').value='';loadFinancePatrimony()}
 async function addFinanceLiability(){const name=document.getElementById('finDebtName')?.value.trim(),value=Number(document.getElementById('finDebtValue')?.value||0);if(!name||value<0)return;await sb.from('finance_liabilities').insert({user_id:currentUserId,name,liability_type:'other',outstanding_balance:value,status:'active'});document.getElementById('finDebtName').value='';document.getElementById('finDebtValue').value='';loadFinancePatrimony()}
-async function runFinanceCoach(btn){const {start,end}=financePeriod();if(btn){btn.disabled=true;btn.textContent='Analisando…'}try{const data=await callEdge('finance-coach',{start_date:start,end_date:end}),r=data.result||{};setTextSafe('financeCoachScore',String(r.score??'—'));setTextSafe('financeCoachLabel',r.score_label||'Leitura financeira');setTextSafe('financeCoachSummary',r.executive_summary||'Análise concluída.');const ring=document.getElementById('financeScoreRing');if(ring)ring.style.setProperty('--score',Math.max(0,Math.min(100,Number(r.score||0))));const out=document.getElementById('financeCoachOutput');const actions=(r.actions||[]).map((x,i)=>`<div class="finance-alert ${x.priority==='high'?'high':''}"><b>${finEsc(x.title)}</b><div class="muted">${finEsc(x.why)}</div>${x.estimated_monthly_impact!=null?`<div class="tiny good">Impacto estimado: <span class="finance-money">${finMoney(x.estimated_monthly_impact)}/mês</span></div>`:''}</div>`).join('');const risks=(r.risks||[]).map(x=>`<div class="finance-alert ${x.severity==='high'?'high':''}"><b>${finEsc(x.title)}</b><div class="muted">${finEsc(x.detail)}</div></div>`).join('');const goals=(r.suggested_goals||[]).map((g,i)=>`<div class="finance-goal"><b>${finEsc(g.title)}</b><p class="muted">${finEsc(g.reason)}</p><button class="btn tiny" onclick='acceptFinanceSuggestedGoal(${JSON.stringify(g)})'>Criar esta meta</button></div>`).join('');out.innerHTML=`<div class="card"><h2>Prioridades</h2>${actions||'<span class="muted">Nenhuma ação prioritária.</span>'}<h2 style="margin-top:18px">Riscos</h2>${risks||'<span class="muted">Nenhum risco relevante identificado.</span>'}</div><div class="card"><h2>Metas sugeridas</h2>${goals||'<span class="muted">Sem sugestão de meta nova agora.</span>'}</div>`;applyFinancePrivacy()}catch(e){cloudMsg('Agente financeiro: '+(e?.message||String(e)))}finally{if(btn){btn.disabled=false;btn.textContent='Analisar minhas finanças'}}}
-async function acceptFinanceSuggestedGoal(g){const {error}=await sb.from('finance_goals').insert({user_id:currentUserId,title:g.title,horizon:g.horizon||'short',goal_type:g.goal_type||'custom',target_amount:g.target_amount||null,target_percent:g.target_percent||null,status:'active',suggested_by_ai:true,reason:g.reason||null});if(error)return cloudMsg(error.message);cloudMsg('Meta sugerida adicionada',true);loadFinance()}
-function runFinanceScenario(){const initial=Number(document.getElementById('finSimInitial')?.value||0),monthly=Number(document.getElementById('finSimMonthly')?.value||0),months=Math.max(1,Number(document.getElementById('finSimMonths')?.value||12)),annual=Number(document.getElementById('finSimRate')?.value||0)/100;const r=annual>0?Math.pow(1+annual,1/12)-1:0;let total=initial;for(let i=0;i<months;i++)total=total*(1+r)+monthly;const contrib=initial+monthly*months,earn=total-contrib;document.getElementById('financeScenarioResult').innerHTML=`Em ${months} meses: <b class="finance-money">${finMoney(total)}</b> • aportado <span class="finance-money">${finMoney(contrib)}</span>${annual?` • efeito da taxa informada <span class="finance-money">${finMoney(earn)}</span>`:''}.`;applyFinancePrivacy()}
+async function runFinanceCoach(btn){
+  const {start,end}=financePeriod();
+  if(btn){btn.disabled=true;btn.textContent='Analisando…'}
+  try{
+    const data=await callEdge('finance-coach',{start_date:start,end_date:end}),r=data.result||{};
+    setTextSafe('financeCoachScore',String(r.score??'—'));
+    setTextSafe('financeCoachLabel',r.score_label||'Leitura financeira');
+    setTextSafe('financeCoachSummary',r.executive_summary||'Análise concluída.');
+    const ring=document.getElementById('financeScoreRing');if(ring)ring.style.setProperty('--score',Math.max(0,Math.min(100,Number(r.score||0))));
+    const out=document.getElementById('financeCoachOutput');
+    const wins=(r.wins||[]).map(x=>`<div class="finance-alert good"><b>${finEsc(x.title)}</b><div class="muted">${finEsc(x.detail)}</div></div>`).join('');
+    const actions=(r.actions||[]).map(x=>`<div class="finance-alert ${x.priority==='high'?'high':''}"><b>${finEsc(x.title)}</b><div class="muted">${finEsc(x.why)}</div>${x.estimated_monthly_impact!=null?`<div class="tiny good">Impacto estimado: <span class="finance-money">${finMoney(x.estimated_monthly_impact)}/mês</span></div>`:''}</div>`).join('');
+    const risks=(r.risks||[]).map(x=>`<div class="finance-alert ${x.severity==='high'?'high':''}"><b>${finEsc(x.title)}</b><div class="muted">${finEsc(x.detail)}</div></div>`).join('');
+    const goals=(r.suggested_goals||[]).map((g,i)=>{
+      const target=g.target_amount!=null?`<b class="finance-money">${finMoney(g.target_amount)}</b>`:g.target_percent!=null?`<b>${Number(g.target_percent).toFixed(1)}%</b>`:'';
+      const date=g.target_date?new Date(g.target_date+'T12:00:00').toLocaleDateString('pt-BR'):'';
+      const monthly=g.monthly_action_amount!=null?`<div class="tiny good">Próximo ritmo: <span class="finance-money">${finMoney(g.monthly_action_amount)}/mês</span></div>`:'';
+      const first=g.first_action?`<div class="tiny" style="margin-top:6px"><b>Primeira ação:</b> ${finEsc(g.first_action)}</div>`:'';
+      return `<div class="finance-goal">
+        <div class="finance-goal-top"><div><span class="finance-pill">${g.horizon==='short'?'Curto':g.horizon==='medium'?'Médio':'Longo'} prazo</span><h3 style="margin:8px 0 4px">${finEsc(g.title)}</h3></div><div>${target}</div></div>
+        <p class="muted">${finEsc(g.reason||'')}</p>
+        ${date?`<div class="tiny muted">Prazo sugerido: ${date}</div>`:''}${monthly}${first}
+        <div class="row" style="margin-top:10px"><button class="btn primary tiny" onclick='acceptFinanceSuggestedGoal(${JSON.stringify(g)})'>Criar esta meta</button><button class="btn tiny" onclick='simulateFinanceSuggestedGoal(${JSON.stringify(g)})'>Simular esta meta</button></div>
+      </div>`;
+    }).join('');
+    const questions=(r.questions_to_improve_data||[]).map(x=>`<li>${finEsc(x)}</li>`).join('');
+    const cash=r.cash_message?`<div class="callout" style="margin-bottom:12px"><b>Caixa agora</b><div style="margin-top:5px">${finEsc(r.cash_message)}</div></div>`:'';
+    const confidence=r.confidence?`<span class="finance-pill">confiança ${finEsc(r.confidence)}</span>`:'';
+    out.innerHTML=`<div class="card">${cash}<div class="row" style="justify-content:space-between"><h2>Diagnóstico e prioridades</h2>${confidence}</div><h3>O que está funcionando</h3>${wins||'<span class="muted">Sem destaque positivo suficiente nos dados.</span>'}<h3 style="margin-top:18px">Prioridades</h3>${actions||'<span class="muted">Nenhuma ação prioritária.</span>'}<h3 style="margin-top:18px">Riscos</h3>${risks||'<span class="muted">Nenhum risco relevante identificado.</span>'}${questions?`<h3 style="margin-top:18px">O que melhora a próxima análise</h3><ul class="muted">${questions}</ul>`:''}</div><div class="card"><div class="kicker">PLANO PROPOSTO</div><h2>Metas que o agente propõe</h2><p class="muted">Não são só ideias: devem ter número, prazo e primeira ação. Você escolhe quais entram no seu plano.</p>${goals||'<span class="muted">Ainda não há base suficiente para propor uma meta responsável.</span>'}</div>`;
+    applyFinancePrivacy();
+  }catch(e){cloudMsg('Agente financeiro: '+(e?.message||String(e)))}
+  finally{if(btn){btn.disabled=false;btn.textContent='Analisar minhas finanças'}}
+}
+async function acceptFinanceSuggestedGoal(g){
+  const {error}=await sb.from('finance_goals').insert({
+    user_id:currentUserId,title:g.title,horizon:g.horizon||'short',goal_type:g.goal_type||'custom',
+    target_amount:g.target_amount||null,target_percent:g.target_percent||null,target_date:g.target_date||null,
+    monthly_action_amount:g.monthly_action_amount||null,first_action:g.first_action||null,priority:g.priority||null,
+    status:'active',suggested_by_ai:true,reason:g.reason||null
+  });
+  if(error)return cloudMsg(error.message);
+  cloudMsg('Meta sugerida adicionada',true);loadFinance()
+}
+function updateFinanceSimulatorMode(){
+  const mode=document.getElementById('finSimMode')?.value||'future';
+  const a=document.getElementById('finSimFutureFields'),b=document.getElementById('finSimNeededFields');
+  if(a)a.hidden=mode!=='future';if(b)b.hidden=mode!=='monthly_needed';
+  const r=document.getElementById('financeScenarioResult');if(r)r.textContent=mode==='future'?'Informe o que já tem, o aporte mensal e o prazo.':'Informe sua meta, quanto já tem e em quanto tempo quer chegar lá.';
+}
+function setFinanceSimMonths(n){
+  const mode=document.getElementById('finSimMode')?.value||'future';
+  const el=document.getElementById(mode==='future'?'finSimMonths':'finSimNeededMonths');if(el)el.value=n;
+}
+function simulateFinanceSuggestedGoal(g){
+  document.getElementById('finSimMode').value='monthly_needed';updateFinanceSimulatorMode();
+  if(g.target_amount!=null)document.getElementById('finSimTarget').value=Number(g.target_amount);
+  const current=Number(g.current_amount||0);document.getElementById('finSimCurrent').value=current||0;
+  if(g.target_date){
+    const now=new Date(),target=new Date(g.target_date+'T12:00:00');const months=Math.max(1,Math.round((target-now)/(1000*60*60*24*30.4375)));document.getElementById('finSimNeededMonths').value=months;
+  }else if(g.horizon==='short')document.getElementById('finSimNeededMonths').value=12;
+  else if(g.horizon==='medium')document.getElementById('finSimNeededMonths').value=36;
+  else document.getElementById('finSimNeededMonths').value=60;
+  document.getElementById('finSimNeededRate').value=0;
+  runFinanceScenario();
+  document.getElementById('financeScenarioResult')?.scrollIntoView({behavior:'smooth',block:'center'});
+}
+function runFinanceScenario(){
+  const mode=document.getElementById('finSimMode')?.value||'future';
+  const result=document.getElementById('financeScenarioResult');if(!result)return;
+  if(mode==='future'){
+    const initial=Number(document.getElementById('finSimInitial')?.value||0),monthly=Number(document.getElementById('finSimMonthly')?.value||0),months=Math.max(1,Number(document.getElementById('finSimMonths')?.value||12)),annual=Number(document.getElementById('finSimRate')?.value||0)/100;
+    if(initial<0||monthly<0)return cloudMsg('Use valores positivos no simulador.');
+    const r=annual>0?Math.pow(1+annual,1/12)-1:0;let total=initial;
+    for(let i=0;i<months;i++)total=total*(1+r)+monthly;
+    const contrib=initial+monthly*months,earn=total-contrib;
+    result.innerHTML=`Mantendo <b class="finance-money">${finMoney(monthly)}/mês</b> por <b>${months} meses</b>, você chegaria a aproximadamente <b class="finance-money">${finMoney(total)}</b>.${initial?` Você começou com <span class="finance-money">${finMoney(initial)}</span>.`:''}${annual>0?` Do total, cerca de <span class="finance-money">${finMoney(Math.max(0,earn))}</span> viria do efeito da taxa informada.`:` Sem considerar rendimento, o total guardado seria <span class="finance-money">${finMoney(contrib)}</span>.`}`;
+  }else{
+    const target=Number(document.getElementById('finSimTarget')?.value||0),current=Number(document.getElementById('finSimCurrent')?.value||0),months=Math.max(1,Number(document.getElementById('finSimNeededMonths')?.value||12)),annual=Number(document.getElementById('finSimNeededRate')?.value||0)/100;
+    if(target<=0)return cloudMsg('Informe o valor da meta.');if(current<0)return cloudMsg('Informe quanto você já tem para a meta.');
+    const r=annual>0?Math.pow(1+annual,1/12)-1:0;
+    const futureCurrent=current*Math.pow(1+r,months);
+    const remaining=Math.max(0,target-futureCurrent);
+    let monthly=0;
+    if(remaining>0)monthly=r>0?remaining*r/(Math.pow(1+r,months)-1):remaining/months;
+    result.innerHTML=monthly<=0?`Com o valor que você já tem e a taxa informada, a meta de <b class="finance-money">${finMoney(target)}</b> já estaria coberta no prazo.`:`Para chegar a <b class="finance-money">${finMoney(target)}</b> em <b>${months} meses</b>, partindo de <span class="finance-money">${finMoney(current)}</span>, você precisaria guardar aproximadamente <b class="finance-money">${finMoney(monthly)}/mês</b>.${annual>0?' Esse cálculo usa a rentabilidade anual informada.':' Sem considerar rendimento.'}`;
+  }
+  applyFinancePrivacy();
+}
 </script>
 
 </body></html>
