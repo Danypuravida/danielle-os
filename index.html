@@ -475,13 +475,17 @@ select.field{max-width:100%}
 .james-orbit{position:absolute;border:1px solid rgba(255,255,255,.06);border-radius:999px;pointer-events:none}
 .james-orbit.one{width:112px;height:112px;top:18px;left:calc(50% - 56px)}
 .james-orbit.two{width:144px;height:144px;top:2px;left:calc(50% - 72px);opacity:.55}
-.james-source-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.james-source-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
 .source-status-card{position:relative;overflow:hidden;background:linear-gradient(180deg,#121a26 0%,#0f1620 100%)}
 .source-status-card:before{content:"";position:absolute;left:0;top:0;right:0;height:3px;opacity:.95}
 .source-status-card.gmail:before{background:linear-gradient(90deg,#d7b56d,#f4db9a)}
 .source-status-card.calendar:before{background:linear-gradient(90deg,#79a8ff,#aac8ff)}
 .source-status-card.slack:before{background:linear-gradient(90deg,#7b8cff,#d37cff)}
 .source-status-card.todoist:before{background:linear-gradient(90deg,#7cc5a3,#b3ecd0)}
+.source-status-card.whatsapp:before{background:linear-gradient(90deg,#56d37c,#9bf0b7)}
+.whatsapp-pairing{margin-top:12px;padding:11px;border:1px solid rgba(86,211,124,.24);border-radius:11px;background:rgba(86,211,124,.045)}
+.whatsapp-code{margin:7px 0 9px;padding:9px 10px;border-radius:9px;background:#0b1118;border:1px dashed rgba(86,211,124,.45);color:#9bf0b7;font-weight:900;letter-spacing:.07em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+
 .source-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
 .source-card-badge{display:inline-flex;align-items:center;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.04);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 .source-status-card h3{margin:4px 0 8px;font-size:18px}
@@ -564,76 +568,18 @@ select.field{max-width:100%}
 
 
 <style>
-/* ===== Gestão + DISC integrado ===== */
-[data-page="gestao"]{max-width:1360px}
-.disc-note{display:flex;gap:10px;align-items:flex-start;padding:11px 13px;border:1px solid rgba(215,181,109,.28);border-radius:12px;background:rgba(215,181,109,.05);margin:0 0 16px;color:var(--muted)}
-.disc-note b{color:var(--accent)}
-.disc-team-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.disc-person{position:relative;overflow:hidden;background:linear-gradient(180deg,#121a26 0%,#0f1620 100%);padding:16px}
-.disc-person:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,var(--disc-main),var(--disc-second))}
-.disc-person-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px}
-.disc-person-name{font-size:18px;font-weight:850}
-.disc-profile{font-size:11px;padding:4px 8px;border:1px solid var(--line);border-radius:999px;color:var(--accent);white-space:nowrap}
-.disc-role{font-size:13px;color:var(--muted);line-height:1.45;min-height:38px}
-.disc-bars{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:14px 0 12px}
-.disc-bar{display:flex;flex-direction:column;gap:5px;align-items:center}
-.disc-bar-track{height:56px;width:100%;max-width:34px;border-radius:8px;background:#0b1118;border:1px solid var(--line);display:flex;align-items:flex-end;overflow:hidden}
-.disc-bar-fill{width:100%;border-radius:7px 7px 0 0;background:var(--bar-color)}
-.disc-bar b{font-size:11px}
-.disc-bar small{font-size:10px;color:var(--muted)}
-.disc-mini{display:grid;gap:7px;margin-top:9px}
-.disc-mini div{padding:8px 9px;border-radius:9px;background:rgba(255,255,255,.025);font-size:12px;line-height:1.42}
-.disc-mini b{color:var(--accent)}
-.disc-person details{margin-top:10px;border-top:1px solid var(--line);padding-top:9px}
-.disc-person summary{cursor:pointer;color:var(--accent);font-size:12px;font-weight:750}
-.disc-person details p{font-size:12px;color:var(--muted);margin:7px 0 0;line-height:1.45}
-.team-lenses{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:10px}
-.team-lens{padding:12px;border:1px solid var(--line);border-radius:11px;background:#0e151e}
-.team-lens b{display:block;color:var(--accent);margin-bottom:4px}
-.team-lens span{font-size:12px;color:var(--muted)}
-.disc-risk-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
-.disc-risk{padding:12px;border:1px solid var(--line);border-radius:11px;background:#0e151e}
-.disc-risk b{display:block;margin-bottom:4px;color:#efc07b}
-.disc-risk p{margin:0;font-size:12px;color:var(--muted);line-height:1.45}
-.team-agreements{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:10px}
-.team-agreement{padding:13px;border-left:3px solid var(--accent);background:#101721;border-radius:0 11px 11px 0}
-.team-agreement b{display:block;margin-bottom:5px}
-.team-agreement p{margin:0;font-size:12px;color:var(--muted);line-height:1.48}
-.team-map-card{border:1px solid var(--line);border-radius:14px;padding:14px;margin:10px 0;background:linear-gradient(180deg,#111924 0%,#0f161f 100%)}
-.team-map-disc{margin-top:10px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
-.team-map-disc div{padding:9px 10px;border:1px solid #223244;border-radius:10px;background:#0d141d;font-size:12px;color:var(--muted);line-height:1.42}
-.team-map-disc b{color:var(--accent)}
-/* Contraste consistente no tema escuro */
-.person-btn,.tabbtn,.meeting-agenda-card{color:var(--accent)}
-.person-btn .person-name,.meeting-agenda-card .meeting-title{color:var(--accent)}
-.person-btn:hover,.tabbtn:hover,.meeting-agenda-card:hover{color:#f0d58f}
-.tabbtn.active{color:#17130b}
-.field,.field option{color:var(--text)}
-@media(max-width:1100px){.disc-team-grid,.team-lenses{grid-template-columns:repeat(2,minmax(0,1fr))}.disc-risk-grid,.team-agreements{grid-template-columns:1fr}}
-@media(max-width:650px){.disc-team-grid,.team-lenses,.team-map-disc{grid-template-columns:1fr}}
-</style>
-
-
-<style>
-.management-hierarchy{
-  display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;
-  margin:16px 0 18px;padding:15px;border:1px solid var(--line);border-radius:14px;
-  background:linear-gradient(180deg,#111a25 0%,#0e151e 100%);
-}
-.hierarchy-person{min-width:155px;padding:11px 13px;border:1px solid var(--line);border-radius:12px;background:#0d141d}
-.hierarchy-person span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em}
-.hierarchy-person b{display:block;color:var(--accent);font-size:18px;margin:3px 0}
-.hierarchy-person small{color:var(--muted)}
-.hierarchy-person.manager{border-color:rgba(233,94,82,.35)}
-.hierarchy-person.me{border-color:rgba(215,181,109,.45)}
-.hierarchy-person.report{border-color:rgba(124,197,163,.32)}
-.hierarchy-arrow{color:var(--accent);font-size:22px;font-weight:900}
-.hierarchy-reports{display:flex;gap:8px;flex-wrap:wrap}
-@media(max-width:760px){
-  .management-hierarchy{flex-direction:column;align-items:stretch}
-  .hierarchy-arrow{text-align:center}
-  .hierarchy-reports{display:grid;grid-template-columns:1fr 1fr}
-}
+/* Contraste em controles sobre fundo escuro */
+.person-btn,
+.tabbtn,
+.meeting-agenda-card{color:var(--accent);}
+.person-btn .person-name,
+.meeting-agenda-card .meeting-title{color:var(--accent);}
+.person-btn:hover,
+.tabbtn:hover,
+.meeting-agenda-card:hover{color:#f0d58f;}
+.tabbtn.active{color:#17130b;}
+.field,
+.field option{color:var(--text);}
 </style>
 
 </head><body>
@@ -820,6 +766,25 @@ select.field{max-width:100%}
       <h3>Execução do dia</h3>
       <p id="sourceTodoistState" class="muted">Resumo superficial aqui; aprofundamento na aba Todoist.</p>
     </div>
+    <div class="card source-status-card whatsapp">
+      <div class="source-card-top"><span class="source-card-badge">WhatsApp • James</span><span class="tag" id="sourceWhatsAppCount">0</span></div>
+      <h3>Fala que eu organizo</h3>
+      <p id="sourceWhatsAppState" class="muted">Preparando sua conexão com o WhatsApp.</p>
+
+      <div id="whatsappPairingBox" class="whatsapp-pairing" hidden>
+        <div class="tiny muted">Depois de entrar no Sandbox, envie:</div>
+        <div class="whatsapp-code" id="whatsappPairingMessage">JAMES ————</div>
+        <div class="assistant-actions">
+          <button class="btn tiny" onclick="copyWhatsAppPairing()">Copiar mensagem</button>
+          <button class="btn tiny" onclick="copyWhatsAppWebhook()">Copiar webhook</button>
+          <button class="btn tiny" onclick="resetWhatsAppPairing()">Novo código</button>
+        </div>
+      </div>
+
+      <div class="assistant-actions" style="margin-top:10px">
+        <button class="btn tiny" onclick="loadWhatsAppStatus(true)">Atualizar status</button>
+      </div>
+    </div>
   </div>
 
   <div class="grid" style="margin-top:18px">
@@ -908,142 +873,7 @@ select.field{max-width:100%}
 </section>
 
 <section class="page" data-page="rotina"><h1>Sistema de rotina</h1><p class="lead">A rotina foi desenhada para reduzir dependência de memória e motivação. Ideia nova não vira prioridade automaticamente.</p><div class="grid"><div class="card c12"><h2>Semana padrão</h2><div class="week"><div class="day"><b>SEG • DIREÇÃO</b><p>30–45 min de planejamento.</p><p>1 resultado da semana<br>3 entregas críticas<br>delegações<br>riscos</p></div><div class="day"><b>TER • EXECUÇÃO</b><p>Bloco profundo.</p><p>Resolver trabalho estratégico antes de manutenção. Fazer 1 checkpoint de delegação.</p></div><div class="day"><b>QUA • PESSOAS</b><p>1:1 / feedback / desenvolvimento.</p><p>Reconhecimento específico + uma pergunta de coaching.</p></div><div class="day"><b>QUI • SISTEMA</b><p>Processos, indicadores e melhoria.</p><p>Eliminar uma causa de retrabalho ou dependência.</p></div><div class="day"><b>SEX • FECHAMENTO</b><p>Revisão de 30 min.</p><p>Entregas, aprendizados, evidências de senioridade e preparação da próxima semana.</p></div></div></div><div class="card c6"><h2>Ritual diário — 10 min</h2><div id="dailyTasks"></div><textarea class="field save" data-key="todayResult" rows="2" placeholder="Resultado que precisa existir hoje"></textarea></div><div class="card c6"><h2>Encerramento — 5 min</h2><textarea class="field save" data-key="delivered" rows="2" placeholder="Entreguei..."></textarea><br><br><textarea class="field save" data-key="learned" rows="2" placeholder="Aprendi..."></textarea><br><br><textarea class="field save" data-key="tomorrow" rows="2" placeholder="Primeiro passo de amanhã..."></textarea></div><div class="card c12"><h2>Backlog — NÃO AGORA</h2><div class="row"><input id="idea" class="field" style="flex:1" placeholder="Nova ideia, projeto ou melhoria"><button class="btn" onclick="addIdea()">Estacionar</button></div><div id="ideas"></div></div></div></section>
-<section class="page" data-page="gestao">
-  <h1>Sistema de gestão</h1>
-  <p class="lead">Clareza alta, autonomia crescente e controle proporcional ao risco. O DISC entra como lente de comunicação — comportamento observado continua valendo mais que o teste.</p>
-
-  <div class="disc-note">
-    <div><b>DISC do núcleo • Setembro/2026</b><br>Leitura autodeclarada e situacional. Use para adaptar comunicação, decisão e desenvolvimento; não para rotular, justificar comportamento inadequado ou medir competência.</div>
-  </div>
-
-  <div class="management-hierarchy">
-    <div class="hierarchy-person manager"><span>Minha liderança</span><b>Nath</b><small>minha chefe direta</small></div>
-    <div class="hierarchy-arrow">↓</div>
-    <div class="hierarchy-person me"><span>Eu</span><b>Danielle</b><small>liderança de Operações</small></div>
-    <div class="hierarchy-arrow">↓</div>
-    <div class="hierarchy-reports">
-      <div class="hierarchy-person report"><span>Minha equipe</span><b>Bianca</b><small>liderada por mim</small></div>
-      <div class="hierarchy-person report"><span>Minha equipe</span><b>Manu</b><small>liderada por mim</small></div>
-    </div>
-  </div>
-
-  <div class="disc-team-grid">
-    <div class="card disc-person" style="--disc-main:#4388f4;--disc-second:#e95e52">
-      <div class="disc-person-head"><div><div class="disc-person-name">Danielle</div><div class="tiny muted">Você • Critério & risco</div></div><span class="disc-profile">CD • Estrategista de Precisão</span></div>
-      <div class="disc-role">Qualifica decisões, antecipa risco e eleva o padrão técnico.</div>
-      <div class="disc-bars">
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:55%;--bar-color:#e95e52"></span></div><b>D</b><small>55</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:20%;--bar-color:#e1b100"></span></div><b>I</b><small>20</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:30%;--bar-color:#087667"></span></div><b>S</b><small>30</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:62%;--bar-color:#4388f4"></span></div><b>C</b><small>62</small></div>
-      </div>
-      <div class="disc-mini">
-        <div><b>Em decisão:</b> “Com base em quê e com qual risco?”</div>
-        <div><b>Lembrete:</b> comece pela recomendação; deixe a análise completa como apoio.</div>
-      </div>
-      <details><summary>Sob pressão</summary><p>Pode aumentar controle e checagem, ficar mais crítica, delegar menos e exigir dados completos quando o tempo pede pragmatismo.</p></details>
-    </div>
-
-    <div class="card disc-person" style="--disc-main:#e95e52;--disc-second:#e1b100">
-      <div class="disc-person-head"><div><div class="disc-person-name">Nath</div><div class="tiny muted">Sua gestora • Ação & direção</div></div><span class="disc-profile">D • Dominante</span></div>
-      <div class="disc-role">Destrava, acelera e dá direção quando há indefinição.</div>
-      <div class="disc-bars">
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:65%;--bar-color:#e95e52"></span></div><b>D</b><small>65</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:50%;--bar-color:#e1b100"></span></div><b>I</b><small>50</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:50%;--bar-color:#087667"></span></div><b>S</b><small>50</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:5%;--bar-color:#4388f4"></span></div><b>C</b><small>5</small></div>
-      </div>
-      <div class="disc-mini">
-        <div><b>Em decisão:</b> “O que precisamos fazer agora?”</div>
-        <div><b>Para alinhar com sua gestora:</b> conclusão primeiro; objetivo, impacto, mudança esperada e prazo.</div>
-      </div>
-      <details><summary>Sob pressão</summary><p>Pode acelerar demais, fechar antes de ouvir todas as variáveis, ficar impaciente e aumentar controle.</p></details>
-    </div>
-
-    <div class="card disc-person" style="--disc-main:#e95e52;--disc-second:#087667">
-      <div class="disc-person-head"><div><div class="disc-person-name">Bianca</div><div class="tiny muted">Liderada por você • Execução & continuidade</div></div><span class="disc-profile">DS • Realizadora</span></div>
-      <div class="disc-role">Sustenta a entrega, dá previsibilidade e aguenta operações longas.</div>
-      <div class="disc-bars">
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:57%;--bar-color:#e95e52"></span></div><b>D</b><small>57</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:40%;--bar-color:#e1b100"></span></div><b>I</b><small>40</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:55%;--bar-color:#087667"></span></div><b>S</b><small>55</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:25%;--bar-color:#4388f4"></span></div><b>C</b><small>25</small></div>
-      </div>
-      <div class="disc-mini">
-        <div><b>Em decisão:</b> “Como fazemos isso funcionar até o fim?”</div>
-        <div><b>Para liderar:</b> meta + prazo + critério; reconheça consistência e evite microgestão.</div>
-      </div>
-      <details><summary>Sob pressão</summary><p>Pode assumir tudo, comunicar pouco, delegar menos e esconder sobrecarga até o limite.</p></details>
-    </div>
-
-    <div class="card disc-person" style="--disc-main:#087667;--disc-second:#e1b100">
-      <div class="disc-person-head"><div><div class="disc-person-name">Manu</div><div class="tiny muted">Liderada por você • Pessoas & adesão</div></div><span class="disc-profile">SI • Mediadora Relacional</span></div>
-      <div class="disc-role">Integra pessoas, reduz ruído e preserva entendimento sob pressão.</div>
-      <div class="disc-bars">
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:35%;--bar-color:#e95e52"></span></div><b>D</b><small>35</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:53%;--bar-color:#e1b100"></span></div><b>I</b><small>53</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:58%;--bar-color:#087667"></span></div><b>S</b><small>58</small></div>
-        <div class="disc-bar"><div class="disc-bar-track"><span class="disc-bar-fill" style="height:30%;--bar-color:#4388f4"></span></div><b>C</b><small>30</small></div>
-      </div>
-      <div class="disc-mini">
-        <div><b>Em decisão:</b> “Como fazemos isso funcionar com as pessoas?”</div>
-        <div><b>Para liderar:</b> firmeza respeitosa, conversa em particular e convite explícito à opinião.</div>
-      </div>
-      <details><summary>Sob pressão</summary><p>Pode evitar confronto, buscar consenso quando já é hora de decidir, diminuir a própria voz e absorver tensão.</p></details>
-    </div>
-  </div>
-
-  <div class="grid" style="margin-top:18px">
-    <div class="card c12">
-      <div class="kicker">SINERGIA DO TIME</div>
-      <h2>Quatro lentes para a mesma decisão</h2>
-      <div class="team-lenses">
-        <div class="team-lens"><b>Nath • ação</b><span>O que precisamos fazer agora?</span></div>
-        <div class="team-lens"><b>Danielle • critério</b><span>Com base em quê e com qual risco?</span></div>
-        <div class="team-lens"><b>Bianca • execução</b><span>Como fazemos isso funcionar até o fim?</span></div>
-        <div class="team-lens"><b>Manu • pessoas</b><span>Como fazemos isso funcionar com as pessoas?</span></div>
-      </div>
-      <div class="callout" style="margin-top:12px"><b>Nath destrava • Danielle qualifica • Bianca sustenta • Manu conecta.</b> A força está em usar as lentes em sequência, não em transformar uma delas na “forma certa” de trabalhar.</div>
-    </div>
-
-    <div class="card c12">
-      <div class="kicker">PONTOS DE ATENÇÃO</div>
-      <h2>Riscos de sistema, não defeitos pessoais</h2>
-      <div class="disc-risk-grid">
-        <div class="disc-risk"><b>Urgência ≠ prioridade</b><p>Com muito D no time, demandas novas podem entrar sem ficar explícito o que deixa de ser prioridade.</p></div>
-        <div class="disc-risk"><b>Processo concentrado na Dani</b><p>O C mais alto da Danielle pode concentrar validação, documentação e checagem nela e criar gargalo.</p></div>
-        <div class="disc-risk"><b>Sobrecarga invisível</b><p>Nath acelera, Dani eleva padrão, Bianca absorve execução e Manu absorve tensão — e o trabalho pode continuar saindo mesmo com o time no limite.</p></div>
-        <div class="disc-risk"><b>Silêncio não é acordo</b><p>Em discussões rápidas, vozes mais quietas podem ser lidas como concordância. Peça posição antes de fechar.</p></div>
-        <div class="disc-risk"><b>Reconhecimento pode sumir</b><p>O foco na próxima entrega pode apagar o esforço feito. Reconhecimento específico precisa entrar no ritual.</p></div>
-        <div class="disc-risk"><b>Contraditório antes da decisão</b><p>A velocidade executora do grupo pode reduzir exploração de riscos e perspectivas divergentes sob pressão.</p></div>
-      </div>
-    </div>
-
-    <div class="card c12">
-      <div class="kicker">ACORDOS OPERACIONAIS</div>
-      <h2>Três regras para evitar o ciclo ruim sob pressão</h2>
-      <div class="team-agreements">
-        <div class="team-agreement"><b>1. Discutir → decidir → executar</b><p>Antes: dado, risco e discordância são bem-vindos. Depois: existe uma responsável final e o time executa, salvo informação nova relevante.</p></div>
-        <div class="team-agreement"><b>2. Prioridade nova substitui antiga</b><p>Toda nova urgência precisa dizer o que será adiado, reduzido ou retirado. “Tudo é prioridade” não vale.</p></div>
-        <div class="team-agreement"><b>3. Fato → impacto → expectativa → escuta</b><p>Feedback sobre comportamento observável, em particular, com pedido claro e espaço real para a leitura da outra pessoa.</p></div>
-      </div>
-    </div>
-
-    <div class="card c6"><h2>Delegação</h2><ol><li>Resultado esperado</li><li>Prazo</li><li>Critério de qualidade</li><li>Limites de autonomia</li><li>Checkpoint</li><li>Quando me acionar</li></ol><div class="callout">Antes de corrigir: <b>“Está errado ou só não é o meu jeito?”</b></div></div>
-    <div class="card c6"><h2>Níveis de autonomia</h2><p><b>N1</b> — execute como orientado</p><p><b>N2</b> — analise e me proponha</p><p><b>N3</b> — decida e me informe</p><p><b>N4</b> — decida e execute</p></div>
-    <div class="card c6"><h2>Feedback</h2><p><b>Fato → Impacto → Expectativa → Pergunta</b></p><textarea class="field save" data-key="feedbackDraft" rows="7" placeholder="Escreva aqui o caso e depois leve ao Conselheiro IA..."></textarea></div>
-    <div class="card c6"><h2>1:1 quinzenal</h2><p>5 min — pessoa<br>10 min — operação<br>10 min — desenvolvimento<br>5 min — meu feedback<br>5 min — compromisso</p><div class="callout">Não transformar 1:1 em reunião de status.</div></div>
-
-    <div class="card c12">
-      <div class="row" style="justify-content:space-between;align-items:flex-start">
-        <div><h2>Minha equipe direta</h2><p class="muted">Bianca e Manu: autonomia, observações reais e a lente DISC juntas — sem confundir perfil com desempenho. Nath fica na leitura de interface com a sua liderança, não como liderada.</p></div>
-        <button class="btn" onclick="addPerson()">+ pessoa</button>
-      </div>
-      <div id="team"></div>
-      <p class="tiny muted">As leituras DISC abaixo são hipóteses de comunicação. Evidências observadas, entregas, acordos e evolução têm peso maior no Conselheiro IA.</p>
-    </div>
-  </div>
-</section>
+<section class="page" data-page="gestao"><h1>Sistema de gestão</h1><p class="lead">Princípio: clareza alta, autonomia crescente e controle proporcional ao risco.</p><div class="grid"><div class="card c6"><h2>Delegação</h2><ol><li>Resultado esperado</li><li>Prazo</li><li>Critério de qualidade</li><li>Limites de autonomia</li><li>Checkpoint</li><li>Quando me acionar</li></ol><div class="callout">Antes de corrigir: <b>“Está errado ou só não é o meu jeito?”</b></div></div><div class="card c6"><h2>Níveis de autonomia</h2><p><b>N1</b> — execute como orientado</p><p><b>N2</b> — analise e me proponha</p><p><b>N3</b> — decida e me informe</p><p><b>N4</b> — decida e execute</p></div><div class="card c6"><h2>Feedback</h2><p><b>Fato → Impacto → Expectativa → Pergunta</b></p><textarea class="field save" data-key="feedbackDraft" rows="7" placeholder="Escreva aqui o caso e depois leve ao Conselheiro IA..."></textarea></div><div class="card c6"><h2>1:1 quinzenal</h2><p>5 min — pessoa<br>10 min — operação<br>10 min — desenvolvimento<br>5 min — meu feedback<br>5 min — compromisso</p><div class="callout">Não transformar 1:1 em reunião de status.</div></div><div class="card c12"><h2>Mapa da equipe</h2><div id="team"></div><button class="btn" onclick="addPerson()">+ pessoa</button><p class="tiny muted">Amanhã, inclua o DISC de cada pessoa. Não use DISC para rotular: registre também evidências observadas, motivadores, autonomia e desenvolvimento.</p></div></div></section>
 <section class="page" data-page="plano"><h1>Plano até dezembro</h1><p class="lead">Ciclos de duas semanas: estudar pouco, executar muito e produzir evidência real de senioridade.</p><div class="grid" id="cycles"></div></section>
 
 <section class="page" data-page="coach">
@@ -1067,7 +897,7 @@ select.field{max-width:100%}
         <option>Mentor me</option>
       </select>
       <br><br>
-      <label>Pessoa envolvida <span class="muted">(opcional)</span></label>
+      <label>Pessoa da equipe <span class="muted">(opcional)</span></label>
       <select id="advisorTeamMember" class="field">
         <option value="">Caso geral / sem pessoa específica</option>
       </select>
@@ -1087,7 +917,7 @@ select.field{max-width:100%}
         <button class="btn" onclick="clearAdvisorChat()">Limpar tela</button>
       </div>
       <div class="chat" id="chat" style="min-height:480px">
-        <div class="msg ai">Descreva um caso real. Vou cruzar a situação com seu histórico de desenvolvimento e, se você selecionar uma pessoa, com os registros dessa pessoa e com a relação hierárquica correta (gestora ou liderada).</div>
+        <div class="msg ai">Descreva um caso real. Vou cruzar a situação com seu histórico de desenvolvimento e, se você selecionar uma pessoa, com os registros dessa pessoa.</div>
       </div>
     </div>
   </div>
@@ -1458,7 +1288,7 @@ sb.auth.onAuthStateChange((_event, session) => {
 
 <script>
 const pages=[['overview','Overview'],['painel','Painel'],['james','James'],['rotina','Hoje'],['todoist','Todoist'],['reunioes','Reuniões'],['gestao','Gestão'],['reflexao','Decisões'],['senioridade','Resultados'],['desenvolvimento','Desenvolvimento'],['score','Scorecard'],['perfil','Perfil'],['plano','Plano até dezembro'],['coach','Conselheiro IA']];
-const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist()}if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}if(id==='overview')loadOverview()};nav.appendChild(b)});
+const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist();loadWhatsAppStatus()}if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}if(id==='overview')loadOverview()};nav.appendChild(b)});
 
 function openOSPage(id){
   const btn=document.querySelector(`#nav button[data-page="${id}"]`);
@@ -1530,40 +1360,15 @@ async function requireUser(){
 }
 
 /* ---------- TEAM ---------- */
-
-const TEAM_DISC_GUIDES={
-  nath:{profile:'D • Dominante',short:'Ação, autonomia e urgência.',feedback:'Conclusão primeiro; objetivo, impacto, mudança esperada e prazo.',pressure:'Pode acelerar, controlar mais e fechar antes de ouvir.'},
-  bianca:{profile:'DS • Realizadora',short:'Execução consistente e continuidade.',feedback:'Meta + prazo + critério; reconheça a consistência e dê autonomia.',pressure:'Pode assumir tudo, comunicar pouco e esconder sobrecarga.'},
-  manu:{profile:'SI • Mediadora Relacional',short:'Integração, diplomacia e coesão.',feedback:'Firmeza respeitosa, em particular, com espaço para resposta.',pressure:'Pode evitar confronto, ceder demais e diminuir a própria voz.'}
-};
-function teamDiscKey(name){
-  const n=String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-  if(n.includes('nath'))return 'nath';
-  if(n.includes('bianca'))return 'bianca';
-  if(n.includes('manu'))return 'manu';
-  return '';
-}
-function teamDiscHelperHtml(name){
-  const g=TEAM_DISC_GUIDES[teamDiscKey(name)];
-  if(!g)return '';
-  return `<div class="team-map-disc">
-    <div><b>${esc(g.profile)}</b><br>${esc(g.short)}</div>
-    <div><b>Como cobrar / dar feedback</b><br>${esc(g.feedback)}</div>
-    <div><b>Sob pressão</b><br>${esc(g.pressure)}</div>
-    <div><b>Regra de uso</b><br>Confirme com comportamento observado; DISC não substitui evidência.</div>
-  </div>`;
-}
 async function loadTeamCloud(){
   if(!currentUserId) return;
   const {data,error}=await sb.from('team_members')
-    .select('id,name,role,area,autonomy_level,manager_notes,status,relationship_type')
-    .eq('status','active')
-    .eq('relationship_type','direct_report')
-    .order('created_at',{ascending:true});
+    .select('id,name,role,area,autonomy_level,manager_notes,status')
+    .eq('status','active').order('created_at',{ascending:true});
   if(error){ cloudMsg('Falha ao carregar equipe: '+error.message); return; }
   team=(data||[]).map(x=>({
     id:x.id,name:x.name,disc:'',aut:'N'+(x.autonomy_level||1),
-    obs:x.manager_notes||'',role:x.role||'',area:x.area||'',relationship_type:x.relationship_type
+    obs:x.manager_notes||'',role:x.role||'',area:x.area||''
   }));
   renderTeam();
 }
@@ -1574,14 +1379,13 @@ renderTeam = function(){
     el.innerHTML='<div class="muted">Nenhuma pessoa cadastrada ainda.</div>';
     return;
   }
-  el.innerHTML=team.map((p,i)=>`<div class="team-map-card">
+  el.innerHTML=team.map((p,i)=>`<div class="card" style="margin:10px 0">
     <div class="row">
-      <input class="field" style="flex:1;min-width:180px" value="${esc(p.name)}" onchange="team[${i}].name=this.value;saveTeam(${i})">
-      <input class="field" style="width:210px" placeholder="DISC" value="${esc(p.disc||'')}" onchange="team[${i}].disc=this.value;saveTeam(${i})">
+      <input class="field" style="flex:1" value="${esc(p.name)}" onchange="team[${i}].name=this.value;saveTeam(${i})">
+      <input class="field" style="width:150px" placeholder="DISC" value="${esc(p.disc||'')}" onchange="team[${i}].disc=this.value;saveTeam(${i})">
       <select class="field" style="width:110px" onchange="team[${i}].aut=this.value;saveTeam(${i})">${['N1','N2','N3','N4'].map(x=>`<option ${p.aut===x?'selected':''}>${x}</option>`).join('')}</select>
     </div>
-    ${teamDiscHelperHtml(p.name)}
-    <textarea class="field" style="margin-top:10px" rows="3" placeholder="Evidências observadas, motivadores, desenvolvimento, acordos..." onchange="team[${i}].obs=this.value;saveTeam(${i})">${esc(p.obs||'')}</textarea>
+    <textarea class="field" rows="3" placeholder="Evidências, motivadores, desenvolvimento, acordos..." onchange="team[${i}].obs=this.value;saveTeam(${i})">${esc(p.obs||'')}</textarea>
   </div>`).join('');
 };
 saveTeam = async function(i){
@@ -1592,7 +1396,6 @@ saveTeam = async function(i){
     name:p.name.trim()||'Sem nome',
     autonomy_level:Number(String(p.aut).replace('N',''))||1,
     manager_notes:p.obs||'',
-    relationship_type:'direct_report',
     status:'active'
   };
   let result;
@@ -1616,7 +1419,7 @@ saveTeam = async function(i){
 addPerson = async function(){
   if(!currentUserId) return;
   const {data,error}=await sb.from('team_members').insert({
-    user_id:currentUserId,name:'Nova pessoa',autonomy_level:1,relationship_type:'direct_report',status:'active'
+    user_id:currentUserId,name:'Nova pessoa',autonomy_level:1,status:'active'
   }).select('id,name,autonomy_level,manager_notes').single();
   if(error){ cloudMsg('Erro ao adicionar pessoa: '+error.message); return; }
   team.push({id:data.id,name:data.name,disc:'',aut:'N1',obs:''});
@@ -1762,8 +1565,8 @@ let selectedMemberId=null;
 async function cockpitLoadPeople(){
   if(!currentUserId) return;
   const {data,error}=await sb.from('team_members')
-    .select('id,name,role,area,autonomy_level,current_development_goal,strengths,development_points,motivators,demotivators,communication_preferences,manager_notes,status,relationship_type')
-    .eq('status','active').eq('relationship_type','direct_report').order('created_at',{ascending:true});
+    .select('id,name,role,area,autonomy_level,current_development_goal,strengths,development_points,motivators,demotivators,communication_preferences,manager_notes,status')
+    .eq('status','active').order('created_at',{ascending:true});
   const el=document.getElementById('cockpitPeople');
   if(error){el.innerHTML='<span class="danger">'+esc(error.message)+'</span>';return;}
   el.innerHTML=(data||[]).map(p=>`
@@ -1792,7 +1595,7 @@ async function openMember(id){
   await Promise.all([loadEvidence(id),loadOneOnOnes(id),loadFeedbacks(id),loadDelegations(id)]);
 }
 async function cockpitLoadPeopleButtonsOnly(){
-  const {data}=await sb.from('team_members').select('id,name,role,autonomy_level,relationship_type').eq('status','active').eq('relationship_type','direct_report').order('created_at',{ascending:true});
+  const {data}=await sb.from('team_members').select('id,name,role,autonomy_level').eq('status','active').order('created_at',{ascending:true});
   const el=document.getElementById('cockpitPeople');
   el.innerHTML=(data||[]).map(p=>`
     <button class="person-btn ${selectedMemberId===p.id?'active':''}" onclick="openMember('${p.id}')">
@@ -2093,7 +1896,7 @@ async function refreshDashboardMetrics(){
   const [ev,goals,teamRows]=await Promise.all([
     sb.from('seniority_evidence').select('id',{count:'exact',head:true}),
     sb.from('development_goals').select('id',{count:'exact',head:true}).eq('status','active'),
-    sb.from('team_members').select('autonomy_level').eq('status','active').eq('relationship_type','direct_report')
+    sb.from('team_members').select('autonomy_level').eq('status','active')
   ]);
   const evEl=document.getElementById('dashEvidenceCount');
   const goalEl=document.getElementById('dashActiveGoals');
@@ -2143,14 +1946,12 @@ async function loadAdvisorTeam(){
   if(!select || !currentUserId) return;
   const previous = select.value;
   const {data,error}=await sb.from('team_members')
-    .select('id,name,role,relationship_type')
+    .select('id,name,role')
     .eq('status','active')
-    .in('relationship_type',['direct_report','manager'])
     .order('name');
   if(error) return;
-  const label=p=>p.relationship_type==='manager'?'Minha gestora':'Minha liderada';
   select.innerHTML='<option value="">Caso geral / sem pessoa específica</option>'+
-    (data||[]).map(p=>`<option value="${p.id}">${label(p)} • ${esc(p.name)}${p.role?' — '+esc(p.role):''}</option>`).join('');
+    (data||[]).map(p=>`<option value="${p.id}">${esc(p.name)}${p.role?' — '+esc(p.role):''}</option>`).join('');
   if([...select.options].some(o=>o.value===previous)) select.value=previous;
 }
 
@@ -3083,17 +2884,89 @@ function updateJamesSourceCards(items){
   const gmail=open((items||[]).filter(x=>x.source==='gmail'));
   const calendar=open((items||[]).filter(x=>x.source==='calendar'));
   const slack=open((items||[]).filter(x=>x.source==='slack'));
+  const whatsapp=open((items||[]).filter(x=>x.source==='whatsapp'));
   setTextSafe('sourceGmailCount',String(gmail.length));
   setTextSafe('sourceCalendarCount',String(calendar.length));
   setTextSafe('sourceSlackCount',String(slack.length));
+  setTextSafe('sourceWhatsAppCount',String(whatsapp.length));
   setTextSafe('sourceGmailState', gmail.length ? `${gmail.length} item(ns) do Gmail pedindo ação ou resposta.` : 'Sem e-mails relevantes pendentes agora.');
   setTextSafe('sourceCalendarState', calendar.length ? `${calendar.length} item(ns) da agenda pedindo preparo, decisão ou follow-up.` : 'Sem alerta de agenda exigindo você agora.');
   setTextSafe('sourceSlackState', slack.length ? `${slack.length} item(ns) vieram do Slack entre DMs e canais de futebol.` : 'Sem item aberto do Slack no momento.');
 }
+
+let whatsappWebhookUrl='';
+let whatsappPairingText='';
+
+async function loadWhatsAppStatus(showMessage=false){
+  const state=document.getElementById('sourceWhatsAppState');
+  const box=document.getElementById('whatsappPairingBox');
+  try{
+    const data=await callEdge('whatsapp-setup',{action:'status'});
+    whatsappWebhookUrl=data.webhook_url||'';
+
+    if(data.connected){
+      if(state)state.textContent=`Conectado ao James${data.last_message_at?' • última mensagem '+new Date(data.last_message_at).toLocaleString('pt-BR'):''}. Pode mandar texto ou áudio.`;
+      if(box)box.hidden=true;
+      if(showMessage)cloudMsg('WhatsApp conectado ao James',true);
+      return data;
+    }
+
+    if(data.status==='disabled'){
+      if(state)state.textContent='WhatsApp desativado.';
+      if(box)box.hidden=true;
+      return data;
+    }
+
+    const code=data.pairing_code||'';
+    whatsappPairingText=code?`JAMES ${code}`:'';
+    if(state)state.textContent='Backend pronto. Falta conectar o Twilio Sandbox e enviar o código abaixo pelo WhatsApp.';
+    const codeEl=document.getElementById('whatsappPairingMessage');
+    if(codeEl)codeEl.textContent=whatsappPairingText||'JAMES ————';
+    if(box)box.hidden=false;
+    if(showMessage)cloudMsg('Código do WhatsApp atualizado',true);
+    return data;
+  }catch(e){
+    if(state)state.textContent='Não consegui carregar a conexão do WhatsApp agora.';
+    if(showMessage)cloudMsg('WhatsApp: '+(e?.message||String(e)));
+  }
+}
+
+async function resetWhatsAppPairing(){
+  try{
+    const data=await callEdge('whatsapp-setup',{action:'reset'});
+    whatsappWebhookUrl=data.webhook_url||'';
+    whatsappPairingText=data.pairing_code?`JAMES ${data.pairing_code}`:'';
+    const codeEl=document.getElementById('whatsappPairingMessage');
+    if(codeEl)codeEl.textContent=whatsappPairingText||'JAMES ————';
+    const box=document.getElementById('whatsappPairingBox');
+    if(box)box.hidden=false;
+    setTextSafe('sourceWhatsAppState','Novo código gerado. Envie essa mensagem pelo número conectado ao Sandbox.');
+    cloudMsg('Novo código do WhatsApp gerado',true);
+  }catch(e){cloudMsg('WhatsApp: '+(e?.message||String(e)))}
+}
+
+async function copyWhatsAppPairing(){
+  if(!whatsappPairingText)return;
+  try{
+    await navigator.clipboard.writeText(whatsappPairingText);
+    cloudMsg('Mensagem de conexão copiada',true);
+  }catch{cloudMsg('Não consegui copiar automaticamente.')}
+}
+
+async function copyWhatsAppWebhook(){
+  if(!whatsappWebhookUrl)return;
+  try{
+    await navigator.clipboard.writeText(whatsappWebhookUrl);
+    cloudMsg('Webhook do WhatsApp copiado',true);
+  }catch{cloudMsg('Não consegui copiar automaticamente.')}
+}
+
 function assistantSourceIcon(source){
   if(source==='gmail')return '✉ Gmail';
   if(source==='calendar')return '📅 Agenda';
   if(source==='slack')return '💬 Slack';
+  if(source==='whatsapp')return 'WhatsApp';
+  if(source==='todoist')return 'Todoist';
   return esc(source||'Fonte');
 }
 function assistantDueLabel(value){
@@ -3570,7 +3443,7 @@ const initCloudDataBeforeJames=initCloudData;
 initCloudData=async function(){
   await initCloudDataBeforeJames();
   ensureMeetingDate();
-  await Promise.all([loadJames(),loadGoogleStatus(),loadSlackStatus(),loadJamesTodoist(),loadOverview()]);
+  await Promise.all([loadJames(),loadGoogleStatus(),loadSlackStatus(),loadJamesTodoist(),loadWhatsAppStatus(),loadOverview()]);
   handleGoogleOAuthReturn();
   handleSlackOAuthReturn();
 };
