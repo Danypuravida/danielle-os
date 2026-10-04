@@ -1231,7 +1231,13 @@ select.field{max-width:100%}
   </div>
 
   <div class="finance-tab-panel" data-fin-panel="revisao">
-    <div class="card" style="margin-top:16px"><h2>Preciso da sua ajuda</h2><p class="muted">Só aparece o que o sistema ainda não sabe classificar. Classifique uma vez e, se quiser, transforme em regra para as próximas importações.</p><div id="financeReviewList"></div></div>
+    <div class="card" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><h2>Preciso da sua ajuda</h2><p class="muted">Só aparece o que o sistema ainda não sabe classificar. Classifique uma vez e, se quiser, transforme em regra para as próximas importações.</p><div id="financeReviewFreshness" class="tiny muted"></div></div>
+        <input class="field" id="financeReviewSearch" placeholder="Buscar PIX, pessoa ou loja" style="max-width:300px" oninput="renderFinanceReview()">
+      </div>
+      <div id="financeReviewList"></div>
+    </div>
     <div class="card" style="margin-top:16px">
       <div class="row" style="justify-content:space-between;align-items:flex-start">
         <div><h2>Corrigir o que já classifiquei</h2><p class="muted">Errou uma categoria, marcou como entrada/despesa errada ou salvou uma regra errada? Corrija aqui.</p></div>
@@ -3838,7 +3844,11 @@ async function saveFinanceCorrection(id,i){
 function financeDirectionLabel(d){return ({expense:'Despesa',income:'Entrada',refund:'Estorno / reembolso',transfer:'Transferência',savings:'Economia / investimento'})[d]||d}
 function renderFinanceReview(){
   const el=document.getElementById('financeReviewList');if(!el)return;
-  const tx=financeTx.filter(t=>t.classification_source==='unclassified');
+  const search=(document.getElementById('financeReviewSearch')?.value||'').trim().toLowerCase();
+  const latest=financeTx.length?financeTx.reduce((m,t)=>String(t.transaction_date)>m?String(t.transaction_date):m,''):'';
+  const fresh=document.getElementById('financeReviewFreshness');
+  if(fresh)fresh.textContent=latest?'Último movimento carregado neste período: '+new Date(latest+'T12:00:00').toLocaleDateString('pt-BR')+'. Movimentos posteriores só aparecem após importar novo extrato ou lançar manualmente.':'Nenhum movimento carregado neste período.';
+  const tx=financeTx.filter(t=>t.classification_source==='unclassified').filter(t=>!search||((t.counterparty||'')+' '+(t.description||'')+' '+txCategoryName(t)).toLowerCase().includes(search));
   const groups={};
   for(const t of tx){
     const name=(t.counterparty||t.description||'Não identificado').trim();
