@@ -16,6 +16,10 @@
 [data-page="financeiro"]{max-width:1320px}
 .finance-toolbar{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-top:18px}
 .finance-period{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.finance-month-picker{position:relative}.finance-month-picker summary{list-style:none;cursor:pointer;min-width:210px;user-select:none}.finance-month-picker summary::-webkit-details-marker{display:none}
+.finance-month-picker-panel{position:absolute;z-index:40;top:calc(100% + 7px);left:0;width:330px;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;padding:10px;background:#111923;border:1px solid var(--line);border-radius:12px;box-shadow:0 18px 45px rgba(0,0,0,.35)}
+.finance-month-picker-panel .btn.selected{background:var(--accent);color:#0c131b;border-color:var(--accent);font-weight:700}
+@media(max-width:600px){.finance-month-picker-panel{position:fixed;left:12px;right:12px;top:auto;width:auto}.finance-month-picker summary{min-width:180px}}
 .finance-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-top:18px}
 .finance-kpi{background:linear-gradient(180deg,#151e29,#111821);border:1px solid var(--line);border-radius:14px;padding:16px;min-height:112px}
 .finance-kpi small{display:block;color:var(--muted);font-size:12px;margin-bottom:8px}.finance-kpi b{display:block;font-size:24px;line-height:1.15}.finance-kpi .sub{font-size:12px;color:var(--muted);margin-top:8px}
@@ -1153,9 +1157,25 @@ select.field{max-width:100%}
   <div class="finance-toolbar">
     <div class="finance-period">
       <select class="field" id="financeYear" style="width:120px" onchange="loadFinance()"><option value="2026" selected>2026</option><option value="2027">2027</option></select>
-      <select class="field" id="financeMonth" style="width:180px" onchange="loadFinance()">
-        <option value="all">Ano inteiro</option><option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option><option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option><option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option>
-      </select>
+      <details class="finance-month-picker" id="financeMonthPicker">
+        <summary class="field finance-month-summary">Meses: <b id="financeMonthSummary">Ano inteiro</b></summary>
+        <div class="finance-month-picker-panel">
+          <button type="button" class="btn tiny" data-fin-month="all" onclick="toggleFinanceMonth('all')">Ano inteiro</button>
+          <button type="button" class="btn tiny" data-fin-month="01" onclick="toggleFinanceMonth('01')">Jan</button>
+          <button type="button" class="btn tiny" data-fin-month="02" onclick="toggleFinanceMonth('02')">Fev</button>
+          <button type="button" class="btn tiny" data-fin-month="03" onclick="toggleFinanceMonth('03')">Mar</button>
+          <button type="button" class="btn tiny" data-fin-month="04" onclick="toggleFinanceMonth('04')">Abr</button>
+          <button type="button" class="btn tiny" data-fin-month="05" onclick="toggleFinanceMonth('05')">Mai</button>
+          <button type="button" class="btn tiny" data-fin-month="06" onclick="toggleFinanceMonth('06')">Jun</button>
+          <button type="button" class="btn tiny" data-fin-month="07" onclick="toggleFinanceMonth('07')">Jul</button>
+          <button type="button" class="btn tiny" data-fin-month="08" onclick="toggleFinanceMonth('08')">Ago</button>
+          <button type="button" class="btn tiny" data-fin-month="09" onclick="toggleFinanceMonth('09')">Set</button>
+          <button type="button" class="btn tiny" data-fin-month="10" onclick="toggleFinanceMonth('10')">Out</button>
+          <button type="button" class="btn tiny" data-fin-month="11" onclick="toggleFinanceMonth('11')">Nov</button>
+          <button type="button" class="btn tiny" data-fin-month="12" onclick="toggleFinanceMonth('12')">Dez</button>
+          <div class="tiny muted" style="grid-column:1/-1">Você pode marcar vários meses juntos.</div>
+        </div>
+      </details>
       <button class="btn" onclick="loadFinance()">Atualizar</button>
     </div>
     <div class="tiny muted" id="financeDataQuality">Calculando qualidade dos dados…</div>
@@ -3733,7 +3753,33 @@ let financeHideValues=localStorage.getItem('financeHideValues')==='1';
 const finEsc=(s)=>esc(String(s??''));
 function finMoney(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
 function finPct(v){return (Number(v||0)*100).toLocaleString('pt-BR',{maximumFractionDigits:1})+'%'}
-function financePeriod(){const y=document.getElementById('financeYear')?.value||'2026',m=document.getElementById('financeMonth')?.value||'all';if(m==='all')return {start:`${y}-01-01`,end:`${y}-12-31`,label:y};const last=new Date(Number(y),Number(m),0).getDate();return {start:`${y}-${m}-01`,end:`${y}-${m}-${String(last).padStart(2,'0')}`,label:`${m}/${y}`}}
+function financeSelectedMonths(){
+  try{
+    const v=JSON.parse(localStorage.getItem('financeSelectedMonths')||'[]');
+    return Array.isArray(v)?v.filter(m=>/^(0[1-9]|1[0-2])$/.test(m)).sort():[];
+  }catch{return []}
+}
+function saveFinanceSelectedMonths(months){localStorage.setItem('financeSelectedMonths',JSON.stringify([...new Set(months)].sort()))}
+function renderFinanceMonthPicker(){
+  const months=financeSelectedMonths(),all=!months.length;
+  document.querySelectorAll('[data-fin-month]').forEach(b=>b.classList.toggle('selected',b.dataset.finMonth==='all'?all:months.includes(b.dataset.finMonth)));
+  const summary=document.getElementById('financeMonthSummary');
+  if(summary)summary.textContent=all?'Ano inteiro':months.map(financeMonthName).join(' + ');
+}
+function toggleFinanceMonth(m){
+  let months=financeSelectedMonths();
+  if(m==='all')months=[];
+  else if(!months.length)months=[m];
+  else months=months.includes(m)?months.filter(x=>x!==m):[...months,m].sort();
+  saveFinanceSelectedMonths(months);renderFinanceMonthPicker();
+}
+function financePeriod(){
+  const y=document.getElementById('financeYear')?.value||'2026',months=financeSelectedMonths();
+  if(!months.length)return {year:y,start:`${y}-01-01`,end:`${y}-12-31`,months:[],monthKeys:[],label:y};
+  const sorted=[...months].sort(),first=sorted[0],lastM=sorted[sorted.length-1],lastDay=new Date(Number(y),Number(lastM),0).getDate();
+  return {year:y,start:`${y}-${first}-01`,end:`${y}-${lastM}-${String(lastDay).padStart(2,'0')}`,months:sorted,monthKeys:sorted.map(m=>`${y}-${m}`),label:sorted.map(financeMonthName).join(' + ')+' '+y};
+}
+function filterFinanceTransactionsByMonths(tx,period){if(!period.months?.length)return tx;const wanted=new Set(period.monthKeys);return tx.filter(t=>wanted.has(String(t.transaction_date||'').slice(0,7)))}
 function toggleFinancePrivacy(){financeHideValues=!financeHideValues;localStorage.setItem('financeHideValues',financeHideValues?'1':'0');applyFinancePrivacy()}
 function applyFinancePrivacy(){const page=document.getElementById('financePage');if(page)page.classList.toggle('finance-privacy-on',financeHideValues);const b=document.getElementById('financePrivacyBtn');if(b)b.textContent=financeHideValues?'Mostrar valores':'Ocultar valores'}
 function openFinanceTab(name,btn){document.querySelectorAll('[data-fin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.finPanel===name));document.querySelectorAll('[data-fin-tab]').forEach(x=>x.classList.remove('primary'));if(btn)btn.classList.add('primary');if(name==='contas')loadFinanceBills();if(name==='orcamento')loadFinanceBudgets();if(name==='patrimonio')loadFinancePatrimony()}
@@ -3743,7 +3789,7 @@ function txCategoryName(t){return t.finance_categories?.name||'Não classificado
 function financeMetricData(tx){let income=0,expense=0,refund=0,savings=0,interest=0,cashIn=0,cashOut=0,cardPayments=0;const cats={},months={};for(const t of tx){const a=Number(t.amount||0),m=String(t.transaction_date||'').slice(0,7),isCard=t.source_document_kind==='monthly_credit_card_bill';months[m]??={income:0,expense:0,refund:0,savings:0};if(t.direction==='income'){income+=a;months[m].income+=a;if(!isCard)cashIn+=a}else if(t.direction==='expense'&&!t.exclude_from_spend){expense+=a;months[m].expense+=a;const c=txCategoryName(t);cats[c]=(cats[c]||0)+a;if(c==='Taxas e juros')interest+=a;if(!isCard)cashOut+=a}else if(t.direction==='refund'){refund+=a;months[m].refund+=a;if(!isCard)cashIn+=a}else if(t.direction==='savings'){savings+=a;months[m].savings+=a;if(!isCard)cashOut+=a}else if(t.direction==='transfer'&&t.is_card_payment&&!isCard){cashOut+=a;cardPayments+=a}}const netSpend=Math.max(0,expense-refund),net=income-netSpend,cashNet=cashIn-cashOut;return {income,expense,refund,netSpend,net,savings,interest,cats,months,rate:income?net/income:0,cashIn,cashOut,cashNet,cardPayments}}
 async function fetchAllFinanceTransactions(start,end){const all=[];let from=0;const page=1000;while(true){const r=await sb.from('finance_transactions').select('id,transaction_date,purchase_date,billing_month,description,counterparty,merchant,amount,direction,category_id,classification_source,exclude_from_spend,is_card_payment,installment_number,installment_total,source_document_kind,raw_type,finance_categories(name,kind)').eq('user_id',currentUserId).gte('transaction_date',start).lte('transaction_date',end).order('transaction_date',{ascending:false}).range(from,from+page-1);if(r.error)return r;all.push(...(r.data||[]));if(!r.data||r.data.length<page)break;from+=page}return {data:all,error:null}}
 let financeGoalFundingCache=[];
-async function loadFinance(){if(!currentUserId)return;applyFinancePrivacy();const md=document.getElementById('finManualDate');if(md&&!md.value)md.value=isoDateLocal();const {start,end}=financePeriod();const [txR,cR,gR,faR]=await Promise.all([fetchAllFinanceTransactions(start,end),sb.from('finance_categories').select('id,name,kind,essential_default').eq('user_id',currentUserId).eq('active',true).order('name'),sb.from('finance_goals').select('*').eq('user_id',currentUserId).order('created_at',{ascending:false}),sb.from('finance_goal_funding_actions').select('*').eq('user_id',currentUserId).eq('status','active').order('monthly_savings',{ascending:false})]);if(txR.error){cloudMsg('Financeiro: '+txR.error.message);return}financeTx=txR.data||[];financeCategories=cR.data||[];financeGoalsCache=gR.data||[];financeGoalFundingCache=faR.data||[];renderFinanceSummary();renderFinanceReview();renderFinanceCorrections();renderFinanceGoals();await Promise.all([loadFinancePatrimony(),loadFinanceBalance(),loadFinanceStatus()]);applyFinancePrivacy()}
+async function loadFinance(){if(!currentUserId)return;applyFinancePrivacy();renderFinanceMonthPicker();const md=document.getElementById('finManualDate');if(md&&!md.value)md.value=isoDateLocal();const period=financePeriod(),{start,end}=period;const [txR,cR,gR,faR]=await Promise.all([fetchAllFinanceTransactions(start,end),sb.from('finance_categories').select('id,name,kind,essential_default').eq('user_id',currentUserId).eq('active',true).order('name'),sb.from('finance_goals').select('*').eq('user_id',currentUserId).order('created_at',{ascending:false}),sb.from('finance_goal_funding_actions').select('*').eq('user_id',currentUserId).eq('status','active').order('monthly_savings',{ascending:false})]);if(txR.error){cloudMsg('Financeiro: '+txR.error.message);return}financeTx=filterFinanceTransactionsByMonths(txR.data||[],period);financeCategories=cR.data||[];financeGoalsCache=gR.data||[];financeGoalFundingCache=faR.data||[];renderFinanceSummary();setTextSafe('finIncomeSub',period.label);renderFinanceReview();renderFinanceCorrections();renderFinanceGoals();await Promise.all([loadFinancePatrimony(),loadFinanceBalance(),loadFinanceStatus()]);applyFinancePrivacy()}
 function renderFinanceSummary(){const d=financeMetricData(financeTx);setTextSafe('finIncome',finMoney(d.income));setTextSafe('finSpend',finMoney(d.netSpend));setTextSafe('finNet',finMoney(d.net));setTextSafe('finSavingsRate',finPct(d.rate));setTextSafe('finInterest',finMoney(d.interest));setTextSafe('finCashIn',finMoney(d.cashIn));setTextSafe('finCashOut',finMoney(d.cashOut));setTextSafe('finCashNet',finMoney(d.cashNet));setTextSafe('finCardPayments',finMoney(d.cardPayments));const unc=financeTx.filter(t=>t.classification_source==='unclassified').length,quality=financeTx.length?Math.round((1-unc/financeTx.length)*100):0;setTextSafe('financeDataQuality',financeTx.length?`Qualidade dos dados: ${quality}% • ${unc} transação(ões) sem classificação`:'Sem dados importados neste período.');setTextSafe('finReviewBadge',unc?`• ${unc}`:'');renderFinanceCategories(d);renderFinanceMonths(d);renderFinanceHealth(d,unc,quality);renderFinanceRecurring();renderFinanceTopTransactions()}
 function renderFinanceCategories(d){
   const el=document.getElementById('financeCategoryBars');if(!el)return;
@@ -3908,7 +3954,7 @@ function detectFinanceStatementBalance(text){
 async function importFinanceDocument(kind){const isBank=kind==='bank',input=document.getElementById(isBank?'financeBankFile':'financeCardFile'),files=[...(input?.files||[])],status=document.getElementById(isBank?'financeBankStatus':'financeCardStatus');if(!files.length){if(status)status.textContent='Escolha um arquivo primeiro.';return}if(status)status.textContent='Lendo arquivo(s)…';try{let total=0,lastUnc=0,reconciled=0;const year=document.getElementById('financeYear')?.value||'2026';for(let i=0;i<files.length;i++){const file=files[i];if(status)status.textContent=`Importando ${i+1}/${files.length}: ${file.name}`;let text='';if(file.name.toLowerCase().endsWith('.pdf'))text=await extractPdfText(file,document.getElementById('financePdfPassword')?.value||'');else text=await file.text();let bill=document.getElementById('financeBillMonth')?.value||'';if(!isBank)bill=inferBillMonthFromName(file.name,year)||bill;const statementBalance=isBank?detectFinanceStatementBalance(text):null;const data=await callEdge('finance-import',{document_kind:isBank?'weekly_bank_statement':'monthly_credit_card_bill',file_name:file.name,file_type:file.type||null,text,billing_month:!isBank&&bill?bill+'-01':null,period_year:Number(year),closing_balance:statementBalance});total+=Number(data.transaction_count||0);lastUnc=Number(data.unclassified_count||0);reconciled+=Number(data.reconciled_bills?.matched||0)}if(status)status.textContent=`Importado: ${total} transações • ${reconciled} conta(s) conciliada(s) automaticamente • ${lastUnc} pendentes de classificação.`;cloudMsg(reconciled?`Financeiro atualizado • ${reconciled} conta(s) marcada(s) como paga(s)`:'Financeiro atualizado',true);await loadFinance();if(isBank)await loadFinanceBills()}catch(e){if(status)status.textContent='Erro: '+(e?.message||String(e));cloudMsg('Importação financeira: '+(e?.message||String(e)))}}
 async function addManualFinanceTransaction(){const date=document.getElementById('finManualDate')?.value||isoDateLocal(),direction=document.getElementById('finManualDirection')?.value||'expense',description=document.getElementById('finManualDescription')?.value.trim(),amount=Number(document.getElementById('finManualAmount')?.value||0),category=document.getElementById('finManualCategory')?.value||null;if(!description||amount<=0)return cloudMsg('Preencha descrição e valor.');const id=crypto.randomUUID(),row={user_id:currentUserId,transaction_date:date,description,normalized_description:normalizeText(description),amount,direction,category_id:category,classification_source:category?'manual':'unclassified',classification_confidence:category?1:null,exclude_from_spend:false,fingerprint:'manual:'+id,raw_type:'manual',source_document_kind:'manual_import',source_file:'manual'};const {error}=await sb.from('finance_transactions').insert(row);if(error)return cloudMsg('Financeiro: '+error.message);document.getElementById('finManualDescription').value='';document.getElementById('finManualAmount').value='';cloudMsg('Lançamento adicionado',true);loadFinance()}
 let financeBillTemplatesCache=[],financeBillMonthlyCache=[];
-function financeBillMonthValue(){return document.getElementById('financeBillsMonth')?.value||((document.getElementById('financeYear')?.value||'2026')+'-'+(document.getElementById('financeMonth')?.value||'10'))}
+function financeBillMonthValue(){const direct=document.getElementById('financeBillsMonth')?.value;if(direct)return direct;const p=financePeriod(),m=p.months?.length?p.months[p.months.length-1]:String(new Date().getMonth()+1).padStart(2,'0');return p.year+'-'+m}
 function financeBillMonthStart(){return financeBillMonthValue()+'-01'}
 function financeBillDueDate(ym,day){const d=Number(day||0);if(!d)return null;const y=Number(ym.slice(0,4)),m=Number(ym.slice(5,7)),last=new Date(y,m,0).getDate();return ym+'-'+String(Math.min(d,last)).padStart(2,'0')}
 function financeBillSourceLabel(s){return ({money:'Dinheiro / conta',card:'Cartão',pix:'PIX',debit:'Débito',boleto:'Boleto',other:'Outro'})[s]||s}
@@ -3999,10 +4045,10 @@ async function loadFinancePatrimony(){if(!currentUserId)return;const [aR,lR]=awa
 async function addFinanceAsset(){const name=document.getElementById('finAssetName')?.value.trim(),value=Number(document.getElementById('finAssetValue')?.value||0);if(!name||value<0)return;await sb.from('finance_assets').insert({user_id:currentUserId,name,asset_type:'investment',current_value:value,liquidity:'short',updated_value_at:new Date().toISOString()});document.getElementById('finAssetName').value='';document.getElementById('finAssetValue').value='';loadFinancePatrimony()}
 async function addFinanceLiability(){const name=document.getElementById('finDebtName')?.value.trim(),value=Number(document.getElementById('finDebtValue')?.value||0);if(!name||value<0)return;await sb.from('finance_liabilities').insert({user_id:currentUserId,name,liability_type:'other',outstanding_balance:value,status:'active'});document.getElementById('finDebtName').value='';document.getElementById('finDebtValue').value='';loadFinancePatrimony()}
 async function runFinanceCoach(btn){
-  const {start,end}=financePeriod();
+  const period=financePeriod(),{start,end}=period;
   if(btn){btn.disabled=true;btn.textContent='Analisando…'}
   try{
-    const data=await callEdge('finance-coach',{start_date:start,end_date:end}),r=data.result||{};
+    const data=await callEdge('finance-coach',{start_date:start,end_date:end,selected_months:period.monthKeys}),r=data.result||{};
     setTextSafe('financeCoachScore',String(r.score??'—'));
     setTextSafe('financeCoachLabel',r.score_label||'Leitura financeira');
     setTextSafe('financeCoachSummary',r.executive_summary||'Análise concluída.');
