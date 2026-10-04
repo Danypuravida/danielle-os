@@ -55,6 +55,9 @@
 .finance-review-row{display:grid;grid-template-columns:minmax(180px,1.4fr) 120px 70px minmax(170px,1fr) auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid #1e2937}.finance-review-row:last-child{border-bottom:0}.finance-review-name b{display:block}.finance-review-name small{color:var(--muted)}
 .finance-review-occurrences{grid-column:1/-1;width:100%;border:1px solid var(--line);border-radius:9px;background:#0e151e}.finance-review-occurrences summary{cursor:pointer;padding:9px 11px;color:var(--accent);font-size:12px;font-weight:700}.finance-review-occurrence-list{padding:0 11px 8px;max-height:320px;overflow:auto;overscroll-behavior:contain}.finance-review-occurrence{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:12px;align-items:start;padding:8px 0;border-top:1px solid #1e2937;font-size:12px}.finance-review-occurrence small{display:block;color:var(--muted);font-size:11px}.finance-review-occurrence-description{overflow-wrap:anywhere}.finance-review-occurrence .finance-money{white-space:nowrap;text-align:right}
 @media(max-width:600px){.finance-review-occurrence{grid-template-columns:minmax(0,1fr) auto;gap:5px 10px}.finance-review-occurrence-description{grid-column:1/-1;grid-row:2}}
+.finance-review-mode{grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap}.finance-review-mode span{font-size:12px;color:var(--muted)}.finance-review-row.separate-classification>.finance-group-control{display:none}.finance-review-single-controls{grid-column:1/-1;display:grid;grid-template-columns:minmax(140px,.7fr) minmax(180px,1fr) auto;gap:9px;align-items:center;padding-top:5px}.finance-review-single-controls .field{padding:8px}.finance-review-single-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap}
+.separate-classification .finance-review-occurrence-list{max-height:min(65vh,640px)}
+@media(max-width:800px){.finance-review-single-controls{grid-template-columns:1fr}}
 .finance-goal{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#0e151e}.finance-goal-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.finance-progress{height:8px;background:#253142;border-radius:10px;overflow:hidden;margin:10px 0}.finance-progress i{display:block;height:100%;background:#78b995}
 .finance-coach-hero{background:radial-gradient(circle at 100% 0%,rgba(215,181,109,.12),transparent 38%),#111923}.finance-score-ring{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--score,0)*1%),#263446 0);position:relative;flex:0 0 auto}.finance-score-ring:after{content:"";position:absolute;inset:9px;background:#111923;border-radius:50%}.finance-score-ring b{position:relative;z-index:1;font-size:25px}.finance-privacy-on .finance-money{filter:blur(7px);user-select:none}.finance-privacy-on .finance-money:hover{filter:blur(7px)}.finance-privacy-on .finance-money-input{color:transparent!important;text-shadow:0 0 8px rgba(226,232,240,.8);caret-color:transparent}
 .finance-table{width:100%;border-collapse:collapse}.finance-table th,.finance-table td{text-align:left;padding:9px 7px;border-bottom:1px solid #1e2937;vertical-align:top}.finance-table th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.finance-table td:last-child,.finance-table th:last-child{text-align:right}
@@ -4159,12 +4162,51 @@ function financePaymentMethodLabel(t){
   if(/\bDEPOSITO\b/.test(raw)||/^DEPOSITO\b/.test(description))return 'Depósito';
   return 'Não informado';
 }
-function financeReviewOccurrencesHtml(items){
+const financeSeparateReviewGroups=new Set(),financeExpandedReviewGroups=new Set(),financeReviewDrafts=new Map();
+let financeReviewDraftUserId=null;
+function captureFinanceReviewState(){
+  if(financeReviewDraftUserId!==currentUserId){
+    financeReviewDrafts.clear();financeSeparateReviewGroups.clear();financeExpandedReviewGroups.clear();
+    financeReviewDraftUserId=currentUserId;return;
+  }
+  document.querySelectorAll('#financeReviewList [data-fin-review-draft]').forEach(input=>{
+    if(input.value===FINANCE_CREATE_CATEGORY)return;
+    financeReviewDrafts.set(input.dataset.finReviewDraft,input.type==='checkbox'?input.checked:input.value);
+  });
+  document.querySelectorAll('#financeReviewList [data-fin-group-key]').forEach(row=>{
+    const key=row.dataset.finGroupKey;
+    if(row.querySelector('.finance-review-occurrences')?.open)financeExpandedReviewGroups.add(key);
+    else financeExpandedReviewGroups.delete(key);
+  });
+}
+function restoreFinanceReviewDrafts(){
+  document.querySelectorAll('#financeReviewList [data-fin-review-draft]').forEach(input=>{
+    const key=input.dataset.finReviewDraft;if(!financeReviewDrafts.has(key))return;
+    const value=financeReviewDrafts.get(key);
+    if(input.type==='checkbox')input.checked=!!value;
+    else if(input.tagName!=='SELECT'||[...input.options].some(option=>option.value===value))input.value=value;
+    if(input.id.startsWith('finCat_'))input.dataset.previousCategory=input.value;
+  });
+}
+function toggleFinanceSeparateGroup(button){
+  const row=button.closest('[data-fin-group-key]');if(!row)return;
+  captureFinanceReviewState();
+  const key=row.dataset.finGroupKey;
+  if(financeSeparateReviewGroups.has(key))financeSeparateReviewGroups.delete(key);
+  else{financeSeparateReviewGroups.add(key);financeExpandedReviewGroups.add(key)}
+  renderFinanceReview(false);
+}
+function financeReviewOccurrencesHtml(items,separate=false,expanded=false){
   const sorted=[...items].sort((a,b)=>String(b.transaction_date||'').localeCompare(String(a.transaction_date||'')));
-  return `<details class="finance-review-occurrences"><summary>Ver lançamentos (${sorted.length})</summary><div class="finance-review-occurrence-list">${sorted.map(t=>`<div class="finance-review-occurrence">
+  return `<details class="finance-review-occurrences" ${expanded?'open':''}><summary>Ver lançamentos (${sorted.length})</summary><div class="finance-review-occurrence-list">${sorted.map(t=>`<div class="finance-review-occurrence">
     <div><time datetime="${finEsc(t.transaction_date||'')}">${financeOccurrenceDate(t.transaction_date)}</time>${t.purchase_date&&t.purchase_date!==t.transaction_date?`<small>Compra: ${financeOccurrenceDate(t.purchase_date)}</small>`:''}</div>
     <span class="finance-review-occurrence-description">${finEsc(t.description||t.counterparty||'Lançamento')}<small>Forma: ${financePaymentMethodLabel(t)}${t.is_card_payment?' • pagamento de fatura':''}</small></span>
     <b class="finance-money">${finMoney(t.amount)}</b>
+    ${separate?`<div class="finance-review-single-controls">
+      <select class="field" id="finDir_single_${t.id}" data-fin-review-draft="single:${t.id}:direction" aria-label="Tipo do lançamento de ${financeOccurrenceDate(t.transaction_date)}">${['expense','income','refund','transfer','savings'].map(d=>`<option value="${d}" ${d===t.direction?'selected':''}>${financeDirectionLabel(d)}</option>`).join('')}</select>
+      <select class="field" id="finCat_single_${t.id}" data-fin-review-draft="single:${t.id}:category" data-previous-category="${t.category_id||''}" aria-label="Categoria do lançamento de ${financeOccurrenceDate(t.transaction_date)}" onchange="handleFinanceReviewCategoryChange(this,'single_${t.id}')">${financeReviewCategoryOptions(t.category_id||'')}</select>
+      <div class="finance-review-single-actions"><label><input type="checkbox" id="finExclude_single_${t.id}" data-fin-review-draft="single:${t.id}:exclude" ${t.exclude_from_spend||t.direction==='transfer'?'checked':''}> não contar no consumo</label><button class="btn tiny" onclick="classifyFinanceIndividual('${t.id}',this)">Classificar este</button></div>
+    </div>`:''}
   </div>`).join('')}</div></details>`;
 }
 const FINANCE_CREATE_CATEGORY='__create_category__';
@@ -4194,6 +4236,7 @@ async function handleFinanceReviewCategoryChange(select,index){
   const direction=document.getElementById('finDir_'+index)?.value||'expense';
   const kind=['expense','income','refund','transfer','savings'].includes(direction)?direction:'expense';
   const userId=currentUserId;
+  const draftKey=select.dataset.finReviewDraft;
   financeCategoryCreationPending=true;select.disabled=true;
   try{
     // Refresh before inserting so a category created on another device is reused.
@@ -4210,7 +4253,9 @@ async function handleFinanceReviewCategoryChange(select,index){
     if(currentUserId!==userId)return;
     financeCategories=[...(categories||[]).filter(c=>c.id!==category.id),category].sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
     refreshFinanceCategorySelects();
-    if(select.isConnected){select.value=category.id;select.dataset.previousCategory=category.id}
+    if(draftKey)financeReviewDrafts.set(draftKey,category.id);
+    const liveSelect=select.isConnected?select:[...document.querySelectorAll('#financeReviewList select[data-fin-review-draft]')].find(input=>input.dataset.finReviewDraft===draftKey);
+    if(liveSelect){liveSelect.value=category.id;liveSelect.dataset.previousCategory=category.id}
     cloudMsg(existed?'Essa categoria já existe e foi selecionada.':'Categoria criada e selecionada.',true);
   }catch(e){
     select.value=previous;
@@ -4219,8 +4264,10 @@ async function handleFinanceReviewCategoryChange(select,index){
     financeCategoryCreationPending=false;select.disabled=false;
   }
 }
-function renderFinanceReview(){
+function renderFinanceReview(captureState=true){
   const el=document.getElementById('financeReviewList');if(!el)return;
+  if(captureState)captureFinanceReviewState();
+  const period=financePeriod(),periodKey=period.year+'|'+(period.monthKeys.join(',')||'all');
   const search=(document.getElementById('financeReviewSearch')?.value||'').trim().toLowerCase();
   const latest=financeTx.length?financeTx.reduce((m,t)=>String(t.transaction_date)>m?String(t.transaction_date):m,''):'';
   const fresh=document.getElementById('financeReviewFreshness');
@@ -4230,7 +4277,7 @@ function renderFinanceReview(){
   for(const t of tx){
     const name=(t.counterparty||t.description||'Não identificado').trim();
     const k=(t.direction||'expense')+'|'+name;
-    groups[k]??={ids:[],items:[],total:0,count:0,last:t.transaction_date,name,direction:t.direction||'expense',categoryId:t.category_id||'',exclude:true};
+    groups[k]??={key:periodKey+'|'+k,ids:[],items:[],total:0,count:0,last:t.transaction_date,name,direction:t.direction||'expense',categoryId:t.category_id||'',exclude:true};
     groups[k].ids.push(t.id);groups[k].items.push(t);groups[k].total+=Number(t.amount);groups[k].count++;
     if(t.transaction_date>groups[k].last)groups[k].last=t.transaction_date;
     if(!groups[k].categoryId&&t.category_id)groups[k].categoryId=t.category_id;
@@ -4239,21 +4286,45 @@ function renderFinanceReview(){
   const arr=Object.values(groups).sort((a,b)=>b.total-a.total);
   const manual=document.getElementById('finManualCategory');
   if(manual){const prev=manual.value;manual.innerHTML='<option value="">Categoria</option>'+financeCategories.map(c=>`<option value="${c.id}">${finEsc(c.name)}</option>`).join('');manual.value=prev}
-  el.innerHTML=arr.length?arr.map((g,i)=>`<div class="finance-review-row">
+  el.innerHTML=arr.length?arr.map((g,i)=>{const separate=financeSeparateReviewGroups.has(g.key);return `<div class="finance-review-row ${separate?'separate-classification':''}" data-fin-group-key="${finEsc(g.key)}">
     <div class="finance-review-name"><b>${finEsc(g.name)}</b><small>${g.count} lançamento(ões) • último ${new Date(g.last+'T12:00:00').toLocaleDateString('pt-BR')}</small></div>
     <b class="finance-money">${finMoney(g.total)}</b>
     <span class="finance-pill">${g.count}x</span>
-    <select class="field" id="finDir_${i}">
+    <select class="field finance-group-control" id="finDir_${i}" data-fin-review-draft="${finEsc('group:'+g.key+':direction')}">
       ${['expense','income','refund','transfer','savings'].map(d=>`<option value="${d}" ${d===g.direction?'selected':''}>${financeDirectionLabel(d)}</option>`).join('')}
     </select>
-    <select class="field" id="finCat_${i}" data-previous-category="${g.categoryId}" onchange="handleFinanceReviewCategoryChange(this,${i})">${financeReviewCategoryOptions(g.categoryId)}</select>
-    <div>
-      <label class="tiny"><input type="checkbox" id="finRule_${i}" ${g.direction==='expense'?'checked':''}> lembrar</label><br>
-      <label class="tiny"><input type="checkbox" id="finExclude_${i}" ${g.exclude||g.direction==='transfer'?'checked':''}> não contar no consumo</label><br>
+    <select class="field finance-group-control" id="finCat_${i}" data-fin-review-draft="${finEsc('group:'+g.key+':category')}" data-previous-category="${g.categoryId}" onchange="handleFinanceReviewCategoryChange(this,${i})">${financeReviewCategoryOptions(g.categoryId)}</select>
+    <div class="finance-group-control">
+      <label class="tiny"><input type="checkbox" id="finRule_${i}" data-fin-review-draft="${finEsc('group:'+g.key+':remember')}" ${g.direction==='expense'?'checked':''}> lembrar</label><br>
+      <label class="tiny"><input type="checkbox" id="finExclude_${i}" data-fin-review-draft="${finEsc('group:'+g.key+':exclude')}" ${g.exclude||g.direction==='transfer'?'checked':''}> não contar no consumo</label><br>
       <button class="btn tiny" onclick='classifyFinanceGroup(${JSON.stringify(g.ids)},${JSON.stringify(g.name)},"finCat_${i}","finDir_${i}","finRule_${i}","finExclude_${i}")'>Classificar</button>
     </div>
-    ${financeReviewOccurrencesHtml(g.items)}
-  </div>`).join(''):'<div class="finance-empty">Tudo classificado neste período.</div>'
+    ${g.count>1||separate?`<div class="finance-review-mode"><button class="btn tiny" aria-pressed="${separate}" onclick="toggleFinanceSeparateGroup(this)">${separate?'Classificar junto':'Classificar separado'}</button>${separate?'<span>Cada lançamento será salvo separadamente.</span>':''}</div>`:''}
+    ${financeReviewOccurrencesHtml(g.items,separate,financeExpandedReviewGroups.has(g.key))}
+  </div>`}).join(''):'<div class="finance-empty">Tudo classificado neste período.</div>';
+  restoreFinanceReviewDrafts();
+}
+async function classifyFinanceIndividual(id,button){
+  if(!currentUserId)return cloudMsg('Entre na sua conta para classificar.');
+  const t=financeTx.find(x=>x.id===id&&x.classification_source==='unclassified');
+  if(!t)return cloudMsg('Este lançamento já foi classificado. Atualize a lista.');
+  const catInput=document.getElementById('finCat_single_'+id);
+  if(catInput?.disabled)return cloudMsg('Aguarde a categoria terminar de salvar.');
+  const category=catInput?.value||null;
+  if(!category||category===FINANCE_CREATE_CATEGORY)return cloudMsg('Escolha uma categoria para este lançamento.');
+  const direction=document.getElementById('finDir_single_'+id)?.value||t.direction;
+  const exclude=!!document.getElementById('finExclude_single_'+id)?.checked||direction==='transfer';
+  const userId=currentUserId,controls=[...(button?.closest('.finance-review-single-controls')?.querySelectorAll('input,select,button')||[])];
+  controls.forEach(input=>input.disabled=true);if(button)button.textContent='Salvando…';
+  try{
+    const {data,error}=await sb.from('finance_transactions').update({category_id:category,direction,classification_source:'manual',classification_confidence:1,exclude_from_spend:exclude}).eq('id',id).eq('user_id',userId).eq('classification_source','unclassified').select('id').maybeSingle();
+    if(error)throw error;
+    if(currentUserId!==userId)return;
+    if(!data)cloudMsg('Este lançamento foi alterado em outro acesso. Atualizando a lista.');
+    else cloudMsg('Somente este lançamento foi classificado.',true);
+    await loadFinance();
+  }catch(e){cloudMsg('Classificação: '+(e?.message||String(e)))}
+  finally{controls.forEach(input=>input.disabled=false);if(button)button.textContent='Classificar este'}
 }
 async function classifyFinanceGroup(ids,name,selectId,dirId,ruleId,excludeId){
   if(document.getElementById(selectId)?.disabled)return cloudMsg('Aguarde a categoria terminar de salvar.');

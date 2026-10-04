@@ -1,4 +1,4 @@
-const CACHE_NAME = 'danielle-os-v1-1-17';
+const CACHE_NAME = 'danielle-os-v1-1-18';
 const CORE_ASSETS = [
   './',
   './index.html',
