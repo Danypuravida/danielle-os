@@ -4272,4 +4272,216 @@ function runFinanceScenario(){
 }
 </script>
 
+
+<script>
+/* ===== MENTORIA • METAS PESSOAIS • FREEHAND ===== */
+let mentorshipFocusCache=[],mentorshipSessionsCache=[];
+async function loadMentorship(){
+  if(!currentUserId)return;
+  const date=document.getElementById('mentorSessionDate');if(date&&!date.value)date.value=isoDateLocal();
+  const [fR,sR]=await Promise.all([
+    sb.from('mentorship_focus_areas').select('*').eq('user_id',currentUserId).order('status').order('priority').order('created_at',{ascending:false}),
+    sb.from('mentorship_sessions').select('*').eq('user_id',currentUserId).order('session_date',{ascending:false}).order('created_at',{ascending:false}).limit(30)
+  ]);
+  if(fR.error||sR.error)return cloudMsg('Mentoria: '+(fR.error?.message||sR.error?.message));
+  mentorshipFocusCache=fR.data||[];mentorshipSessionsCache=sR.data||[];renderMentorship();
+}
+function renderMentorship(){
+  const focus=document.getElementById('mentorshipFocusList'),sessions=document.getElementById('mentorshipSessions');
+  if(focus)focus.innerHTML=mentorshipFocusCache.length?mentorshipFocusCache.map(x=>`
+    <div class="growth-item">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><div class="growth-meta"><span class="growth-chip">${x.priority===1?'prioridade alta':x.priority===2?'prioridade média':'prioridade baixa'}</span><span class="growth-chip">${x.status==='achieved'?'concluído':x.status==='paused'?'pausado':'ativo'}</span></div><h3 style="margin-top:8px">${esc(x.title)}</h3></div>
+        <div class="row"><button class="btn tiny" onclick="updateMentorshipFocus('${x.id}',${Number(x.progress||0)})">Atualizar</button>${x.status!=='achieved'?'<button class="btn tiny" onclick="setMentorshipFocusStatus(\''+x.id+'\',\'achieved\')">✓ Concluir</button>':''}${x.status==='active'?'<button class="btn tiny" onclick="setMentorshipFocusStatus(\''+x.id+'\',\'paused\')">Pausar</button>':x.status==='paused'?'<button class="btn tiny" onclick="setMentorshipFocusStatus(\''+x.id+'\',\'active\')">Retomar</button>':''}</div>
+      </div>
+      ${x.why?`<div class="muted">${esc(x.why)}</div>`:''}
+      ${x.success_evidence?`<div class="tiny" style="margin-top:6px"><b>Como vou saber que melhorei:</b> ${esc(x.success_evidence)}</div>`:''}
+      <div class="growth-progress"><i style="width:${Number(x.progress||0)}%"></i></div>
+      <div class="tiny muted">${Number(x.progress||0)}% de progresso</div>
+    </div>`).join(''):'<div class="muted">Adicione um foco ou use uma das sugestões acima.</div>';
+  if(sessions)sessions.innerHTML=mentorshipSessionsCache.length?mentorshipSessionsCache.map(x=>`
+    <div class="growth-item">
+      <div class="growth-meta"><span class="growth-chip">${ptDate(x.session_date)}</span></div>
+      <h3 style="margin-top:8px">${esc(x.title)}</h3>
+      ${x.preparation?`<div class="tiny muted"><b>Levei:</b> ${esc(x.preparation)}</div>`:''}
+      ${x.insights?`<div style="margin-top:7px"><b>Insights</b><div class="muted">${esc(x.insights)}</div></div>`:''}
+      ${x.actions?`<div style="margin-top:7px"><b>Ações</b><div class="muted">${esc(x.actions)}</div></div>`:''}
+      ${x.next_focus?`<div style="margin-top:7px"><b>Próximo foco:</b> ${esc(x.next_focus)}</div>`:''}
+    </div>`).join(''):'<div class="muted">Nenhuma sessão registrada ainda.</div>';
+}
+async function addMentorshipFocus(){
+  const title=document.getElementById('mentorFocusTitle')?.value.trim(),why=document.getElementById('mentorFocusWhy')?.value.trim(),success=document.getElementById('mentorFocusEvidence')?.value.trim(),priority=Number(document.getElementById('mentorFocusPriority')?.value||2);
+  if(!title)return cloudMsg('Dê um nome ao ponto de desenvolvimento.');
+  const {error}=await sb.from('mentorship_focus_areas').insert({user_id:currentUserId,title,why:why||null,success_evidence:success||null,priority,status:'active',progress:0});
+  if(error)return cloudMsg('Mentoria: '+error.message);
+  ['mentorFocusTitle','mentorFocusWhy','mentorFocusEvidence'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});cloudMsg('Foco de mentoria adicionado',true);loadMentorship();
+}
+async function addMentorshipSuggestion(title,why,success){
+  if(!currentUserId)return;
+  const exists=mentorshipFocusCache.some(x=>x.status!=='achieved'&&String(x.title).toLowerCase()===String(title).toLowerCase());
+  if(exists)return cloudMsg('Esse foco já está na sua mentoria.');
+  const {error}=await sb.from('mentorship_focus_areas').insert({user_id:currentUserId,title,why,success_evidence:success,priority:2,status:'active',progress:0});
+  if(error)return cloudMsg('Mentoria: '+error.message);cloudMsg('Sugestão adicionada à mentoria',true);loadMentorship();
+}
+async function updateMentorshipFocus(id,current){
+  const v=prompt('Progresso de 0 a 100:',String(current||0));if(v===null)return;
+  const n=Math.max(0,Math.min(100,Number(v)));if(Number.isNaN(n))return cloudMsg('Use um número de 0 a 100.');
+  const patch={progress:n};if(n===100)patch.status='achieved';
+  const {error}=await sb.from('mentorship_focus_areas').update(patch).eq('id',id).eq('user_id',currentUserId);
+  if(error)return cloudMsg('Mentoria: '+error.message);loadMentorship();
+}
+async function setMentorshipFocusStatus(id,status){
+  const patch={status};if(status==='achieved')patch.progress=100;
+  const {error}=await sb.from('mentorship_focus_areas').update(patch).eq('id',id).eq('user_id',currentUserId);
+  if(error)return cloudMsg('Mentoria: '+error.message);loadMentorship();
+}
+async function saveMentorshipSession(){
+  const title=document.getElementById('mentorSessionTitle')?.value.trim();if(!title)return cloudMsg('Dê um título para a sessão.');
+  const row={user_id:currentUserId,session_date:document.getElementById('mentorSessionDate')?.value||isoDateLocal(),title,
+    preparation:document.getElementById('mentorSessionPrep')?.value.trim()||null,notes:document.getElementById('mentorSessionNotes')?.value.trim()||null,
+    insights:document.getElementById('mentorSessionInsights')?.value.trim()||null,actions:document.getElementById('mentorSessionActions')?.value.trim()||null,
+    next_focus:document.getElementById('mentorSessionNext')?.value.trim()||null};
+  const {error}=await sb.from('mentorship_sessions').insert(row);if(error)return cloudMsg('Mentoria: '+error.message);
+  ['mentorSessionTitle','mentorSessionPrep','mentorSessionNotes','mentorSessionInsights','mentorSessionActions','mentorSessionNext'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  cloudMsg('Sessão de mentoria salva',true);loadMentorship();
+}
+
+let personalGoalsCache=[],personalGoalUpdatesCache=[];
+function personalHorizonLabel(h){return ({weekly:'Semanal',monthly:'Mensal',semiannual:'Semestral',medium:'Médio prazo',long:'Longo prazo'})[h]||h}
+async function loadPersonalGoals(){
+  if(!currentUserId)return;
+  const [gR,uR]=await Promise.all([
+    sb.from('personal_goals').select('*').eq('user_id',currentUserId).order('status').order('created_at',{ascending:false}),
+    sb.from('personal_goal_updates').select('*').eq('user_id',currentUserId).order('created_at',{ascending:false}).limit(200)
+  ]);
+  if(gR.error||uR.error)return cloudMsg('Metas pessoais: '+(gR.error?.message||uR.error?.message));
+  personalGoalsCache=gR.data||[];personalGoalUpdatesCache=uR.data||[];renderPersonalGoals();
+}
+function renderPersonalGoals(){
+  const el=document.getElementById('personalGoalsList');if(!el)return;
+  const order=['weekly','monthly','semiannual','medium','long'];
+  if(!personalGoalsCache.length){el.innerHTML='<div class="muted">Nenhuma meta ou sonho criado ainda.</div>';return}
+  el.innerHTML=order.map(h=>{
+    const arr=personalGoalsCache.filter(x=>x.horizon===h);if(!arr.length)return '';
+    return `<div><h3 style="margin:14px 0 8px">${personalHorizonLabel(h)}</h3>${arr.map(g=>{
+      const last=personalGoalUpdatesCache.find(x=>x.goal_id===g.id);
+      return `<div class="growth-item">
+        <div class="row" style="justify-content:space-between;align-items:flex-start">
+          <div><div class="growth-meta"><span class="growth-chip">${g.goal_kind==='dream'?'sonho':'meta'}</span>${g.category?`<span class="growth-chip">${esc(g.category)}</span>`:''}<span class="growth-chip">${g.status==='completed'?'concluída':g.status==='paused'?'pausada':'ativa'}</span></div><h3 style="margin-top:8px">${esc(g.title)}</h3>${g.target_date?`<div class="tiny muted">Prazo: ${ptDate(g.target_date)}</div>`:''}</div>
+          <div class="row"><button class="btn tiny" onclick="updatePersonalGoal('${g.id}',${Number(g.progress||0)})">Atualizar</button>${g.status!=='completed'?'<button class="btn tiny" onclick="setPersonalGoalStatus(\''+g.id+'\',\'completed\')">✓ Concluir</button>':''}${g.status==='active'?'<button class="btn tiny" onclick="setPersonalGoalStatus(\''+g.id+'\',\'paused\')">Pausar</button>':g.status==='paused'?'<button class="btn tiny" onclick="setPersonalGoalStatus(\''+g.id+'\',\'active\')">Retomar</button>':''}</div>
+        </div>
+        ${g.why?`<div class="muted" style="margin-top:6px">${esc(g.why)}</div>`:''}
+        ${g.next_action?`<div style="margin-top:7px"><b>Próxima ação:</b> ${esc(g.next_action)}</div>`:''}
+        <div class="growth-progress"><i style="width:${Number(g.progress||0)}%"></i></div>
+        <div class="row" style="justify-content:space-between"><span class="tiny muted">${Number(g.progress||0)}%</span>${last?.note?`<span class="tiny muted">Último check-in: ${esc(last.note)}</span>`:''}</div>
+      </div>`
+    }).join('')}</div>`
+  }).join('');
+}
+async function createPersonalGoal(){
+  const title=document.getElementById('pgTitle')?.value.trim();if(!title)return cloudMsg('Dê um nome para a meta ou sonho.');
+  const row={user_id:currentUserId,title,goal_kind:document.getElementById('pgKind')?.value||'goal',horizon:document.getElementById('pgHorizon')?.value||'monthly',
+    category:document.getElementById('pgCategory')?.value||null,why:document.getElementById('pgWhy')?.value.trim()||null,next_action:document.getElementById('pgNext')?.value.trim()||null,
+    target_date:document.getElementById('pgDate')?.value||null,progress:0,status:'active'};
+  const {error}=await sb.from('personal_goals').insert(row);if(error)return cloudMsg('Metas pessoais: '+error.message);
+  ['pgTitle','pgWhy','pgNext','pgDate'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});cloudMsg('Meta pessoal criada',true);loadPersonalGoals();
+}
+async function updatePersonalGoal(id,current){
+  const raw=prompt('Progresso de 0 a 100:',String(current||0));if(raw===null)return;
+  const progress=Math.max(0,Math.min(100,Number(raw)));if(Number.isNaN(progress))return cloudMsg('Use um número de 0 a 100.');
+  const note=prompt('O que avançou desde o último check-in? (opcional)','');
+  const patch={progress};if(progress===100){patch.status='completed';patch.completed_at=new Date().toISOString()}
+  const {error}=await sb.from('personal_goals').update(patch).eq('id',id).eq('user_id',currentUserId);if(error)return cloudMsg('Metas pessoais: '+error.message);
+  await sb.from('personal_goal_updates').insert({user_id:currentUserId,goal_id:id,progress,note:note||null});
+  cloudMsg('Progresso atualizado',true);loadPersonalGoals();
+}
+async function setPersonalGoalStatus(id,status){
+  const patch={status};if(status==='completed'){patch.progress=100;patch.completed_at=new Date().toISOString()}else patch.completed_at=null;
+  const {error}=await sb.from('personal_goals').update(patch).eq('id',id).eq('user_id',currentUserId);if(error)return cloudMsg('Metas pessoais: '+error.message);
+  if(status==='completed')await sb.from('personal_goal_updates').insert({user_id:currentUserId,goal_id:id,progress:100,note:'Meta concluída'});
+  loadPersonalGoals();
+}
+
+/* ---------- FREEHAND ---------- */
+const freehandBoards={};
+function freehandBoardHtml(pageId){
+  const q=JSON.stringify(pageId);
+  return `<div class="card freehand-card" data-freehand-board="${esc(pageId)}">
+    <div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="kicker">CANETA / TABLET</div><h2>Observações freehand</h2><p class="muted">Escreva à mão com a S Pen, caneta, dedo ou mouse. Salva automaticamente.</p></div><span class="freehand-save-state" id="freehandState_${esc(pageId)}">carregando…</span></div>
+    <div class="freehand-toolbar">
+      <button class="freehand-color active" style="background:#253142" aria-label="Caneta azul escuro" onclick="setFreehandColor(${q},'#253142',this)"></button>
+      <button class="freehand-color" style="background:#a54f4f" aria-label="Caneta vermelha" onclick="setFreehandColor(${q},'#a54f4f',this)"></button>
+      <button class="freehand-color" style="background:#416d9b" aria-label="Caneta azul" onclick="setFreehandColor(${q},'#416d9b',this)"></button>
+      <label class="tiny muted">Traço <input id="freehandSize_${esc(pageId)}" type="range" min="1" max="12" value="3" style="width:110px"></label>
+      <button class="btn tiny" id="freehandPen_${esc(pageId)}" onclick="setFreehandTool(${q},'pen')">Caneta</button>
+      <button class="btn tiny" id="freehandEraser_${esc(pageId)}" onclick="setFreehandTool(${q},'eraser')">Borracha</button>
+      <button class="btn tiny" onclick="undoFreehand(${q})">↶ Desfazer</button>
+      <button class="btn tiny" onclick="clearFreehand(${q})">Limpar</button>
+    </div>
+    <div class="freehand-canvas-wrap"><canvas class="freehand-canvas" id="freehandCanvas_${esc(pageId)}"></canvas></div>
+  </div>`;
+}
+async function ensureFreehandBoard(pageId){
+  if(!currentUserId)return;
+  const page=document.querySelector('.page[data-page="'+CSS.escape(pageId)+'"]');if(!page)return;
+  let board=page.querySelector('[data-freehand-board]');
+  if(!board){page.insertAdjacentHTML('beforeend',freehandBoardHtml(pageId));setupFreehandCanvas(pageId)}
+  else if(!freehandBoards[pageId])setupFreehandCanvas(pageId);
+  setTimeout(()=>resizeFreehandCanvas(pageId),30);
+}
+function setupFreehandCanvas(pageId){
+  const canvas=document.getElementById('freehandCanvas_'+pageId);if(!canvas)return;
+  const state=freehandBoards[pageId]={strokes:[],drawing:false,current:null,color:'#253142',tool:'pen',saveTimer:null,loaded:false,pointerId:null};
+  canvas.addEventListener('pointerdown',e=>freehandPointerDown(pageId,e));
+  canvas.addEventListener('pointermove',e=>freehandPointerMove(pageId,e));
+  canvas.addEventListener('pointerup',e=>freehandPointerUp(pageId,e));
+  canvas.addEventListener('pointercancel',e=>freehandPointerUp(pageId,e));
+  resizeFreehandCanvas(pageId);loadFreehand(pageId);
+}
+function resizeFreehandCanvas(pageId){
+  const canvas=document.getElementById('freehandCanvas_'+pageId),state=freehandBoards[pageId];if(!canvas||!state)return;
+  const rect=canvas.getBoundingClientRect();if(rect.width<10||rect.height<10)return;
+  const dpr=Math.min(window.devicePixelRatio||1,2);canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);
+  const ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);ctx.lineCap='round';ctx.lineJoin='round';redrawFreehand(pageId);
+}
+function freehandCtx(pageId){const canvas=document.getElementById('freehandCanvas_'+pageId);return canvas?.getContext('2d')}
+function redrawFreehand(pageId){
+  const canvas=document.getElementById('freehandCanvas_'+pageId),state=freehandBoards[pageId],ctx=freehandCtx(pageId);if(!canvas||!state||!ctx)return;
+  const rect=canvas.getBoundingClientRect();ctx.clearRect(0,0,rect.width,rect.height);
+  for(const s of state.strokes){if(!s.points?.length)continue;ctx.save();ctx.globalCompositeOperation=s.tool==='eraser'?'destination-out':'source-over';ctx.strokeStyle=s.color||'#253142';ctx.lineWidth=Number(s.width||3);ctx.beginPath();s.points.forEach((p,i)=>{const x=p.x*rect.width,y=p.y*rect.height;i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke();ctx.restore()}
+}
+function pointForFreehand(canvas,e){
+  const r=canvas.getBoundingClientRect();return {x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height)),p:e.pressure||0.5}
+}
+function freehandPointerDown(pageId,e){
+  const state=freehandBoards[pageId],canvas=e.currentTarget;if(!state)return;e.preventDefault();state.drawing=true;state.pointerId=e.pointerId;canvas.setPointerCapture?.(e.pointerId);
+  const width=Number(document.getElementById('freehandSize_'+pageId)?.value||3)*(state.tool==='eraser'?4:1);
+  state.current={tool:state.tool,color:state.color,width,points:[pointForFreehand(canvas,e)]};state.strokes.push(state.current);redrawFreehand(pageId);
+}
+function freehandPointerMove(pageId,e){
+  const state=freehandBoards[pageId],canvas=e.currentTarget;if(!state?.drawing||state.pointerId!==e.pointerId)return;e.preventDefault();state.current.points.push(pointForFreehand(canvas,e));redrawFreehand(pageId);
+}
+function freehandPointerUp(pageId,e){
+  const state=freehandBoards[pageId];if(!state?.drawing)return;state.drawing=false;state.pointerId=null;state.current=null;scheduleFreehandSave(pageId);
+}
+function setFreehandColor(pageId,color,btn){
+  const state=freehandBoards[pageId];if(!state)return;state.color=color;state.tool='pen';document.querySelectorAll('[data-freehand-board="'+CSS.escape(pageId)+'"] .freehand-color').forEach(x=>x.classList.remove('active'));btn?.classList.add('active');
+}
+function setFreehandTool(pageId,tool){const state=freehandBoards[pageId];if(!state)return;state.tool=tool;cloudMsg(tool==='eraser'?'Borracha ativa':'Caneta ativa',true)}
+function undoFreehand(pageId){const state=freehandBoards[pageId];if(!state?.strokes.length)return;state.strokes.pop();redrawFreehand(pageId);scheduleFreehandSave(pageId)}
+function clearFreehand(pageId){const state=freehandBoards[pageId];if(!state)return;if(!confirm('Limpar todas as observações à mão desta página?'))return;state.strokes=[];redrawFreehand(pageId);scheduleFreehandSave(pageId)}
+function scheduleFreehandSave(pageId){const state=freehandBoards[pageId];if(!state)return;clearTimeout(state.saveTimer);const label=document.getElementById('freehandState_'+pageId);if(label)label.textContent='salvando…';state.saveTimer=setTimeout(()=>saveFreehand(pageId),650)}
+async function saveFreehand(pageId){
+  const state=freehandBoards[pageId];if(!state||!currentUserId)return;
+  const {error}=await sb.from('freehand_notes').upsert({user_id:currentUserId,page_key:pageId,strokes:state.strokes,updated_at:new Date().toISOString()},{onConflict:'user_id,page_key'});
+  const label=document.getElementById('freehandState_'+pageId);if(label)label.textContent=error?'erro ao salvar':'salvo';if(error)console.warn(error);
+}
+async function loadFreehand(pageId){
+  const state=freehandBoards[pageId];if(!state||!currentUserId)return;
+  const {data,error}=await sb.from('freehand_notes').select('strokes').eq('user_id',currentUserId).eq('page_key',pageId).limit(1).maybeSingle();
+  if(!error&&data?.strokes)state.strokes=Array.isArray(data.strokes)?data.strokes:[];state.loaded=true;redrawFreehand(pageId);
+  const label=document.getElementById('freehandState_'+pageId);if(label)label.textContent=error?'não carregou':'salvo';
+}
+window.addEventListener('resize',()=>{for(const id of Object.keys(freehandBoards)){const page=document.querySelector('.page[data-page="'+CSS.escape(id)+'"]');if(page?.classList.contains('active'))resizeFreehandCanvas(id)}});
+</script>
 </body></html>
