@@ -53,6 +53,8 @@
 .finance-alert{border-left:3px solid var(--accent);padding:10px 12px;background:#101821;border-radius:8px;margin:8px 0}.finance-alert.high{border-left-color:#df887f}.finance-alert.good{border-left-color:#78b995}
 .finance-import-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.finance-import-card{border:1px dashed #38506a;border-radius:13px;padding:16px;background:#0e151e}.finance-import-card h3{margin-bottom:5px}.finance-upload-status{min-height:22px;margin-top:8px}
 .finance-review-row{display:grid;grid-template-columns:minmax(180px,1.4fr) 120px 70px minmax(170px,1fr) auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid #1e2937}.finance-review-row:last-child{border-bottom:0}.finance-review-name b{display:block}.finance-review-name small{color:var(--muted)}
+.finance-review-occurrences{grid-column:1/-1;width:100%;border:1px solid var(--line);border-radius:9px;background:#0e151e}.finance-review-occurrences summary{cursor:pointer;padding:9px 11px;color:var(--accent);font-size:12px;font-weight:700}.finance-review-occurrence-list{padding:0 11px 8px;max-height:320px;overflow:auto;overscroll-behavior:contain}.finance-review-occurrence{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:12px;align-items:start;padding:8px 0;border-top:1px solid #1e2937;font-size:12px}.finance-review-occurrence small{display:block;color:var(--muted);font-size:11px}.finance-review-occurrence-description{overflow-wrap:anywhere}.finance-review-occurrence .finance-money{white-space:nowrap;text-align:right}
+@media(max-width:600px){.finance-review-occurrence{grid-template-columns:minmax(0,1fr) auto;gap:5px 10px}.finance-review-occurrence-description{grid-column:1/-1;grid-row:2}}
 .finance-goal{border:1px solid var(--line);border-radius:12px;padding:14px;margin:10px 0;background:#0e151e}.finance-goal-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.finance-progress{height:8px;background:#253142;border-radius:10px;overflow:hidden;margin:10px 0}.finance-progress i{display:block;height:100%;background:#78b995}
 .finance-coach-hero{background:radial-gradient(circle at 100% 0%,rgba(215,181,109,.12),transparent 38%),#111923}.finance-score-ring{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--score,0)*1%),#263446 0);position:relative;flex:0 0 auto}.finance-score-ring:after{content:"";position:absolute;inset:9px;background:#111923;border-radius:50%}.finance-score-ring b{position:relative;z-index:1;font-size:25px}.finance-privacy-on .finance-money{filter:blur(7px);user-select:none}.finance-privacy-on .finance-money:hover{filter:blur(7px)}.finance-privacy-on .finance-money-input{color:transparent!important;text-shadow:0 0 8px rgba(226,232,240,.8);caret-color:transparent}
 .finance-table{width:100%;border-collapse:collapse}.finance-table th,.finance-table td{text-align:left;padding:9px 7px;border-bottom:1px solid #1e2937;vertical-align:top}.finance-table th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.finance-table td:last-child,.finance-table th:last-child{text-align:right}
@@ -4137,6 +4139,19 @@ async function saveFinanceCorrection(id,i){
   cloudMsg(similar?'Classificação corrigida nos lançamentos iguais':'Classificação corrigida',true);await loadFinance();
 }
 function financeDirectionLabel(d){return ({expense:'Despesa',income:'Entrada',refund:'Estorno / reembolso',transfer:'Transferência',savings:'Economia / investimento'})[d]||d}
+function financeOccurrenceDate(value){
+  if(!value)return 'Data não informada';
+  const date=new Date(String(value).slice(0,10)+'T12:00:00');
+  return Number.isNaN(date.getTime())?'Data não informada':date.toLocaleDateString('pt-BR');
+}
+function financeReviewOccurrencesHtml(items){
+  const sorted=[...items].sort((a,b)=>String(b.transaction_date||'').localeCompare(String(a.transaction_date||'')));
+  return `<details class="finance-review-occurrences"><summary>Ver lançamentos (${sorted.length})</summary><div class="finance-review-occurrence-list">${sorted.map(t=>`<div class="finance-review-occurrence">
+    <div><time datetime="${finEsc(t.transaction_date||'')}">${financeOccurrenceDate(t.transaction_date)}</time>${t.purchase_date&&t.purchase_date!==t.transaction_date?`<small>Compra: ${financeOccurrenceDate(t.purchase_date)}</small>`:''}</div>
+    <span class="finance-review-occurrence-description">${finEsc(t.description||t.counterparty||'Lançamento')}</span>
+    <b class="finance-money">${finMoney(t.amount)}</b>
+  </div>`).join('')}</div></details>`;
+}
 const FINANCE_CREATE_CATEGORY='__create_category__';
 let financeCategoryCreationPending=false;
 function financeReviewCategoryOptions(selected){
@@ -4200,8 +4215,8 @@ function renderFinanceReview(){
   for(const t of tx){
     const name=(t.counterparty||t.description||'Não identificado').trim();
     const k=(t.direction||'expense')+'|'+name;
-    groups[k]??={ids:[],total:0,count:0,last:t.transaction_date,name,direction:t.direction||'expense',categoryId:t.category_id||'',exclude:true};
-    groups[k].ids.push(t.id);groups[k].total+=Number(t.amount);groups[k].count++;
+    groups[k]??={ids:[],items:[],total:0,count:0,last:t.transaction_date,name,direction:t.direction||'expense',categoryId:t.category_id||'',exclude:true};
+    groups[k].ids.push(t.id);groups[k].items.push(t);groups[k].total+=Number(t.amount);groups[k].count++;
     if(t.transaction_date>groups[k].last)groups[k].last=t.transaction_date;
     if(!groups[k].categoryId&&t.category_id)groups[k].categoryId=t.category_id;
     groups[k].exclude=groups[k].exclude&&!!t.exclude_from_spend;
@@ -4222,6 +4237,7 @@ function renderFinanceReview(){
       <label class="tiny"><input type="checkbox" id="finExclude_${i}" ${g.exclude||g.direction==='transfer'?'checked':''}> não contar no consumo</label><br>
       <button class="btn tiny" onclick='classifyFinanceGroup(${JSON.stringify(g.ids)},${JSON.stringify(g.name)},"finCat_${i}","finDir_${i}","finRule_${i}","finExclude_${i}")'>Classificar</button>
     </div>
+    ${financeReviewOccurrencesHtml(g.items)}
   </div>`).join(''):'<div class="finance-empty">Tudo classificado neste período.</div>'
 }
 async function classifyFinanceGroup(ids,name,selectId,dirId,ruleId,excludeId){
