@@ -41,10 +41,14 @@
 .finance-table{width:100%;border-collapse:collapse}.finance-table th,.finance-table td{text-align:left;padding:9px 7px;border-bottom:1px solid #1e2937;vertical-align:top}.finance-table th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.finance-table td:last-child,.finance-table th:last-child{text-align:right}
 .finance-pill{display:inline-flex;padding:4px 8px;border:1px solid var(--line);border-radius:99px;font-size:11px;color:#cbd7e4}.finance-empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
 .finance-bill-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
-.finance-bill-row{display:grid;grid-template-columns:minmax(180px,1.35fr) 125px 82px 145px 125px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid #1e2937}
+.finance-bill-row{display:grid;grid-template-columns:minmax(150px,1.1fr) minmax(160px,1fr) 110px 72px 135px 115px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid #1e2937}
 .finance-bill-row:last-child{border-bottom:0}.finance-bill-name b{display:block}.finance-bill-name small{display:block;color:var(--muted);margin-top:3px}
 .finance-bill-new{display:grid;grid-template-columns:1.5fr 1.2fr 120px 85px 150px;gap:9px}
 .finance-bill-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.finance-bill-row .field{padding:8px}.finance-bill-status-paid{color:#78b995}
+.finance-correction-row{display:grid;grid-template-columns:minmax(220px,1.5fr) 110px 150px minmax(170px,1fr) auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid #1e2937}
+.finance-correction-row:last-child{border-bottom:0}.finance-correction-name b{display:block}.finance-correction-name small{color:var(--muted)}
+.finance-correction-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+@media(max-width:900px){.finance-correction-row{grid-template-columns:1fr}}
 @media(max-width:900px){.finance-bill-kpis{grid-template-columns:repeat(2,1fr)}.finance-bill-row,.finance-bill-new{grid-template-columns:1fr}.finance-bill-actions{justify-content:flex-start}}
 
 @media(max-width:1050px){.finance-kpis{grid-template-columns:repeat(2,1fr)}.finance-split{grid-template-columns:1fr}.finance-health{grid-template-columns:repeat(2,1fr)}.finance-pie-wrap{grid-template-columns:1fr}.finance-pie-legend{grid-template-columns:1fr 1fr}}
@@ -1208,7 +1212,14 @@ select.field{max-width:100%}
   </div>
 
   <div class="finance-tab-panel" data-fin-panel="revisao">
-    <div class="card" style="margin-top:16px"><h2>Preciso da sua ajuda</h2><p class="muted">Só aparece o que o sistema não sabe classificar. Classifique uma vez e, se quiser, transforme em regra para as próximas importações.</p><div id="financeReviewList"></div></div>
+    <div class="card" style="margin-top:16px"><h2>Preciso da sua ajuda</h2><p class="muted">Só aparece o que o sistema ainda não sabe classificar. Classifique uma vez e, se quiser, transforme em regra para as próximas importações.</p><div id="financeReviewList"></div></div>
+    <div class="card" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><h2>Corrigir o que já classifiquei</h2><p class="muted">Errou uma categoria, marcou como entrada/despesa errada ou salvou uma regra errada? Corrija aqui.</p></div>
+        <input class="field" id="financeCorrectionSearch" placeholder="Buscar nome, loja, PIX ou categoria" style="max-width:330px" oninput="renderFinanceCorrections()">
+      </div>
+      <div id="financeCorrections"></div>
+    </div>
   </div>
 
   <div class="finance-tab-panel" data-fin-panel="importar">
@@ -3678,7 +3689,7 @@ function financeMonthName(m){return ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul
 function txCategoryName(t){return t.finance_categories?.name||'Não classificado'}
 function financeMetricData(tx){let income=0,expense=0,refund=0,savings=0,interest=0,cashIn=0,cashOut=0,cardPayments=0;const cats={},months={};for(const t of tx){const a=Number(t.amount||0),m=String(t.transaction_date||'').slice(0,7),isCard=t.source_document_kind==='monthly_credit_card_bill';months[m]??={income:0,expense:0,refund:0,savings:0};if(t.direction==='income'){income+=a;months[m].income+=a;if(!isCard)cashIn+=a}else if(t.direction==='expense'&&!t.exclude_from_spend){expense+=a;months[m].expense+=a;const c=txCategoryName(t);cats[c]=(cats[c]||0)+a;if(c==='Taxas e juros')interest+=a;if(!isCard)cashOut+=a}else if(t.direction==='refund'){refund+=a;months[m].refund+=a;if(!isCard)cashIn+=a}else if(t.direction==='savings'){savings+=a;months[m].savings+=a;if(!isCard)cashOut+=a}else if(t.direction==='transfer'&&t.is_card_payment&&!isCard){cashOut+=a;cardPayments+=a}}const netSpend=Math.max(0,expense-refund),net=income-netSpend,cashNet=cashIn-cashOut;return {income,expense,refund,netSpend,net,savings,interest,cats,months,rate:income?net/income:0,cashIn,cashOut,cashNet,cardPayments}}
 async function fetchAllFinanceTransactions(start,end){const all=[];let from=0;const page=1000;while(true){const r=await sb.from('finance_transactions').select('id,transaction_date,purchase_date,billing_month,description,counterparty,merchant,amount,direction,category_id,classification_source,exclude_from_spend,is_card_payment,installment_number,installment_total,source_document_kind,raw_type,finance_categories(name,kind)').eq('user_id',currentUserId).gte('transaction_date',start).lte('transaction_date',end).order('transaction_date',{ascending:false}).range(from,from+page-1);if(r.error)return r;all.push(...(r.data||[]));if(!r.data||r.data.length<page)break;from+=page}return {data:all,error:null}}
-async function loadFinance(){if(!currentUserId)return;applyFinancePrivacy();const md=document.getElementById('finManualDate');if(md&&!md.value)md.value=isoDateLocal();const {start,end}=financePeriod();const [txR,cR,gR]=await Promise.all([fetchAllFinanceTransactions(start,end),sb.from('finance_categories').select('id,name,kind,essential_default').eq('user_id',currentUserId).eq('active',true).order('name'),sb.from('finance_goals').select('*').eq('user_id',currentUserId).order('created_at',{ascending:false})]);if(txR.error){cloudMsg('Financeiro: '+txR.error.message);return}financeTx=txR.data||[];financeCategories=cR.data||[];financeGoalsCache=gR.data||[];renderFinanceSummary();renderFinanceReview();renderFinanceGoals();await Promise.all([loadFinancePatrimony(),loadFinanceBalance()]);applyFinancePrivacy()}
+async function loadFinance(){if(!currentUserId)return;applyFinancePrivacy();const md=document.getElementById('finManualDate');if(md&&!md.value)md.value=isoDateLocal();const {start,end}=financePeriod();const [txR,cR,gR]=await Promise.all([fetchAllFinanceTransactions(start,end),sb.from('finance_categories').select('id,name,kind,essential_default').eq('user_id',currentUserId).eq('active',true).order('name'),sb.from('finance_goals').select('*').eq('user_id',currentUserId).order('created_at',{ascending:false})]);if(txR.error){cloudMsg('Financeiro: '+txR.error.message);return}financeTx=txR.data||[];financeCategories=cR.data||[];financeGoalsCache=gR.data||[];renderFinanceSummary();renderFinanceReview();renderFinanceCorrections();renderFinanceGoals();await Promise.all([loadFinancePatrimony(),loadFinanceBalance()]);applyFinancePrivacy()}
 function renderFinanceSummary(){const d=financeMetricData(financeTx);setTextSafe('finIncome',finMoney(d.income));setTextSafe('finSpend',finMoney(d.netSpend));setTextSafe('finNet',finMoney(d.net));setTextSafe('finSavingsRate',finPct(d.rate));setTextSafe('finInterest',finMoney(d.interest));setTextSafe('finCashIn',finMoney(d.cashIn));setTextSafe('finCashOut',finMoney(d.cashOut));setTextSafe('finCashNet',finMoney(d.cashNet));setTextSafe('finCardPayments',finMoney(d.cardPayments));const unc=financeTx.filter(t=>t.classification_source==='unclassified').length,quality=financeTx.length?Math.round((1-unc/financeTx.length)*100):0;setTextSafe('financeDataQuality',financeTx.length?`Qualidade dos dados: ${quality}% • ${unc} transação(ões) sem classificação`:'Sem dados importados neste período.');setTextSafe('finReviewBadge',unc?`• ${unc}`:'');renderFinanceCategories(d);renderFinanceMonths(d);renderFinanceHealth(d,unc,quality);renderFinanceRecurring();renderFinanceTopTransactions()}
 function renderFinanceCategories(d){
   const el=document.getElementById('financeCategoryBars');if(!el)return;
@@ -3720,6 +3731,45 @@ async function saveFinanceBalanceCorrection(){
   const {error}=await sb.from('finance_account_balance_snapshots').insert({user_id:currentUserId,account_id:financeAccountBalanceCache.account_id,balance:amount,as_of_date:date,source:'manual',note:'Correção manual feita no Danielle OS'});
   if(error)return cloudMsg('Saldo em conta: '+error.message);
   const box=document.getElementById('finBalanceEdit');if(box)box.hidden=true;cloudMsg('Valor em conta atualizado',true);await loadFinanceBalance();applyFinancePrivacy()
+}
+function renderFinanceCorrections(){
+  const el=document.getElementById('financeCorrections');if(!el)return;
+  const q=(document.getElementById('financeCorrectionSearch')?.value||'').trim().toLowerCase();
+  let items=financeTx.filter(t=>t.classification_source!=='unclassified');
+  if(q)items=items.filter(t=>((t.description||'')+' '+(t.counterparty||'')+' '+txCategoryName(t)).toLowerCase().includes(q));
+  items=items.sort((a,b)=>String(b.transaction_date).localeCompare(String(a.transaction_date))).slice(0,80);
+  if(!items.length){el.innerHTML='<div class="finance-empty">Nenhuma classificação encontrada neste período.</div>';return}
+  el.innerHTML=items.map((t,i)=>`<div class="finance-correction-row">
+    <div class="finance-correction-name"><b>${finEsc(t.counterparty||t.description||'Lançamento')}</b><small>${new Date(t.transaction_date+'T12:00:00').toLocaleDateString('pt-BR')} • ${finEsc(t.description||'')}</small></div>
+    <b class="finance-money">${finMoney(t.amount)}</b>
+    <select class="field" id="finCorrDir_${i}">${['expense','income','refund','transfer','savings'].map(d=>`<option value="${d}" ${d===t.direction?'selected':''}>${financeDirectionLabel(d)}</option>`).join('')}</select>
+    <select class="field" id="finCorrCat_${i}">${financeBillCategoryOptions(t.category_id||'')}</select>
+    <div class="finance-correction-actions"><label class="tiny"><input type="checkbox" id="finCorrExclude_${i}" ${t.exclude_from_spend?'checked':''}> não contar no consumo</label><label class="tiny"><input type="checkbox" id="finCorrSimilar_${i}"> corrigir iguais + lembrar</label><button class="btn tiny" onclick="saveFinanceCorrection('${t.id}',${i})">Corrigir</button></div>
+  </div>`).join('');
+}
+async function saveFinanceCorrection(id,i){
+  const t=financeTx.find(x=>x.id===id);if(!t)return;
+  const direction=document.getElementById('finCorrDir_'+i)?.value||t.direction,categoryId=document.getElementById('finCorrCat_'+i)?.value||null,exclude=!!document.getElementById('finCorrExclude_'+i)?.checked,similar=!!document.getElementById('finCorrSimilar_'+i)?.checked;
+  const patch={direction,category_id:categoryId,classification_source:'manual',classification_confidence:1,exclude_from_spend:exclude};
+  let error=null;
+  if(similar){
+    const key=(t.counterparty||'').trim();
+    let q=sb.from('finance_transactions').update(patch).eq('user_id',currentUserId);
+    if(key)q=q.eq('counterparty',key);else q=q.eq('description',t.description||'');
+    const r=await q;error=r.error;
+    if(!error){
+      const matchText=key||t.description||'';
+      if(matchText){
+        await sb.from('finance_rules').delete().eq('user_id',currentUserId).eq('match_text',matchText);
+        const rr=await sb.from('finance_rules').insert({user_id:currentUserId,match_text:matchText,match_type:'contains',category_id:categoryId,direction,active:true});
+        if(rr.error&&!String(rr.error.message||'').toLowerCase().includes('duplicate'))console.warn(rr.error);
+      }
+    }
+  }else{
+    const r=await sb.from('finance_transactions').update(patch).eq('id',id).eq('user_id',currentUserId);error=r.error;
+  }
+  if(error)return cloudMsg('Correção financeira: '+error.message);
+  cloudMsg(similar?'Classificação corrigida nos lançamentos iguais':'Classificação corrigida',true);await loadFinance();
 }
 function financeDirectionLabel(d){return ({expense:'Despesa',income:'Entrada',refund:'Estorno / reembolso',transfer:'Transferência',savings:'Economia / investimento'})[d]||d}
 function renderFinanceReview(){
@@ -3814,7 +3864,7 @@ function renderFinanceBills(){
     if(Number(amount)>0){planned+=Number(amount);count++}if(o?.status==='paid')paid+=Number(o.paid_amount??amount??0);
     const day=o?.due_date?Number(String(o.due_date).slice(-2)):(t.due_day||''),status=o?.status||'pending',source=o?.payment_source||t.payment_source||'money';
     const catName=o?.finance_categories?.name||t.finance_categories?.name||'Sem categoria';
-    return `<div class="finance-bill-row"><div class="finance-bill-name"><b>${finEsc(t.name)}</b><small>${finEsc(catName)} • ${t.fixed_amount?'valor fixo':'valor variável'}${t.exclude_from_consumption?' • não entra no consumo':''}</small></div><input class="field finance-money" id="finBillAmt_${i}" type="number" step="0.01" min="0" placeholder="Valor" value="${amount??''}"><input class="field" id="finBillDay_${i}" type="number" min="1" max="31" placeholder="Dia" value="${day}"><select class="field" id="finBillSource_${i}">${financeBillSourceOptions(source)}</select><select class="field ${status==='paid'?'finance-bill-status-paid':''}" id="finBillStatus_${i}">${financeBillStatusOptions(status)}</select><div class="finance-bill-actions"><label class="tiny"><input type="checkbox" id="finBillFixed_${i}" ${t.fixed_amount?'checked':''}> fixo</label><button class="btn tiny" onclick="saveFinanceBillRow('${t.id}','${o?.id||''}',${i})">Salvar</button><button class="btn tiny" onclick="pauseFinanceBillTemplate('${t.id}')">Pausar</button></div></div>`
+    return `<div class="finance-bill-row"><input class="field" id="finBillName_${i}" value="${finEsc(t.name)}" aria-label="Nome da conta"><select class="field" id="finBillCat_${i}">${financeBillCategoryOptions(o?.category_id||t.category_id||'')}</select><input class="field finance-money" id="finBillAmt_${i}" type="number" step="0.01" min="0" placeholder="Valor" value="${amount??''}"><input class="field" id="finBillDay_${i}" type="number" min="1" max="31" placeholder="Dia" value="${day}"><select class="field" id="finBillSource_${i}">${financeBillSourceOptions(source)}</select><select class="field ${status==='paid'?'finance-bill-status-paid':''}" id="finBillStatus_${i}">${financeBillStatusOptions(status)}</select><div class="finance-bill-actions"><label class="tiny"><input type="checkbox" id="finBillFixed_${i}" ${t.fixed_amount?'checked':''}> fixo</label><button class="btn tiny" onclick="saveFinanceBillRow('${t.id}','${o?.id||''}',${i})">Salvar</button><button class="btn tiny" onclick="deleteFinanceBillTemplate('${t.id}')">Excluir</button><span class="tiny muted">${t.fixed_amount?'fixo':'variável'}${t.exclude_from_consumption?' • não entra no consumo':''}</span></div></div>`
   }).join('');
   const oneOffs=financeBillMonthlyCache.filter(x=>!x.template_id);
   for(const o of oneOffs){const a=Number(o.planned_amount||0);if(a>0){planned+=a;count++}if(o.status==='paid')paid+=Number(o.paid_amount??a)}
@@ -3827,10 +3877,10 @@ function renderFinanceBills(){
 }
 
 async function saveFinanceBillRow(templateId,monthlyId,i){
-  const ym=financeBillMonthValue(),month=ym+'-01',amountRaw=document.getElementById('finBillAmt_'+i)?.value,amount=amountRaw===''?null:Number(amountRaw),day=Number(document.getElementById('finBillDay_'+i)?.value||0)||null,source=document.getElementById('finBillSource_'+i)?.value||'money',status=document.getElementById('finBillStatus_'+i)?.value||'pending',fixed=!!document.getElementById('finBillFixed_'+i)?.checked,t=financeBillTemplatesCache.find(x=>x.id===templateId);if(!t)return;
-  const row={user_id:currentUserId,template_id:templateId,month,name:t.name,category_id:t.category_id,due_date:financeBillDueDate(ym,day),planned_amount:amount,payment_source:source,status,paid_amount:status==='paid'?(amount||0):null,paid_at:status==='paid'?new Date().toISOString():null,exclude_from_consumption:!!t.exclude_from_consumption};
+  const ym=financeBillMonthValue(),month=ym+'-01',name=document.getElementById('finBillName_'+i)?.value.trim(),categoryId=document.getElementById('finBillCat_'+i)?.value||null,amountRaw=document.getElementById('finBillAmt_'+i)?.value,amount=amountRaw===''?null:Number(amountRaw),day=Number(document.getElementById('finBillDay_'+i)?.value||0)||null,source=document.getElementById('finBillSource_'+i)?.value||'money',status=document.getElementById('finBillStatus_'+i)?.value||'pending',fixed=!!document.getElementById('finBillFixed_'+i)?.checked,t=financeBillTemplatesCache.find(x=>x.id===templateId);if(!t)return;if(!name)return cloudMsg('A conta precisa ter um nome.');
+  const row={user_id:currentUserId,template_id:templateId,month,name,category_id:categoryId,due_date:financeBillDueDate(ym,day),planned_amount:amount,payment_source:source,status,paid_amount:status==='paid'?(amount||0):null,paid_at:status==='paid'?new Date().toISOString():null,exclude_from_consumption:!!t.exclude_from_consumption};
   let q=monthlyId?sb.from('finance_bill_monthly').update(row).eq('id',monthlyId).eq('user_id',currentUserId):sb.from('finance_bill_monthly').insert(row);const {error}=await q;if(error)return cloudMsg('Contas a pagar: '+error.message);
-  const patch={fixed_amount:fixed,payment_source:source,due_day:day};if(fixed)patch.default_amount=amount;const {error:te}=await sb.from('finance_bill_templates').update(patch).eq('id',templateId).eq('user_id',currentUserId);if(te)return cloudMsg('Conta recorrente: '+te.message);
+  const patch={name,category_id:categoryId,fixed_amount:fixed,payment_source:source,due_day:day};if(fixed)patch.default_amount=amount;else patch.default_amount=null;const {error:te}=await sb.from('finance_bill_templates').update(patch).eq('id',templateId).eq('user_id',currentUserId);if(te)return cloudMsg('Conta recorrente: '+te.message);
   cloudMsg('Conta salva',true);await loadFinanceBills();
 }
 
@@ -3850,7 +3900,7 @@ async function addFinanceBill(){
   }
   ['finBillNewName','finBillNewAmount','finBillNewDueDay'].forEach(id=>{const x=document.getElementById(id);if(x)x.value=''});cloudMsg('Conta adicionada',true);await loadFinanceBills();
 }
-async function pauseFinanceBillTemplate(id){if(!confirm('Pausar esta conta recorrente? Ela deixa de aparecer nos próximos meses, mas o histórico fica.'))return;const {error}=await sb.from('finance_bill_templates').update({active:false}).eq('id',id).eq('user_id',currentUserId);if(error)return cloudMsg('Conta recorrente: '+error.message);cloudMsg('Conta pausada',true);await loadFinanceBills()}
+async function deleteFinanceBillTemplate(id){if(!confirm('Excluir esta conta da lista de contas de sempre? O histórico dos meses anteriores será mantido.'))return;const {error}=await sb.from('finance_bill_templates').update({active:false}).eq('id',id).eq('user_id',currentUserId);if(error)return cloudMsg('Conta recorrente: '+error.message);cloudMsg('Conta excluída da lista',true);await loadFinanceBills()}
 async function deleteFinanceOneOff(id){if(!confirm('Excluir esta conta pontual deste mês?'))return;const {error}=await sb.from('finance_bill_monthly').delete().eq('id',id).eq('user_id',currentUserId);if(error)return cloudMsg('Contas a pagar: '+error.message);cloudMsg('Conta excluída',true);await loadFinanceBills()}
 
 async function loadFinanceBudgets(){if(!currentUserId)return;const ym=document.getElementById('financeBudgetMonth')?.value||'2026-10',month=ym+'-01',last=new Date(Number(ym.slice(0,4)),Number(ym.slice(5,7)),0).getDate(),end=`${ym}-${String(last).padStart(2,'0')}`;const [bR,tR]=await Promise.all([sb.from('finance_budgets').select('*').eq('user_id',currentUserId).eq('month',month),sb.from('finance_transactions').select('category_id,amount,direction,exclude_from_spend').eq('user_id',currentUserId).gte('transaction_date',month).lte('transaction_date',end)]);const by=Object.fromEntries((bR.data||[]).map(x=>[x.category_id,x]));const spend={};for(const t of (tR.data||[])){if(t.direction==='expense'&&!t.exclude_from_spend)spend[t.category_id]=(spend[t.category_id]||0)+Number(t.amount)}const cats=financeCategories.filter(c=>c.kind==='expense');document.getElementById('financeBudgets').innerHTML=cats.map(c=>{const v=by[c.id]?.limit_amount||'',s=spend[c.id]||0,p=v?Math.min(140,s/Number(v)*100):0;return `<div class="finance-review-row"><div><b>${finEsc(c.name)}</b><div class="finance-progress"><i style="width:${Math.min(100,p)}%;background:${p>100?'#df887f':'#78b995'}"></i></div></div><span class="finance-money">${finMoney(s)}</span><span class="tiny muted">${v?Math.round(p)+'%':'—'}</span><input class="field" id="budget_${c.id}" type="number" step="0.01" value="${v}" placeholder="Limite"><button class="btn tiny" onclick="saveFinanceBudget('${c.id}','${month}')">Salvar</button></div>`}).join('')}
