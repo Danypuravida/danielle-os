@@ -32,6 +32,13 @@
 .finance-coach-hero{background:radial-gradient(circle at 100% 0%,rgba(215,181,109,.12),transparent 38%),#111923}.finance-score-ring{width:104px;height:104px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--accent) calc(var(--score,0)*1%),#263446 0);position:relative;flex:0 0 auto}.finance-score-ring:after{content:"";position:absolute;inset:9px;background:#111923;border-radius:50%}.finance-score-ring b{position:relative;z-index:1;font-size:25px}.finance-privacy-on .finance-money{filter:blur(7px);user-select:none}.finance-privacy-on .finance-money:hover{filter:blur(7px)}
 .finance-table{width:100%;border-collapse:collapse}.finance-table th,.finance-table td{text-align:left;padding:9px 7px;border-bottom:1px solid #1e2937;vertical-align:top}.finance-table th{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}.finance-table td:last-child,.finance-table th:last-child{text-align:right}
 .finance-pill{display:inline-flex;padding:4px 8px;border:1px solid var(--line);border-radius:99px;font-size:11px;color:#cbd7e4}.finance-empty{padding:22px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:12px}
+.finance-bill-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+.finance-bill-row{display:grid;grid-template-columns:minmax(180px,1.35fr) 125px 82px 145px 125px auto;gap:9px;align-items:center;padding:10px 0;border-bottom:1px solid #1e2937}
+.finance-bill-row:last-child{border-bottom:0}.finance-bill-name b{display:block}.finance-bill-name small{display:block;color:var(--muted);margin-top:3px}
+.finance-bill-new{display:grid;grid-template-columns:1.5fr 1.2fr 120px 85px 150px;gap:9px}
+.finance-bill-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap}.finance-bill-row .field{padding:8px}.finance-bill-status-paid{color:#78b995}
+@media(max-width:900px){.finance-bill-kpis{grid-template-columns:repeat(2,1fr)}.finance-bill-row,.finance-bill-new{grid-template-columns:1fr}.finance-bill-actions{justify-content:flex-start}}
+
 @media(max-width:1050px){.finance-kpis{grid-template-columns:repeat(2,1fr)}.finance-split{grid-template-columns:1fr}.finance-health{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:700px){.finance-kpis,.finance-import-grid,.finance-health{grid-template-columns:1fr}.finance-review-row{grid-template-columns:1fr}.finance-review-row>div:last-child{text-align:left}.finance-bar-row{grid-template-columns:1fr}.finance-bar-track{grid-column:1}.finance-toolbar{align-items:stretch}}
 
@@ -1162,6 +1169,7 @@ select.field{max-width:100%}
     <button class="btn primary" data-fin-tab="resumo" onclick="openFinanceTab('resumo',this)">Resumo</button>
     <button class="btn" data-fin-tab="revisao" onclick="openFinanceTab('revisao',this)">Preciso da sua ajuda <span id="finReviewBadge"></span></button>
     <button class="btn" data-fin-tab="importar" onclick="openFinanceTab('importar',this)">Enviar extrato / fatura</button>
+    <button class="btn" data-fin-tab="contas" onclick="openFinanceTab('contas',this)">Contas a pagar</button>
     <button class="btn" data-fin-tab="orcamento" onclick="openFinanceTab('orcamento',this)">Orçamento</button>
     <button class="btn" data-fin-tab="metas" onclick="openFinanceTab('metas',this)">Metas</button>
     <button class="btn" data-fin-tab="patrimonio" onclick="openFinanceTab('patrimonio',this)">Patrimônio</button>
@@ -1191,6 +1199,51 @@ select.field{max-width:100%}
     </div>
     <div class="card" style="margin-top:16px"><h2>Lançamento manual</h2><p class="muted">Para dinheiro, ajuste ou movimentação que não veio em extrato/fatura.</p><div class="row"><input class="field" id="finManualDate" type="date" style="max-width:160px"><select class="field" id="finManualDirection" style="max-width:150px"><option value="expense">Despesa</option><option value="income">Entrada</option><option value="savings">Economia / investimento</option><option value="refund">Estorno / reembolso</option></select><input class="field" id="finManualDescription" placeholder="Descrição" style="flex:2"><input class="field" id="finManualAmount" type="number" step="0.01" placeholder="Valor" style="max-width:150px"><select class="field" id="finManualCategory" style="flex:1"><option value="">Categoria</option></select><button class="btn" onclick="addManualFinanceTransaction()">Adicionar</button></div></div>
     <div class="card" style="margin-top:16px"><h2>Como o agente trata os arquivos</h2><div class="finance-health"><div class="finance-health-item"><b>1x</b><span>Pagamento de fatura é conciliado, não duplicado.</span></div><div class="finance-health-item"><b>PIX</b><span>Destinatários desconhecidos vão para revisão.</span></div><div class="finance-health-item"><b>↔</b><span>Transferência própria não vira consumo.</span></div><div class="finance-health-item"><b>↩</b><span>Estorno e reembolso são separados.</span></div></div></div>
+  </div>
+
+  <div class="finance-tab-panel" data-fin-panel="contas">
+    <div class="card" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between;align-items:flex-start">
+        <div><h2>Contas & compromissos do mês</h2><p class="muted">As contas de sempre ficam salvas. Nas variáveis, você só preenche o valor do mês. Se for sempre igual, marque como fixo e o valor se repete automaticamente.</p></div>
+        <input class="field" id="financeBillsMonth" type="month" value="2026-10" style="width:170px" onchange="loadFinanceBills()">
+      </div>
+      <div class="finance-bill-kpis">
+        <div class="finance-health-item"><b class="finance-money" id="finBillsPlanned">—</b><span>planejado</span></div>
+        <div class="finance-health-item"><b class="finance-money" id="finBillsPaid">—</b><span>pago</span></div>
+        <div class="finance-health-item"><b class="finance-money" id="finBillsPending">—</b><span>pendente</span></div>
+        <div class="finance-health-item"><b id="finBillsCount">—</b><span>contas com valor</span></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <div><h2>Contas de sempre</h2><p class="muted">Salvar altera o mês escolhido. Marcar “fixo” também passa esse valor para os próximos meses.</p></div>
+        <span class="finance-pill">recorrentes</span>
+      </div>
+      <div id="financeBillsRecurring"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Novas / só deste mês</h2>
+      <p class="muted">Despesas pontuais que não fazem parte da sua lista recorrente.</p>
+      <div id="financeBillsOneOff"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Adicionar conta</h2>
+      <div class="finance-bill-new">
+        <input class="field" id="finBillNewName" placeholder="Ex.: Seguro, curso, condomínio">
+        <select class="field" id="finBillNewCategory"><option value="">Categoria</option></select>
+        <input class="field" id="finBillNewAmount" type="number" step="0.01" min="0" placeholder="Valor">
+        <input class="field" id="finBillNewDueDay" type="number" min="1" max="31" placeholder="Dia">
+        <select class="field" id="finBillNewSource"><option value="money">Dinheiro / conta</option><option value="card">Cartão</option><option value="pix">PIX</option><option value="debit">Débito</option><option value="boleto">Boleto</option><option value="other">Outro</option></select>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <label class="tiny"><input type="checkbox" id="finBillNewRepeat" checked> repetir todo mês</label>
+        <label class="tiny"><input type="checkbox" id="finBillNewFixed"> repetir também o mesmo valor</label>
+        <button class="btn primary" onclick="addFinanceBill()">Adicionar</button>
+      </div>
+    </div>
   </div>
 
   <div class="finance-tab-panel" data-fin-panel="orcamento">
@@ -3600,7 +3653,7 @@ function finPct(v){return (Number(v||0)*100).toLocaleString('pt-BR',{maximumFrac
 function financePeriod(){const y=document.getElementById('financeYear')?.value||'2026',m=document.getElementById('financeMonth')?.value||'all';if(m==='all')return {start:`${y}-01-01`,end:`${y}-12-31`,label:y};const last=new Date(Number(y),Number(m),0).getDate();return {start:`${y}-${m}-01`,end:`${y}-${m}-${String(last).padStart(2,'0')}`,label:`${m}/${y}`}}
 function toggleFinancePrivacy(){financeHideValues=!financeHideValues;localStorage.setItem('financeHideValues',financeHideValues?'1':'0');applyFinancePrivacy()}
 function applyFinancePrivacy(){const page=document.getElementById('financePage');if(page)page.classList.toggle('finance-privacy-on',financeHideValues);const b=document.getElementById('financePrivacyBtn');if(b)b.textContent=financeHideValues?'Mostrar valores':'Ocultar valores'}
-function openFinanceTab(name,btn){document.querySelectorAll('[data-fin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.finPanel===name));document.querySelectorAll('[data-fin-tab]').forEach(x=>x.classList.remove('primary'));if(btn)btn.classList.add('primary');if(name==='orcamento')loadFinanceBudgets();if(name==='patrimonio')loadFinancePatrimony()}
+function openFinanceTab(name,btn){document.querySelectorAll('[data-fin-panel]').forEach(x=>x.classList.toggle('active',x.dataset.finPanel===name));document.querySelectorAll('[data-fin-tab]').forEach(x=>x.classList.remove('primary'));if(btn)btn.classList.add('primary');if(name==='contas')loadFinanceBills();if(name==='orcamento')loadFinanceBudgets();if(name==='patrimonio')loadFinancePatrimony()}
 async function changeWhatsAppNumber(){if(!confirm('Trocar o número conectado ao James? O número atual deixará de ficar vinculado ao Danielle OS.'))return;await resetWhatsAppPairing()}
 function financeMonthName(m){return ['','Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][Number(m)]||m}
 function txCategoryName(t){return t.finance_categories?.name||'Não classificado'}
@@ -3664,6 +3717,76 @@ function inferBillMonthFromName(name,year){const n=normalizeText(String(name||''
 function normalizeText(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
 async function importFinanceDocument(kind){const isBank=kind==='bank',input=document.getElementById(isBank?'financeBankFile':'financeCardFile'),files=[...(input?.files||[])],status=document.getElementById(isBank?'financeBankStatus':'financeCardStatus');if(!files.length){if(status)status.textContent='Escolha um arquivo primeiro.';return}if(status)status.textContent='Lendo arquivo(s)…';try{let total=0,lastUnc=0;const year=document.getElementById('financeYear')?.value||'2026';for(let i=0;i<files.length;i++){const file=files[i];if(status)status.textContent=`Importando ${i+1}/${files.length}: ${file.name}`;let text='';if(file.name.toLowerCase().endsWith('.pdf'))text=await extractPdfText(file,document.getElementById('financePdfPassword')?.value||'');else text=await file.text();let bill=document.getElementById('financeBillMonth')?.value||'';if(!isBank)bill=inferBillMonthFromName(file.name,year)||bill;const data=await callEdge('finance-import',{document_kind:isBank?'weekly_bank_statement':'monthly_credit_card_bill',file_name:file.name,file_type:file.type||null,text,billing_month:!isBank&&bill?bill+'-01':null,period_year:Number(year)});total+=Number(data.transaction_count||0);lastUnc=Number(data.unclassified_count||0)}if(status)status.textContent=`Importado: ${total} transações • ${lastUnc} pendentes de classificação no total.`;cloudMsg('Financeiro atualizado',true);await loadFinance()}catch(e){if(status)status.textContent='Erro: '+(e?.message||String(e));cloudMsg('Importação financeira: '+(e?.message||String(e)))}}
 async function addManualFinanceTransaction(){const date=document.getElementById('finManualDate')?.value||isoDateLocal(),direction=document.getElementById('finManualDirection')?.value||'expense',description=document.getElementById('finManualDescription')?.value.trim(),amount=Number(document.getElementById('finManualAmount')?.value||0),category=document.getElementById('finManualCategory')?.value||null;if(!description||amount<=0)return cloudMsg('Preencha descrição e valor.');const id=crypto.randomUUID(),row={user_id:currentUserId,transaction_date:date,description,normalized_description:normalizeText(description),amount,direction,category_id:category,classification_source:category?'manual':'unclassified',classification_confidence:category?1:null,exclude_from_spend:false,fingerprint:'manual:'+id,raw_type:'manual',source_document_kind:'manual_import',source_file:'manual'};const {error}=await sb.from('finance_transactions').insert(row);if(error)return cloudMsg('Financeiro: '+error.message);document.getElementById('finManualDescription').value='';document.getElementById('finManualAmount').value='';cloudMsg('Lançamento adicionado',true);loadFinance()}
+let financeBillTemplatesCache=[],financeBillMonthlyCache=[];
+function financeBillMonthValue(){return document.getElementById('financeBillsMonth')?.value||((document.getElementById('financeYear')?.value||'2026')+'-'+(document.getElementById('financeMonth')?.value||'10'))}
+function financeBillMonthStart(){return financeBillMonthValue()+'-01'}
+function financeBillDueDate(ym,day){const d=Number(day||0);if(!d)return null;const y=Number(ym.slice(0,4)),m=Number(ym.slice(5,7)),last=new Date(y,m,0).getDate();return ym+'-'+String(Math.min(d,last)).padStart(2,'0')}
+function financeBillSourceLabel(s){return ({money:'Dinheiro / conta',card:'Cartão',pix:'PIX',debit:'Débito',boleto:'Boleto',other:'Outro'})[s]||s}
+function financeBillCategoryOptions(selected){return '<option value="">Categoria</option>'+financeCategories.map(c=>`<option value="${c.id}" ${c.id===selected?'selected':''}>${finEsc(c.name)}</option>`).join('')}
+function financeBillSourceOptions(selected){return ['money','card','pix','debit','boleto','other'].map(s=>`<option value="${s}" ${s===selected?'selected':''}>${financeBillSourceLabel(s)}</option>`).join('')}
+function financeBillStatusOptions(selected){return ['pending','paid','skipped'].map(s=>`<option value="${s}" ${s===selected?'selected':''}>${s==='pending'?'Pendente':s==='paid'?'Pago':'Ignorado'}</option>`).join('')}
+
+async function loadFinanceBills(){
+  if(!currentUserId)return;
+  const month=financeBillMonthStart();
+  const [tR,mR]=await Promise.all([
+    sb.from('finance_bill_templates').select('id,name,category_id,due_day,payment_source,repeat_monthly,fixed_amount,default_amount,exclude_from_consumption,sort_order,finance_categories(name)').eq('user_id',currentUserId).eq('active',true).order('sort_order').order('name'),
+    sb.from('finance_bill_monthly').select('id,template_id,month,name,category_id,due_date,planned_amount,payment_source,status,paid_amount,paid_at,exclude_from_consumption,note,finance_categories(name)').eq('user_id',currentUserId).eq('month',month).order('name')
+  ]);
+  if(tR.error||mR.error)return cloudMsg('Contas a pagar: '+(tR.error?.message||mR.error?.message));
+  financeBillTemplatesCache=tR.data||[];financeBillMonthlyCache=mR.data||[];
+  const cat=document.getElementById('finBillNewCategory');if(cat){const prev=cat.value;cat.innerHTML=financeBillCategoryOptions(prev);cat.value=prev}
+  renderFinanceBills();
+}
+
+function renderFinanceBills(){
+  const recurringEl=document.getElementById('financeBillsRecurring'),oneEl=document.getElementById('financeBillsOneOff');if(!recurringEl||!oneEl)return;
+  const byTemplate=new Map(financeBillMonthlyCache.filter(x=>x.template_id).map(x=>[x.template_id,x]));
+  const ym=financeBillMonthValue();let planned=0,paid=0,count=0;
+  const recurring=financeBillTemplatesCache.map((t,i)=>{
+    const o=byTemplate.get(t.id)||null,amount=o?.planned_amount??(t.fixed_amount?t.default_amount:null);
+    if(Number(amount)>0){planned+=Number(amount);count++}if(o?.status==='paid')paid+=Number(o.paid_amount??amount??0);
+    const day=o?.due_date?Number(String(o.due_date).slice(-2)):(t.due_day||''),status=o?.status||'pending',source=o?.payment_source||t.payment_source||'money';
+    const catName=o?.finance_categories?.name||t.finance_categories?.name||'Sem categoria';
+    return `<div class="finance-bill-row"><div class="finance-bill-name"><b>${finEsc(t.name)}</b><small>${finEsc(catName)} • ${t.fixed_amount?'valor fixo':'valor variável'}${t.exclude_from_consumption?' • não entra no consumo':''}</small></div><input class="field finance-money" id="finBillAmt_${i}" type="number" step="0.01" min="0" placeholder="Valor" value="${amount??''}"><input class="field" id="finBillDay_${i}" type="number" min="1" max="31" placeholder="Dia" value="${day}"><select class="field" id="finBillSource_${i}">${financeBillSourceOptions(source)}</select><select class="field ${status==='paid'?'finance-bill-status-paid':''}" id="finBillStatus_${i}">${financeBillStatusOptions(status)}</select><div class="finance-bill-actions"><label class="tiny"><input type="checkbox" id="finBillFixed_${i}" ${t.fixed_amount?'checked':''}> fixo</label><button class="btn tiny" onclick="saveFinanceBillRow('${t.id}','${o?.id||''}',${i})">Salvar</button><button class="btn tiny" onclick="pauseFinanceBillTemplate('${t.id}')">Pausar</button></div></div>`
+  }).join('');
+  const oneOffs=financeBillMonthlyCache.filter(x=>!x.template_id);
+  for(const o of oneOffs){const a=Number(o.planned_amount||0);if(a>0){planned+=a;count++}if(o.status==='paid')paid+=Number(o.paid_amount??a)}
+  recurringEl.innerHTML=recurring||'<div class="finance-empty">Nenhuma conta recorrente cadastrada.</div>';
+  oneEl.innerHTML=oneOffs.length?oneOffs.map((o,i)=>{
+    const day=o.due_date?Number(String(o.due_date).slice(-2)):'',catName=o.finance_categories?.name||'Sem categoria';
+    return `<div class="finance-bill-row"><div class="finance-bill-name"><b>${finEsc(o.name)}</b><small>${finEsc(catName)} • só ${financeMonthName(ym.slice(5,7))}</small></div><input class="field finance-money" id="finOneAmt_${i}" type="number" step="0.01" min="0" value="${o.planned_amount??''}"><input class="field" id="finOneDay_${i}" type="number" min="1" max="31" value="${day}"><select class="field" id="finOneSource_${i}">${financeBillSourceOptions(o.payment_source||'money')}</select><select class="field" id="finOneStatus_${i}">${financeBillStatusOptions(o.status||'pending')}</select><div class="finance-bill-actions"><button class="btn tiny" onclick="saveFinanceOneOff('${o.id}',${i})">Salvar</button><button class="btn tiny" onclick="deleteFinanceOneOff('${o.id}')">Excluir</button></div></div>`
+  }).join(''):'<div class="finance-empty">Nenhuma conta pontual neste mês.</div>';
+  setTextSafe('finBillsPlanned',finMoney(planned));setTextSafe('finBillsPaid',finMoney(paid));setTextSafe('finBillsPending',finMoney(Math.max(0,planned-paid)));setTextSafe('finBillsCount',String(count));applyFinancePrivacy();
+}
+
+async function saveFinanceBillRow(templateId,monthlyId,i){
+  const ym=financeBillMonthValue(),month=ym+'-01',amountRaw=document.getElementById('finBillAmt_'+i)?.value,amount=amountRaw===''?null:Number(amountRaw),day=Number(document.getElementById('finBillDay_'+i)?.value||0)||null,source=document.getElementById('finBillSource_'+i)?.value||'money',status=document.getElementById('finBillStatus_'+i)?.value||'pending',fixed=!!document.getElementById('finBillFixed_'+i)?.checked,t=financeBillTemplatesCache.find(x=>x.id===templateId);if(!t)return;
+  const row={user_id:currentUserId,template_id:templateId,month,name:t.name,category_id:t.category_id,due_date:financeBillDueDate(ym,day),planned_amount:amount,payment_source:source,status,paid_amount:status==='paid'?(amount||0):null,paid_at:status==='paid'?new Date().toISOString():null,exclude_from_consumption:!!t.exclude_from_consumption};
+  let q=monthlyId?sb.from('finance_bill_monthly').update(row).eq('id',monthlyId).eq('user_id',currentUserId):sb.from('finance_bill_monthly').insert(row);const {error}=await q;if(error)return cloudMsg('Contas a pagar: '+error.message);
+  const patch={fixed_amount:fixed,payment_source:source,due_day:day};if(fixed)patch.default_amount=amount;const {error:te}=await sb.from('finance_bill_templates').update(patch).eq('id',templateId).eq('user_id',currentUserId);if(te)return cloudMsg('Conta recorrente: '+te.message);
+  cloudMsg('Conta salva',true);await loadFinanceBills();
+}
+
+async function saveFinanceOneOff(id,i){
+  const ym=financeBillMonthValue(),amount=Number(document.getElementById('finOneAmt_'+i)?.value||0),day=Number(document.getElementById('finOneDay_'+i)?.value||0)||null,source=document.getElementById('finOneSource_'+i)?.value||'money',status=document.getElementById('finOneStatus_'+i)?.value||'pending';
+  const {error}=await sb.from('finance_bill_monthly').update({planned_amount:amount||null,due_date:financeBillDueDate(ym,day),payment_source:source,status,paid_amount:status==='paid'?amount:null,paid_at:status==='paid'?new Date().toISOString():null}).eq('id',id).eq('user_id',currentUserId);
+  if(error)return cloudMsg('Contas a pagar: '+error.message);cloudMsg('Conta atualizada',true);await loadFinanceBills();
+}
+
+async function addFinanceBill(){
+  const name=document.getElementById('finBillNewName')?.value.trim(),cat=document.getElementById('finBillNewCategory')?.value||null,amount=Number(document.getElementById('finBillNewAmount')?.value||0)||null,day=Number(document.getElementById('finBillNewDueDay')?.value||0)||null,source=document.getElementById('finBillNewSource')?.value||'money',repeat=!!document.getElementById('finBillNewRepeat')?.checked,fixed=!!document.getElementById('finBillNewFixed')?.checked,ym=financeBillMonthValue(),month=ym+'-01';if(!name)return cloudMsg('Dê um nome para a conta.');
+  if(repeat){
+    const {data:t,error}=await sb.from('finance_bill_templates').insert({user_id:currentUserId,name,category_id:cat,due_day:day,payment_source:source,repeat_monthly:true,fixed_amount:fixed,default_amount:fixed?amount:null,active:true,sort_order:500}).select('id,exclude_from_consumption').single();if(error)return cloudMsg('Conta recorrente: '+error.message);
+    const {error:m}=await sb.from('finance_bill_monthly').insert({user_id:currentUserId,template_id:t.id,month,name,category_id:cat,due_date:financeBillDueDate(ym,day),planned_amount:amount,payment_source:source,status:'pending',exclude_from_consumption:!!t.exclude_from_consumption});if(m)return cloudMsg('Conta do mês: '+m.message);
+  }else{
+    const {error}=await sb.from('finance_bill_monthly').insert({user_id:currentUserId,template_id:null,month,name,category_id:cat,due_date:financeBillDueDate(ym,day),planned_amount:amount,payment_source:source,status:'pending',exclude_from_consumption:false});if(error)return cloudMsg('Conta do mês: '+error.message);
+  }
+  ['finBillNewName','finBillNewAmount','finBillNewDueDay'].forEach(id=>{const x=document.getElementById(id);if(x)x.value=''});cloudMsg('Conta adicionada',true);await loadFinanceBills();
+}
+async function pauseFinanceBillTemplate(id){if(!confirm('Pausar esta conta recorrente? Ela deixa de aparecer nos próximos meses, mas o histórico fica.'))return;const {error}=await sb.from('finance_bill_templates').update({active:false}).eq('id',id).eq('user_id',currentUserId);if(error)return cloudMsg('Conta recorrente: '+error.message);cloudMsg('Conta pausada',true);await loadFinanceBills()}
+async function deleteFinanceOneOff(id){if(!confirm('Excluir esta conta pontual deste mês?'))return;const {error}=await sb.from('finance_bill_monthly').delete().eq('id',id).eq('user_id',currentUserId);if(error)return cloudMsg('Contas a pagar: '+error.message);cloudMsg('Conta excluída',true);await loadFinanceBills()}
+
 async function loadFinanceBudgets(){if(!currentUserId)return;const ym=document.getElementById('financeBudgetMonth')?.value||'2026-10',month=ym+'-01',last=new Date(Number(ym.slice(0,4)),Number(ym.slice(5,7)),0).getDate(),end=`${ym}-${String(last).padStart(2,'0')}`;const [bR,tR]=await Promise.all([sb.from('finance_budgets').select('*').eq('user_id',currentUserId).eq('month',month),sb.from('finance_transactions').select('category_id,amount,direction,exclude_from_spend').eq('user_id',currentUserId).gte('transaction_date',month).lte('transaction_date',end)]);const by=Object.fromEntries((bR.data||[]).map(x=>[x.category_id,x]));const spend={};for(const t of (tR.data||[])){if(t.direction==='expense'&&!t.exclude_from_spend)spend[t.category_id]=(spend[t.category_id]||0)+Number(t.amount)}const cats=financeCategories.filter(c=>c.kind==='expense');document.getElementById('financeBudgets').innerHTML=cats.map(c=>{const v=by[c.id]?.limit_amount||'',s=spend[c.id]||0,p=v?Math.min(140,s/Number(v)*100):0;return `<div class="finance-review-row"><div><b>${finEsc(c.name)}</b><div class="finance-progress"><i style="width:${Math.min(100,p)}%;background:${p>100?'#df887f':'#78b995'}"></i></div></div><span class="finance-money">${finMoney(s)}</span><span class="tiny muted">${v?Math.round(p)+'%':'—'}</span><input class="field" id="budget_${c.id}" type="number" step="0.01" value="${v}" placeholder="Limite"><button class="btn tiny" onclick="saveFinanceBudget('${c.id}','${month}')">Salvar</button></div>`}).join('')}
 async function saveFinanceBudget(cat,month){const value=Number(document.getElementById('budget_'+cat)?.value||0);if(value<=0)return cloudMsg('Informe um limite maior que zero.');const {error}=await sb.from('finance_budgets').upsert({user_id:currentUserId,month,category_id:cat,limit_amount:value},{onConflict:'user_id,month,category_id'});if(error)return cloudMsg(error.message);cloudMsg('Orçamento salvo',true);loadFinanceBudgets()}
 function renderFinanceGoals(){const el=document.getElementById('financeGoals');if(!el)return;el.innerHTML=financeGoalsCache.length?financeGoalsCache.map(g=>{const target=Number(g.target_amount||0),cur=Number(g.current_amount||0),p=target?Math.min(100,cur/target*100):(g.status==='completed'?100:0);return `<div class="finance-goal"><div class="finance-goal-top"><div><span class="finance-pill">${g.horizon==='short'?'Curto':g.horizon==='medium'?'Médio':'Longo'} prazo</span><h2 style="margin-top:8px">${finEsc(g.title)}</h2><div class="tiny muted">${g.target_date?'Meta '+new Date(g.target_date+'T12:00:00').toLocaleDateString('pt-BR'):''}</div></div><div class="row"><button class="btn tiny" onclick="updateFinanceGoal('${g.id}',${cur})">Atualizar</button>${g.status!=='completed'?`<button class="btn tiny" onclick="completeFinanceGoal('${g.id}')">✓ Concluir</button>`:'<span class="good">Concluída</span>'}</div></div><div class="finance-progress"><i style="width:${p}%"></i></div><div class="row" style="justify-content:space-between"><span class="finance-money">${finMoney(cur)}${target?' de '+finMoney(target):''}</span><b>${Math.round(p)}%</b></div></div>`}).join(''):'<div class="finance-empty">Nenhuma meta criada ainda.</div>'}
