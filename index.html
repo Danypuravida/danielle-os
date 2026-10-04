@@ -4608,9 +4608,9 @@ async function setPersonalGoalStatus(id,status){
 /* ---------- FREEHAND ---------- */
 const freehandBoards={};
 function freehandBoardHtml(pageId){
-  const q=JSON.stringify(pageId);
+  const q=JSON.stringify(pageId).replace(/\"/g,'&quot;');
   return `<div class="card freehand-card" data-freehand-board="${esc(pageId)}">
-    <div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="kicker">CANETA / TABLET</div><h2>Observações freehand</h2><p class="muted">Escreva à mão com a S Pen, caneta, dedo ou mouse. Salva automaticamente.</p></div><span class="freehand-save-state" id="freehandState_${esc(pageId)}">carregando…</span></div>
+    <div class="row" style="justify-content:space-between;align-items:flex-start"><div><div class="kicker">CANETA / TABLET</div><h2>Observações freehand</h2><p class="muted">Escreva à mão com a S Pen, caneta, dedo ou mouse. Salva automaticamente. Segure o botão lateral da S Pen para apagar.</p></div><span class="freehand-save-state" id="freehandState_${esc(pageId)}">carregando…</span></div>
     <div class="freehand-toolbar">
       <button class="freehand-color active" style="background:#253142" aria-label="Caneta azul escuro" onclick="setFreehandColor(${q},'#253142',this)"></button>
       <button class="freehand-color" style="background:#a54f4f" aria-label="Caneta vermelha" onclick="setFreehandColor(${q},'#a54f4f',this)"></button>
@@ -4634,11 +4634,13 @@ async function ensureFreehandBoard(pageId){
 }
 function setupFreehandCanvas(pageId){
   const canvas=document.getElementById('freehandCanvas_'+pageId);if(!canvas)return;
-  const state=freehandBoards[pageId]={strokes:[],drawing:false,current:null,color:'#253142',tool:'pen',saveTimer:null,loaded:false,pointerId:null};
+  const state=freehandBoards[pageId]={strokes:[],drawing:false,current:null,color:'#253142',tool:'pen',saveTimer:null,loaded:false,pointerId:null,lastCleared:null};
   canvas.addEventListener('pointerdown',e=>freehandPointerDown(pageId,e));
   canvas.addEventListener('pointermove',e=>freehandPointerMove(pageId,e));
   canvas.addEventListener('pointerup',e=>freehandPointerUp(pageId,e));
   canvas.addEventListener('pointercancel',e=>freehandPointerUp(pageId,e));
+  canvas.addEventListener('contextmenu',e=>e.preventDefault());
+  refreshFreehandToolUI(pageId);
   resizeFreehandCanvas(pageId);loadFreehand(pageId);
 }
 function resizeFreehandCanvas(pageId){
@@ -4656,23 +4658,65 @@ function redrawFreehand(pageId){
 function pointForFreehand(canvas,e){
   const r=canvas.getBoundingClientRect();return {x:Math.max(0,Math.min(1,(e.clientX-r.left)/r.width)),y:Math.max(0,Math.min(1,(e.clientY-r.top)/r.height)),p:e.pressure||0.5}
 }
+function freehandPenButtonIsEraser(e){
+  if(e?.pointerType!=='pen')return false;
+  const buttons=Number(e.buttons||0);
+  return e.button===2||e.button===5||(buttons&2)!==0||(buttons&32)!==0;
+}
+function freehandEffectiveTool(state,e){return freehandPenButtonIsEraser(e)?'eraser':state.tool}
+function freehandStrokeWidth(pageId,tool){return Number(document.getElementById('freehandSize_'+pageId)?.value||3)*(tool==='eraser'?4:1)}
+function freehandStartStroke(pageId,canvas,e,tool,firstPoint){
+  const state=freehandBoards[pageId];if(!state)return;
+  state.current={tool,color:state.color,width:freehandStrokeWidth(pageId,tool),points:[firstPoint||pointForFreehand(canvas,e)]};
+  state.strokes.push(state.current);
+}
+function refreshFreehandToolUI(pageId){
+  const state=freehandBoards[pageId];if(!state)return;
+  document.getElementById('freehandPen_'+pageId)?.classList.toggle('primary',state.tool==='pen');
+  document.getElementById('freehandEraser_'+pageId)?.classList.toggle('primary',state.tool==='eraser');
+  const canvas=document.getElementById('freehandCanvas_'+pageId);if(canvas)canvas.style.cursor=state.tool==='eraser'?'cell':'crosshair';
+}
 function freehandPointerDown(pageId,e){
-  const state=freehandBoards[pageId],canvas=e.currentTarget;if(!state)return;e.preventDefault();state.drawing=true;state.pointerId=e.pointerId;canvas.setPointerCapture?.(e.pointerId);
-  const width=Number(document.getElementById('freehandSize_'+pageId)?.value||3)*(state.tool==='eraser'?4:1);
-  state.current={tool:state.tool,color:state.color,width,points:[pointForFreehand(canvas,e)]};state.strokes.push(state.current);redrawFreehand(pageId);
+  const state=freehandBoards[pageId],canvas=e.currentTarget;if(!state)return;
+  if(e.pointerType==='mouse'&&e.button!==0)return;
+  e.preventDefault();state.drawing=true;state.pointerId=e.pointerId;canvas.setPointerCapture?.(e.pointerId);
+  const tool=freehandEffectiveTool(state,e);freehandStartStroke(pageId,canvas,e,tool);redrawFreehand(pageId);
 }
 function freehandPointerMove(pageId,e){
-  const state=freehandBoards[pageId],canvas=e.currentTarget;if(!state?.drawing||state.pointerId!==e.pointerId)return;e.preventDefault();state.current.points.push(pointForFreehand(canvas,e));redrawFreehand(pageId);
+  const state=freehandBoards[pageId],canvas=e.currentTarget;if(!state?.drawing||state.pointerId!==e.pointerId)return;e.preventDefault();
+  const point=pointForFreehand(canvas,e),tool=freehandEffectiveTool(state,e);
+  if(!state.current||state.current.tool!==tool){
+    const previous=state.current?.points?.length?state.current.points[state.current.points.length-1]:null;
+    freehandStartStroke(pageId,canvas,e,tool,previous||point);
+    if(previous)state.current.points.push(point);
+  }else state.current.points.push(point);
+  redrawFreehand(pageId);
 }
 function freehandPointerUp(pageId,e){
-  const state=freehandBoards[pageId];if(!state?.drawing)return;state.drawing=false;state.pointerId=null;state.current=null;scheduleFreehandSave(pageId);
+  const state=freehandBoards[pageId],canvas=e.currentTarget;if(!state?.drawing)return;
+  state.drawing=false;state.pointerId=null;state.current=null;canvas.releasePointerCapture?.(e.pointerId);scheduleFreehandSave(pageId);
 }
 function setFreehandColor(pageId,color,btn){
-  const state=freehandBoards[pageId];if(!state)return;state.color=color;state.tool='pen';document.querySelectorAll('[data-freehand-board="'+CSS.escape(pageId)+'"] .freehand-color').forEach(x=>x.classList.remove('active'));btn?.classList.add('active');
+  const state=freehandBoards[pageId];if(!state)return;
+  state.color=color;state.tool='pen';
+  document.querySelectorAll('[data-freehand-board="'+CSS.escape(pageId)+'"] .freehand-color').forEach(x=>x.classList.remove('active'));
+  btn?.classList.add('active');refreshFreehandToolUI(pageId);
 }
-function setFreehandTool(pageId,tool){const state=freehandBoards[pageId];if(!state)return;state.tool=tool;cloudMsg(tool==='eraser'?'Borracha ativa':'Caneta ativa',true)}
-function undoFreehand(pageId){const state=freehandBoards[pageId];if(!state?.strokes.length)return;state.strokes.pop();redrawFreehand(pageId);scheduleFreehandSave(pageId)}
-function clearFreehand(pageId){const state=freehandBoards[pageId];if(!state)return;if(!confirm('Limpar todas as observações à mão desta página?'))return;state.strokes=[];redrawFreehand(pageId);scheduleFreehandSave(pageId)}
+function setFreehandTool(pageId,tool){
+  const state=freehandBoards[pageId];if(!state)return;state.tool=tool;refreshFreehandToolUI(pageId);cloudMsg(tool==='eraser'?'Borracha ativa':'Caneta ativa',true);
+}
+function undoFreehand(pageId){
+  const state=freehandBoards[pageId];if(!state)return;
+  if(state.strokes.length)state.strokes.pop();
+  else if(state.lastCleared?.length){state.strokes=state.lastCleared;state.lastCleared=null}else return;
+  redrawFreehand(pageId);scheduleFreehandSave(pageId);
+}
+function clearFreehand(pageId){
+  const state=freehandBoards[pageId];if(!state?.strokes.length)return;
+  if(!confirm('Limpar todas as observações à mão desta página?'))return;
+  state.lastCleared=state.strokes.map(s=>({...s,points:(s.points||[]).map(p=>({...p}))}));
+  state.strokes=[];redrawFreehand(pageId);scheduleFreehandSave(pageId);
+}
 function scheduleFreehandSave(pageId){const state=freehandBoards[pageId];if(!state)return;clearTimeout(state.saveTimer);const label=document.getElementById('freehandState_'+pageId);if(label)label.textContent='salvando…';state.saveTimer=setTimeout(()=>saveFreehand(pageId),650)}
 async function saveFreehand(pageId){
   const state=freehandBoards[pageId];if(!state||!currentUserId)return;
