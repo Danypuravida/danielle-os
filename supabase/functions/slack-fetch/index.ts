@@ -69,7 +69,7 @@ Deno.serve(async(req:Request)=>{
     stage="list_conversations";
     const [channels,ims]=await Promise.all([
       listConversations(token,"public_channel,private_channel"),
-      listConversations(token,"im,mpim")
+      listConversations(token,"im")
     ]);
     const targets=[
       ...channels.filter((c:any)=>c.is_member&&/futebol|botafogo/i.test(String(c.name??""))),
