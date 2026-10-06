@@ -3005,7 +3005,7 @@ async function scanSlackOnly(btn,quiet=false){
     return result;
   }catch(e){
     const stage=e?.data?.stage?` (${e.data.stage})`:'';
-    setTextSafe('sourceSlackState','Falha ao ler Slack'+stage+'. Clique para tentar novamente.');
+    setTextSafe('sourceSlackState','Falha ao atualizar Slack'+stage+': '+(e?.message||String(e))+'. Clique para tentar novamente.');
     if(!quiet)cloudMsg('Slack: '+(e?.message||String(e)));
     throw e;
   }finally{
@@ -3033,11 +3033,8 @@ function parseLooseJson(text){
   return JSON.parse(clean.slice(a,b+1));
 }
 
-async function saveSlackTriage(messages){
-  if(!messages?.length)return {written:0};
-
-  const compact=messages.slice(-70);
-  const question=`Você está fazendo a triagem do Slack para o painel James.
+function buildSlackTriageQuestion(compact){
+  return `Você está fazendo a triagem do Slack para o painel James.
 
 REGRAS:
 - Inclua todas as pendências concretas que exijam resposta, decisão, preparação, acompanhamento ou ação da Danielle. Uma resposta enviada não prova que a ação prometida foi executada.
@@ -3051,21 +3048,28 @@ REGRAS:
 - status "treated": ficou claro que já foi resolvido.
 - due_at deve ser ISO ou null.
 - urgency: low, normal, high ou urgent.
+- context_fragment indica conteúdo parcial de uma mensagem longa. Não considere um item resolvido apenas pela ausência de informação nesse fragmento.
 - Retorne SOMENTE JSON no formato:
 {"items":[{"source_ref":"channel_id:timestamp","source_url":"","sender_name":"","title":"","summary":"","why_it_needs_me":"","due_at":null,"urgency":"normal","status":"draft_waiting","suggested_reply":"","responsible":"","fingerprint":"slack:channel_id:timestamp"}]}
 
 MENSAGENS:
 ${JSON.stringify(compact)}`;
+}
+async function saveSlackTriage(messages){
+  if(!messages?.length)return {written:0};
+  const compact=messages;
+  const question=buildSlackTriageQuestion(compact);
 
   const answer=await callManagementAdvisor('James • triagem Slack',question);
   const parsed=parseLooseJson(answer);
-  const items=Array.isArray(parsed.items)?parsed.items:[];
+  if(!Array.isArray(parsed.items))throw new Error('A análise do Slack retornou dados incompletos. Tente atualizar novamente.');
+  const items=parsed.items;
 
   let written=0;
   for(const it of items){
     const ref=String(it.source_ref||'');if(!compact.some(m=>m.channel_id+':'+m.ts===ref))throw new Error('Origem inválida na triagem do Slack. Tente atualizar novamente.');const fp='slack:'+ref;
     const {data:old}=await sb.from('assistant_items')
-      .select('id,status,status_locked,responsible,responsible_locked')
+      .select('id,status,status_locked,responsible,responsible_locked,treated_at')
       .eq('user_id',currentUserId).eq('fingerprint',fp).maybeSingle();
 
     const row={
@@ -3088,7 +3092,7 @@ ${JSON.stringify(compact)}`;
       treated_at:it.status==='treated'?new Date().toISOString():null
     };
 
-    if(old?.status_locked)row.status=old.status;
+    if(old?.status_locked){row.status=old.status;row.treated_at=old.treated_at}
     if(old?.responsible_locked)row.responsible=old.responsible;
 
     const result=old?.id
@@ -5112,12 +5116,58 @@ loadJamesTodoist=async function(){
  }catch(e){jamesHealth.todoist={error:e.message};setTextSafe('jamesTodoistSummary','Não foi possível ler o Todoist');setTextSafe('sourceTodoistCount','—');setTextSafe('sourceTodoistState','Leitura falhou: '+e.message)}
  renderJamesHealth();
 };
+const SLACK_TRIAGE_MAX_CHARS=7800;
+function splitSlackTriageMessage(message){
+ if(buildSlackTriageQuestion([message]).length<=SLACK_TRIAGE_MAX_CHARS)return [message];
+ const fragments=[];
+ const base={...message,text:'',thread_replies:null,context_fragment:true};
+ for(const field of ['text','thread_replies']){
+  const content=String(message[field]||'');
+  let offset=0;
+  while(offset<content.length){
+   let low=1,high=content.length-offset,fit=0;
+   while(low<=high){
+    const size=Math.floor((low+high)/2);
+    const fragment={...base,fragment_field:field,fragment_offset:offset,fragment_total_chars:content.length,[field]:content.slice(offset,offset+size)};
+    if(buildSlackTriageQuestion([fragment]).length<=SLACK_TRIAGE_MAX_CHARS){fit=size;low=size+1}else high=size-1;
+   }
+   if(!fit)throw new Error('Mensagem do Slack com dados de origem grandes demais para análise.');
+   if(offset+fit<content.length&&/[\uD800-\uDBFF]/.test(content[offset+fit-1]))fit--;
+   if(!fit)throw new Error('Não foi possível dividir a mensagem do Slack para análise.');
+   fragments.push({...base,fragment_field:field,fragment_offset:offset,fragment_total_chars:content.length,[field]:content.slice(offset,offset+fit)});
+   offset+=fit;
+  }
+ }
+ if(!fragments.length)throw new Error('Dados de origem do Slack grandes demais para análise.');
+ return fragments;
+}
+function buildSlackTriageBatches(messages){
+ const groups=new Map(),batches=[];
+ for(const m of messages||[]){const a=groups.get(m.channel_id)||[];a.push(...splitSlackTriageMessage(m));groups.set(m.channel_id,a)}
+ for(const group of groups.values()){
+  let batch=[];
+  for(const message of group){
+   if(batch.length&&buildSlackTriageQuestion([...batch,message]).length>SLACK_TRIAGE_MAX_CHARS){
+    batches.push(batch);
+    // Carry recent context only when it fits with the next unread message.
+    const context=batch.slice(-2);
+    while(context.length&&buildSlackTriageQuestion([...context,message]).length>SLACK_TRIAGE_MAX_CHARS)context.shift();
+    batch=context;
+   }
+   batch.push(message);
+  }
+  if(batch.length)batches.push(batch);
+ }
+ return batches;
+}
 const jamesTriageOriginal=saveSlackTriage;
 saveSlackTriage=async function(messages){
- const groups=new Map();
- for(const m of messages||[]){const a=groups.get(m.channel_id)||[];a.push(m);groups.set(m.channel_id,a)}
+ const batches=buildSlackTriageBatches(messages);
  let written=0;
- for(const a of groups.values())for(let i=0;i<a.length;i+=40){const r=await jamesTriageOriginal(a.slice(Math.max(0,i-10),i+40));written+=r.written||0}
+ for(let i=0;i<batches.length;i++){
+  setTextSafe('sourceSlackState','Mensagens lidas • James analisando lote '+(i+1)+' de '+batches.length+'…');
+  const r=await jamesTriageOriginal(batches[i]);written+=r.written||0;
+ }
  return {written};
 };
 scanSlackLive=async function(){
