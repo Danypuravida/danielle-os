@@ -772,6 +772,7 @@ select.field{max-width:100%}
   <h1>James</h1>
   <p class="lead">Seu assistente pessoal executivo. Gmail, Agenda, Slack e Todoist entram aqui só quando viram ação real, decisão ou resposta sua.</p>
 
+  <div id="jamesReadStatus" class="callout" role="status" style="margin:16px 0">Conferindo a última leitura das fontes…</div>
   <div class="card james-hero premium-james-shell">
     <div class="james-stage">
       <div class="james-orbit one"></div>
@@ -3039,7 +3040,7 @@ async function saveSlackTriage(messages){
   const question=`Você está fazendo a triagem do Slack para o painel James.
 
 REGRAS:
-- Só inclua algo que exija resposta, decisão, preparação, acompanhamento ou ação real da Danielle.
+- Inclua todas as pendências concretas que exijam resposta, decisão, preparação, acompanhamento ou ação da Danielle. Uma resposta enviada não prova que a ação prometida foi executada.
 - Foram lidos todos os canais dos quais ela participa que têm "futebol" no nome e DMs 1:1.
 - Dê atenção extra a Nathália Mesquita, mas não crie tarefa apenas por ela ter falado.
 - Ignore conversa social, FYI, mensagens informativas e itens claramente encerrados.
@@ -3062,10 +3063,10 @@ ${JSON.stringify(compact)}`;
 
   let written=0;
   for(const it of items){
-    const fp=it.fingerprint||`slack:${it.source_ref||crypto.randomUUID()}`;
+    const ref=String(it.source_ref||'');if(!compact.some(m=>m.channel_id+':'+m.ts===ref))throw new Error('Origem inválida na triagem do Slack. Tente atualizar novamente.');const fp='slack:'+ref;
     const {data:old}=await sb.from('assistant_items')
       .select('id,status,status_locked,responsible,responsible_locked')
-      .eq('fingerprint',fp).maybeSingle();
+      .eq('user_id',currentUserId).eq('fingerprint',fp).maybeSingle();
 
     const row={
       user_id:currentUserId,
@@ -3094,7 +3095,7 @@ ${JSON.stringify(compact)}`;
       ?await sb.from('assistant_items').update(row).eq('id',old.id)
       :await sb.from('assistant_items').insert(row);
 
-    if(!result.error)written++;
+    if(result.error)throw new Error('Falha ao salvar a triagem do Slack: '+result.error.message);written++;
   }
   return {written};
 }
@@ -3217,7 +3218,8 @@ async function scanJamesNow(btn){
     const results=await Promise.allSettled([
       callEdge('google-scan'),
       scanSlackLive(),
-      loadJamesTodoist()
+      loadJamesTodoist(),
+      callEdge('google-calendar-sync',{date:isoDateLocal()})
     ]);
 
     if(results[0].status==='fulfilled')googleResult=results[0].value;
@@ -3226,7 +3228,8 @@ async function scanJamesNow(btn){
     if(results[1].status==='fulfilled')slackResult=results[1].value;
     else errors.push('Slack: '+(results[1].reason?.message||results[1].reason));
 
-    try{await callEdge('james-summary')}catch{}
+    if(results[3].status==='rejected')errors.push('Agenda: '+results[3].reason?.message);
+    if(!errors.length)try{await callEdge('james-summary')}catch(e){errors.push('Resumo: '+e.message)}
 
     await Promise.all([
       loadJames(),
@@ -3238,7 +3241,7 @@ async function scanJamesNow(btn){
 
     const pieces=[];
     if(googleResult)pieces.push('Google ok');
-    if(slackResult)pieces.push(`Slack: ${slackResult.items_written??0} item(ns)`);
+    if(slackResult)pieces.push(`Slack: ${slackResult.written??0} item(ns)`);
     if(errors.length)pieces.push(errors.join(' • '));
 
     cloudMsg(`Varredura concluída • ${pieces.join(' • ')}`,errors.length===0);
@@ -3487,13 +3490,14 @@ let assistantCache={};
 async function loadJames(syncFinance=true){
   if(!currentUserId)return;
   if(syncFinance)try{await callEdge('finance-status',{})}catch(e){console.warn('finance sync for James',e)}
-  const [{data:scan,error:scanErr},{data:normalItems,error:itemErr},{data:travelAlert,error:travelErr}]=await Promise.all([
+  const [{data:scan,error:scanErr},{data:normalItems,error:itemErr},{data:travelAlert,error:travelErr},{data:closedItems,error:closedErr}]=await Promise.all([
     sb.from('assistant_scans').select('*').order('scan_time',{ascending:false}).limit(1).maybeSingle(),
-    sb.from('assistant_items').select('*').order('due_at',{ascending:true,nullsFirst:false}).order('last_seen_at',{ascending:false}).limit(120),
-    sb.from('assistant_items').select('*').eq('user_id',currentUserId).eq('source','travel').eq('fingerprint','travel:packing-list').maybeSingle()
+    sb.from('assistant_items').select('*').eq('user_id',currentUserId).neq('status','treated').order('due_at',{ascending:true,nullsFirst:false}).order('last_seen_at',{ascending:false}).limit(1000),
+    sb.from('assistant_items').select('*').eq('user_id',currentUserId).eq('source','travel').eq('fingerprint','travel:packing-list').maybeSingle(),
+    sb.from('assistant_items').select('*').eq('user_id',currentUserId).eq('status','treated').order('last_seen_at',{ascending:false}).limit(120)
   ]);
-  if(scanErr||itemErr||travelErr){cloudMsg('Erro ao carregar James: '+(scanErr?.message||itemErr?.message||travelErr?.message));return}
-  const items=travelAlert?[travelAlert,...(normalItems||[]).filter(x=>x.id!==travelAlert.id)]:(normalItems||[]);
+  if(scanErr||itemErr||travelErr||closedErr){cloudMsg('Erro ao carregar James: '+(scanErr?.message||itemErr?.message||travelErr?.message||closedErr?.message));return}
+  const combined=[...(normalItems||[]),...(closedItems||[])];const items=travelAlert?[travelAlert,...combined.filter(x=>x.id!==travelAlert.id)]:combined;
   assistantCache={};(items||[]).forEach(x=>assistantCache[x.id]=x);
 
   const needs=(items||[]).filter(x=>x.status==='needs_me');
@@ -5043,5 +5047,103 @@ sb.auth.onAuthStateChange((event)=>{
   if(event==='SIGNED_IN'||event==='INITIAL_SESSION')setTimeout(refreshTravelSurface,0);
 });
 renderTravelList();
+</script>
+<script>
+
+/* Source health: failed or stale reads cannot mean "nothing pending". */
+let jamesHealth={google:null,slack:null,todoist:null},jamesHealthAt=0,jamesHealthFlight=null,jamesAutoAt=0,jamesScanRunning=false;
+const jamesEdgeOriginal=callEdge;
+callEdge=async function(name,payload={}){
+ try{
+  const data=await jamesEdgeOriginal(name,payload);
+  if(name==='google-status')jamesHealth.google=data;
+  if(name==='slack-status')jamesHealth.slack=data;
+  if(name==='google-scan')jamesHealth.google={connected:true,last_scan_at:new Date().toISOString(),last_error:null};
+  renderJamesHealth();return data;
+ }catch(e){
+  if(name==='google-scan'||name==='google-calendar-sync'||name==='google-status')jamesHealth.google={...(jamesHealth.google||{}),last_error:e.message,needs_google_connect:!!e.data?.needs_google_connect};
+  if(name==='slack-fetch'||name==='slack-status')jamesHealth.slack={...(jamesHealth.slack||{}),last_error:e.message};
+  renderJamesHealth();throw e;
+ }
+};
+function jamesReadIssues(){
+ const out=[];
+ for(const [key,label] of [['google','Gmail e Agenda'],['slack','Slack']]){
+  const h=jamesHealth[key];
+  if(!h)out.push(label+': leitura ainda não conferida');
+  else if(!h.connected)out.push(label+': conexão não disponível');
+  else if(h.last_error)out.push(label+': '+h.last_error);
+  else if(!h.last_scan_at||Date.now()-new Date(h.last_scan_at).getTime()>30*60000)out.push(label+': leitura desatualizada');
+ }
+ if(!jamesHealth.todoist||jamesHealth.todoist.error)out.push('Todoist: '+(jamesHealth.todoist?.error||'leitura ainda não conferida'));
+ return out;
+}
+function renderJamesHealth(){
+ const banner=document.getElementById('jamesReadStatus');if(!banner)return;
+ const issues=jamesReadIssues(),items=Object.values(assistantCache||{});
+ const open=items.filter(x=>['needs_me','draft_waiting','delegated','postponed'].includes(x.status));
+ const tasks=(jamesHealth.todoist?.today||0)+(jamesHealth.todoist?.overdue||0);
+ const awake=issues.length>0||open.length+tasks>0;
+ const cat=document.getElementById('jamesCat');
+ cat?.classList.toggle('awake',awake);cat?.classList.toggle('sleeping',!awake);
+ cat?.setAttribute('aria-label',awake?'James acordado':'James dormindo');
+ setTextSafe('jamesStateText',issues.length?'James: leitura incompleta':awake?'James está acordado':'James está dormindo');
+ setTextSafe('jamesStateSub',issues.length?'Não é possível afirmar que suas pendências estão em dia.':awake?open.length+' item(ns) no James • '+tasks+' tarefa(s) no Todoist.':'Nenhuma pendência encontrada nas fontes verificadas.');
+ banner.textContent=issues.length?'Atenção: '+issues.join(' • '):'Fontes verificadas. As tarefas do Todoist também contam como pendências.';
+ banner.classList.toggle('danger',issues.length>0);
+ for(const [source,label,id] of [['gmail','Gmail','sourceGmailState'],['calendar','Agenda','sourceCalendarState'],['slack','Slack','sourceSlackState']]){
+  const h=jamesHealth[source==='slack'?'slack':'google'];
+  const n=items.filter(x=>x.source===source&&!['treated','postponed'].includes(x.status)).length;
+  const fresh=h?.connected&&!h.last_error&&h.last_scan_at&&Date.now()-new Date(h.last_scan_at).getTime()<=30*60000;
+  setTextSafe(id,n?n+' item(ns) pendente(s).'+(fresh?'':' A leitura da fonte precisa ser atualizada.'):fresh?'Nenhuma pendência identificada na última leitura de '+label+'.':label+' não foi verificado por completo. Confira o aviso acima.');
+ }
+ if(jamesHealth.google?.needs_google_connect){const b=document.getElementById('googleConnectBtn');if(b){b.style.display='';b.textContent='Reconectar Google'}}
+ if(issues.length)setHtmlSafe('morningBrief','<div>Leitura incompleta das integrações.</div><div>'+esc(open.length+' pendência(s) registrada(s) • '+tasks+' tarefa(s) no Todoist.')+'</div><div>'+esc(issues[0])+'</div>');
+}
+loadJamesTodoist=async function(){
+ try{
+  const {groups}=await todoistCall({action:'list'});
+  const today=(groups.today||[]).length,overdue=(groups.overdue||[]).length;
+  jamesHealth.todoist={today,overdue};
+  setTextSafe('jamesTodoistSummary',today+' pendente(s) hoje • '+overdue+' atrasada(s)');
+  setTextSafe('sourceTodoistCount',String(today+overdue));
+  setTextSafe('sourceTodoistState',today+' tarefa(s) para hoje • '+overdue+' atrasada(s).');
+ }catch(e){jamesHealth.todoist={error:e.message};setTextSafe('jamesTodoistSummary','Não foi possível ler o Todoist');setTextSafe('sourceTodoistCount','—');setTextSafe('sourceTodoistState','Leitura falhou: '+e.message)}
+ renderJamesHealth();
+};
+const jamesTriageOriginal=saveSlackTriage;
+saveSlackTriage=async function(messages){
+ const groups=new Map();
+ for(const m of messages||[]){const a=groups.get(m.channel_id)||[];a.push(m);groups.set(m.channel_id,a)}
+ let written=0;
+ for(const a of groups.values())for(let i=0;i<a.length;i+=40){const r=await jamesTriageOriginal(a.slice(Math.max(0,i-10),i+40));written+=r.written||0}
+ return {written};
+};
+scanSlackLive=async function(){
+ const data=await callEdge('slack-fetch');
+ const tri=await saveSlackTriage(data.messages||[]);
+ await callEdge('slack-fetch',{action:'confirm_triage',partial:!!data.partial});
+ jamesHealth.slack={...(jamesHealth.slack||{}),connected:true,last_scan_at:new Date().toISOString(),last_error:data.partial?'Leitura parcial: '+(data.warnings||[]).join(' • '):null};
+ renderJamesHealth();return {...data,...tri};
+};
+const jamesGoogleStatusOriginal=loadGoogleStatus,jamesSlackStatusOriginal=loadSlackStatus;
+loadGoogleStatus=async function(){await jamesGoogleStatusOriginal();renderJamesHealth()};
+loadSlackStatus=async function(){await jamesSlackStatusOriginal();renderJamesHealth()};
+const jamesScanOriginal=scanJamesNow;
+scanJamesNow=async function(btn){
+ if(jamesScanRunning)return;
+ jamesScanRunning=true;jamesAutoAt=Date.now();
+ try{await jamesScanOriginal(btn)}finally{jamesScanRunning=false;renderJamesHealth()}
+};
+const jamesLoadOriginal=loadJames;
+loadJames=async function(syncFinance=true){
+ await jamesLoadOriginal(syncFinance);
+ if(!currentUserId)return;
+ if(!jamesHealthFlight&&Date.now()-jamesHealthAt>60000){jamesHealthAt=Date.now();jamesHealthFlight=Promise.allSettled([loadGoogleStatus(),loadSlackStatus(),loadJamesTodoist()]).finally(()=>{jamesHealthFlight=null})}
+ if(jamesHealthFlight)await jamesHealthFlight;
+ renderJamesHealth();
+ if(document.querySelector('.page[data-page="james"]')?.classList.contains('active')&&jamesReadIssues().length&&!jamesScanRunning&&Date.now()-jamesAutoAt>15*60000){jamesAutoAt=Date.now();scanJamesNow(document.getElementById('jamesScanBtn')).catch(e=>cloudMsg('James: '+e.message))}
+};
+
 </script>
 </body></html>
