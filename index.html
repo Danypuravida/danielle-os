@@ -5097,7 +5097,7 @@ function renderJamesHealth(){
   const fresh=h?.connected&&!h.last_error&&h.last_scan_at&&Date.now()-new Date(h.last_scan_at).getTime()<=30*60000;
   setTextSafe(id,n?n+' item(ns) pendente(s).'+(fresh?'':' A leitura da fonte precisa ser atualizada.'):fresh?'Nenhuma pendência identificada na última leitura de '+label+'.':label+' não foi verificado por completo. Confira o aviso acima.');
  }
- if(jamesHealth.google?.needs_google_connect){const b=document.getElementById('googleConnectBtn');if(b){b.style.display='';b.textContent='Reconectar Google'}}
+ if(jamesHealth.google?.needs_google_connect||/invalid_grant|expired|revoked/i.test(jamesHealth.google?.last_error||'')){const b=document.getElementById('googleConnectBtn');if(b){b.style.display='';b.textContent='Reconectar Google'}}
  if(issues.length)setHtmlSafe('morningBrief','<div>Leitura incompleta das integrações.</div><div>'+esc(open.length+' pendência(s) registrada(s) • '+tasks+' tarefa(s) no Todoist.')+'</div><div>'+esc(issues[0])+'</div>');
 }
 loadJamesTodoist=async function(){
