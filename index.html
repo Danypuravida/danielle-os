@@ -1448,6 +1448,26 @@ select.field{max-width:100%}
   </div>
 </section>
 
+<section class="page" data-page="lista-viagem" id="travelListPage">
+  <h1>Lista viagem</h1>
+  <p class="lead">Marque o que já separou. A partir de 70%, o que falta fica vermelho e vira alerta no James.</p>
+  <div class="card travel-card">
+    <div class="row" style="justify-content:space-between">
+      <b id="travelProgressText" aria-live="polite">Carregando lista…</b>
+      <button class="btn tiny" type="button" onclick="loadTravelList()">Atualizar</button>
+    </div>
+    <progress id="travelProgress" max="100" value="0" aria-label="Progresso da lista de viagem"></progress>
+    <p id="travelAlertNote" class="travel-alert" role="status" hidden></p>
+    <form id="travelAddForm" class="travel-add" onsubmit="event.preventDefault();addTravelItem()">
+      <label class="sr-only" for="travelNewItem">Novo item para a viagem</label>
+      <input id="travelNewItem" class="field" maxlength="200" required placeholder="Adicionar item à lista" autocomplete="off">
+      <button id="travelAddButton" class="btn primary" type="submit" aria-label="Adicionar item" title="Adicionar item">+</button>
+    </form>
+    <p id="travelSaveState" class="tiny muted" role="status" aria-live="polite">Sua lista fica salva na sua conta.</p>
+    <div id="travelItems" class="travel-items"></div>
+  </div>
+</section>
+
 <section class="page" data-page="todoist">
   <h1>Todoist</h1>
   <p class="lead">O Todoist continua sendo sua fonte oficial de tarefas. Aqui você vê o essencial e executa sem sair do Danielle OS.</p>
@@ -1714,9 +1734,9 @@ sb.auth.onAuthStateChange((_event, session) => {
 </script>
 
 <script>
-const pages=[['overview','Overview'],['painel','Painel'],['james','James'],['financeiro','Financeiro'],['metas-pessoais','Metas pessoais'],['mentoria','Mentoria'],['rotina','Hoje'],['todoist','Todoist'],['reunioes','Reuniões'],['gestao','Gestão'],['reflexao','Decisões'],['senioridade','Resultados'],['desenvolvimento','Desenvolvimento'],['score','Scorecard'],['perfil','Perfil'],['plano','Plano até dezembro'],['coach','Conselheiro IA']];
+const pages=[['overview','Overview'],['painel','Painel'],['james','James'],['financeiro','Financeiro'],['lista-viagem','Lista viagem'],['metas-pessoais','Metas pessoais'],['mentoria','Mentoria'],['rotina','Hoje'],['todoist','Todoist'],['reunioes','Reuniões'],['gestao','Gestão'],['reflexao','Decisões'],['senioridade','Resultados'],['desenvolvimento','Desenvolvimento'],['score','Scorecard'],['perfil','Perfil'],['plano','Plano até dezembro'],['coach','Conselheiro IA']];
 const freehandStartIndex=pages.findIndex(x=>x[0]==='financeiro');
-const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist();loadWhatsAppStatus()}if(id==='financeiro')loadFinance();if(id==='metas-pessoais')loadPersonalGoals();if(id==='mentoria')loadMentorship();if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}if(id==='overview')loadOverview();if(i>=freehandStartIndex)setTimeout(()=>ensureFreehandBoard(id),40)};nav.appendChild(b)});
+const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist();loadWhatsAppStatus()}if(id==='financeiro')loadFinance();if(id==='lista-viagem')loadTravelList();if(id==='metas-pessoais')loadPersonalGoals();if(id==='mentoria')loadMentorship();if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}if(id==='overview')loadOverview();if(i>=freehandStartIndex)setTimeout(()=>ensureFreehandBoard(id),40)};nav.appendChild(b)});
 
 function openOSPage(id){
   const btn=document.querySelector(`#nav button[data-page="${id}"]`);
@@ -3390,6 +3410,7 @@ async function copyWhatsAppWebhook(){
 }
 
 function assistantSourceIcon(source){
+  if(source==='travel')return '🧳 Viagem';
   if(source==='gmail')return '✉ Gmail';
   if(source==='calendar')return '📅 Agenda';
   if(source==='slack')return '💬 Slack';
@@ -3405,6 +3426,12 @@ function assistantDueLabel(value){
   return d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'});
 }
 function assistantItemHtml(item){
+  if(item.source==='travel')return `<div class="assistant-item ${item.status==='needs_me'?'high travel-james-alert':''}" data-source="travel" data-assistant-id="${esc(item.id)}">
+    <div class="assistant-card-head"><div class="item-title">${esc(item.title)}</div><span class="source-pill">🧳 Viagem</span></div>
+    <div class="item-summary" style="white-space:pre-wrap">${esc(item.summary||'')}</div>
+    <p class="tiny muted">${esc(item.why_it_needs_me||'')}</p>
+    <button class="btn tiny" onclick="openOSPage('lista-viagem')">Abrir lista</button>
+  </div>`;
   const cls=item.urgency==='urgent'?'urgent':item.urgency==='high'?'high':'';
   const reply=item.suggested_reply
     ?`<div class="reply-box"><b>Rascunho</b><br>${esc(item.suggested_reply)}</div>`
@@ -3457,14 +3484,16 @@ function assistantItemHtml(item){
   </div>`;
 }
 let assistantCache={};
-async function loadJames(){
+async function loadJames(syncFinance=true){
   if(!currentUserId)return;
-  try{await callEdge('finance-status',{})}catch(e){console.warn('finance sync for James',e)}
-  const [{data:scan,error:scanErr},{data:items,error:itemErr}]=await Promise.all([
+  if(syncFinance)try{await callEdge('finance-status',{})}catch(e){console.warn('finance sync for James',e)}
+  const [{data:scan,error:scanErr},{data:normalItems,error:itemErr},{data:travelAlert,error:travelErr}]=await Promise.all([
     sb.from('assistant_scans').select('*').order('scan_time',{ascending:false}).limit(1).maybeSingle(),
-    sb.from('assistant_items').select('*').order('due_at',{ascending:true,nullsFirst:false}).order('last_seen_at',{ascending:false}).limit(120)
+    sb.from('assistant_items').select('*').order('due_at',{ascending:true,nullsFirst:false}).order('last_seen_at',{ascending:false}).limit(120),
+    sb.from('assistant_items').select('*').eq('user_id',currentUserId).eq('source','travel').eq('fingerprint','travel:packing-list').maybeSingle()
   ]);
-  if(scanErr||itemErr){cloudMsg('Erro ao carregar James: '+(scanErr?.message||itemErr?.message));return}
+  if(scanErr||itemErr||travelErr){cloudMsg('Erro ao carregar James: '+(scanErr?.message||itemErr?.message||travelErr?.message));return}
+  const items=travelAlert?[travelAlert,...(normalItems||[]).filter(x=>x.id!==travelAlert.id)]:(normalItems||[]);
   assistantCache={};(items||[]).forEach(x=>assistantCache[x.id]=x);
 
   const needs=(items||[]).filter(x=>x.status==='needs_me');
@@ -4899,5 +4928,120 @@ async function loadFreehand(pageId){
   const label=document.getElementById('freehandState_'+pageId);if(label)label.textContent=error?'não carregou':'salvo';
 }
 window.addEventListener('resize',()=>{for(const id of Object.keys(freehandBoards)){const page=document.querySelector('.page[data-page="'+CSS.escape(id)+'"]');if(page?.classList.contains('active'))resizeFreehandCanvas(id)}});
+</script>
+<style>
+.travel-card{max-width:850px;margin-top:22px}
+#travelProgress{display:block;width:100%;height:12px;margin:14px 0;accent-color:var(--good)}
+.travel-add{display:flex;gap:10px;margin-top:18px}.travel-add input{flex:1;min-width:0}.travel-add button{min-width:48px;font-size:24px;padding:3px 14px}
+.travel-items{display:grid;gap:6px}.travel-item{display:flex;gap:10px;align-items:center;padding:6px 8px;border:1px solid var(--line);border-radius:10px;background:#0d141d;min-width:0}
+.travel-item label{flex:1;display:flex;align-items:center;gap:12px;cursor:pointer;min-width:0;min-height:44px;overflow-wrap:anywhere}
+.travel-item input{width:22px;height:22px;flex:0 0 22px;accent-color:var(--good);cursor:pointer}
+.travel-item.done span{text-decoration:line-through;color:var(--muted)}
+.travel-item.pending{border-color:#83414b;background:#2b1820}.travel-item.pending span,.travel-alert,.travel-james-alert .item-summary{color:#ff939d}
+.travel-item button{min-width:44px;min-height:44px;font-size:18px}.travel-item button:disabled,.travel-add button:disabled{opacity:.5;cursor:wait}
+.travel-alert{padding:10px 12px;border:1px solid #83414b;border-radius:10px;background:#2b1820}
+.travel-save-error{color:#ff939d!important}.travel-card .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+@media(max-width:600px){.travel-card{padding:12px}.travel-item{gap:6px}.travel-item label{gap:10px}}
+</style>
+<script>
+/* Travel checklist: save each item separately so devices never overwrite the whole list. */
+let travelItems=[],travelOwner=null,travelReady=false,travelLoadVersion=0;
+let travelWriteQueue=Promise.resolve(),travelPending=0,travelAdding=false,travelJamesTimer=null;
+const travelBusyIds=new Set();
+function travelSaveState(text,error=false){
+  const el=document.getElementById('travelSaveState');el.textContent=text;el.classList.toggle('travel-save-error',error);
+}
+function renderTravelList(){
+  const total=travelItems.length,done=travelItems.filter(x=>x.checked).length;
+  const percent=total?Math.floor(done*100/total):0,alert=total>0&&done*100>=total*70&&done<total;
+  document.getElementById('travelProgressText').textContent=travelReady?`${done} de ${total} itens separados · ${percent}%`:'Carregando lista…';
+  document.getElementById('travelProgress').value=percent;
+  const note=document.getElementById('travelAlertNote');note.hidden=!alert;
+  note.textContent=alert?`Faltam ${total-done} itens. Eles estão em vermelho e aparecem como alerta no James.`:'';
+  document.getElementById('travelAddButton').disabled=!travelReady||travelAdding;
+  document.getElementById('travelItems').innerHTML=travelItems.length?travelItems.map(x=>{
+    const busy=travelBusyIds.has(x.id),id=esc(x.id);
+    return `<div class="travel-item ${x.checked?'done':alert?'pending':''}" data-travel-id="${id}">
+      <label><input type="checkbox" ${x.checked?'checked':''} ${busy?'disabled':''} onchange="toggleTravelItem('${id}',this.checked)"><span>${esc(x.label)}</span></label>
+      <button class="btn tiny" type="button" ${busy?'disabled':''} aria-label="Excluir ${esc(x.label)}" title="Excluir item" onclick="deleteTravelItem('${id}')">×</button>
+    </div>`;
+  }).join(''):(travelReady?'<p class="muted">Sua lista está vazia. Use o + para adicionar itens.</p>':'');
+}
+async function loadTravelList(quiet=false){
+  if(travelPending)return;
+  if(!currentUserId){travelReady=false;travelItems=[];renderTravelList();travelSaveState('Entre na sua conta para usar a lista.');return}
+  const owner=currentUserId,version=++travelLoadVersion;
+  if(travelOwner!==owner){travelOwner=owner;travelItems=[];travelReady=false;renderTravelList()}
+  if(!quiet)travelSaveState('Atualizando lista…');
+  try{
+    if(!travelReady){const {error}=await sb.rpc('ensure_travel_checklist');if(error)throw error}
+    const {data,error}=await sb.from('travel_checklist_items').select('id,label,checked,sort_order').eq('user_id',owner).order('sort_order').order('id');
+    if(error)throw error;
+    if(version!==travelLoadVersion||owner!==currentUserId||travelPending)return;
+    travelItems=data||[];travelReady=true;renderTravelList();
+    if(!quiet)travelSaveState('Lista salva e sincronizada com sua conta.');
+  }catch(e){if(version===travelLoadVersion)travelSaveState('Não foi possível atualizar a lista: '+e.message,true)}
+}
+function queueTravelWrite(write,undo){
+  const owner=currentUserId;travelPending++;travelLoadVersion++;
+  travelSaveState('Salvando…');
+  const operation=travelWriteQueue.then(async()=>{
+    try{
+      if(owner!==currentUserId)throw new Error('A conta mudou. Abra a lista novamente.');
+      const {error}=await write(owner);if(error)throw error;
+      travelSaveState('Lista salva e sincronizada com sua conta.');
+    }catch(e){if(owner===currentUserId){undo();travelSaveState('Não foi possível salvar: '+e.message,true)}}
+    finally{
+      travelPending--;renderTravelList();
+      if(!travelPending){
+        await loadTravelList(true);
+        clearTimeout(travelJamesTimer);travelJamesTimer=setTimeout(()=>loadJames(false).catch(()=>{}),300);
+      }
+    }
+  });
+  travelWriteQueue=operation.catch(()=>{});return operation;
+}
+function toggleTravelItem(id,checked){
+  const item=travelItems.find(x=>x.id===id);if(!item||travelBusyIds.has(id)||!travelReady)return;
+  const previous=item.checked;item.checked=checked;travelBusyIds.add(id);renderTravelList();
+  return queueTravelWrite(async owner=>{
+    try{return await sb.from('travel_checklist_items').update({checked}).eq('id',id).eq('user_id',owner).select('id').single()}
+    finally{travelBusyIds.delete(id)}
+  },()=>{item.checked=previous});
+}
+function deleteTravelItem(id){
+  const index=travelItems.findIndex(x=>x.id===id);if(index<0||travelBusyIds.has(id)||!travelReady)return;
+  const item=travelItems[index];travelItems.splice(index,1);travelBusyIds.add(id);renderTravelList();
+  return queueTravelWrite(async owner=>{
+    try{return await sb.from('travel_checklist_items').delete().eq('id',id).eq('user_id',owner).select('id').single()}
+    finally{travelBusyIds.delete(id)}
+  },()=>{travelItems.splice(Math.min(index,travelItems.length),0,item)});
+}
+function addTravelItem(){
+  const input=document.getElementById('travelNewItem'),label=input.value.trim();
+  if(!label||label.length>200||!travelReady||travelAdding)return;
+  const order=Math.max(0,...travelItems.map(x=>x.sort_order))+1;
+  travelAdding=true;renderTravelList();
+  return queueTravelWrite(async owner=>{
+    try{
+      const result=await sb.from('travel_checklist_items').insert({user_id:owner,label,checked:false,sort_order:order}).select('id,label,checked,sort_order').single();
+      if(!result.error){travelItems.push(result.data);if(input.value.trim()===label)input.value=''}
+      return result;
+    }finally{travelAdding=false}
+  },()=>{});
+}
+function refreshTravelSurface(){
+  if(document.hidden||!currentUserId)return;
+  if(document.getElementById('travelListPage').classList.contains('active'))loadTravelList(true);
+  else if(document.querySelector('.page[data-page="james"]')?.classList.contains('active'))loadJames(false).catch(()=>{});
+}
+window.addEventListener('focus',refreshTravelSurface);
+document.addEventListener('visibilitychange',refreshTravelSurface);
+setInterval(refreshTravelSurface,20000);
+sb.auth.onAuthStateChange((event)=>{
+  if(event==='SIGNED_OUT'){travelLoadVersion++;travelOwner=null;travelReady=false;travelItems=[];renderTravelList()}
+  if(event==='SIGNED_IN'||event==='INITIAL_SESSION')setTimeout(refreshTravelSurface,0);
+});
+renderTravelList();
 </script>
 </body></html>
