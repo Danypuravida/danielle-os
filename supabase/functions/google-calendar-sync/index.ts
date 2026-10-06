@@ -106,16 +106,6 @@ Deno.serve(async(req:Request)=>{
         status:oldMeeting?.status==="completed"?"completed":"planned"
       },{onConflict:"user_id,calendar_event_id"});
       if(error)throw error;
-      const fingerprint="calendar:"+e.id;
-      const {data:old}=await admin.from("assistant_items").select("id,status,status_locked").eq("user_id",user.id).eq("fingerprint",fingerprint).maybeSingle();
-      const declined=(e.attendees??[]).some((a:any)=>a.self&&a.responseStatus==="declined");
-      const row={user_id:user.id,source:"calendar",source_ref:e.id,source_url:e.htmlLink||null,fingerprint,
-        title:"Reunião: "+title,summary:String(e.description||"Confira a pauta e os materiais para este compromisso.").replace(/<[^>]*>/g," ").slice(0,3000),
-        why_it_needs_me:"Compromisso na sua agenda. Confira participação, preparação e horários.",due_at:start.toISOString(),
-        urgency:localDate(start)===localDate(new Date())?"high":"normal",
-        status:old?.status_locked?old.status:(oldMeeting?.status==="completed"||declined?"treated":"needs_me"),last_seen_at:new Date().toISOString()};
-      const saved=old?.id?await admin.from("assistant_items").update(row).eq("id",old.id):await admin.from("assistant_items").insert(row);
-      if(saved.error)throw saved.error;
       synced++;
     }
 

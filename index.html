@@ -837,7 +837,7 @@ select.field{max-width:100%}
     <div class="card source-status-card calendar">
       <div class="source-card-top"><span class="source-card-badge">Agenda</span><span class="tag" id="sourceCalendarCount">0</span></div>
       <h3>Compromissos</h3>
-      <p id="sourceCalendarState" class="muted">Reuniões entram aqui e na aba Reuniões.</p>
+      <p id="sourceCalendarState" class="muted">Sua agenda fica na aba Reuniões.</p>
     </div>
     <div class="card source-status-card slack">
       <div class="source-card-top"><span class="source-card-badge">Slack • Ingresse</span><span class="tag" id="sourceSlackCount">0</span></div>
@@ -3160,7 +3160,7 @@ async function loadGoogleStatus(){
     if(data.connected){
       pill.textContent=`● Google conectado${data.google_email?' • '+data.google_email:''}`;
       setTextSafe('sourceGmailState','Google conectado'+(data.google_email?' • '+data.google_email:'')+'. James triando e-mails relevantes.');
-      setTextSafe('sourceCalendarState','Agenda conectada. Reuniões do dia entram aqui e na aba Reuniões.');
+      setTextSafe('sourceCalendarState','Agenda conectada. Reuniões do dia ficam na aba Reuniões.');
       pill.classList.add('connected');pill.classList.remove('disconnected');
       btn.textContent='Reconectar Google';
       btn.style.display='none';
@@ -3341,7 +3341,7 @@ function updateJamesSourceCards(items){
   setTextSafe('sourceSlackCount',String(slack.length));
   setTextSafe('sourceWhatsAppCount',String(whatsapp.length));
   setTextSafe('sourceGmailState', gmail.length ? `${gmail.length} item(ns) do Gmail pedindo ação ou resposta.` : 'Sem e-mails relevantes pendentes agora.');
-  setTextSafe('sourceCalendarState', calendar.length ? `${calendar.length} item(ns) da agenda pedindo preparo, decisão ou follow-up.` : 'Sem alerta de agenda exigindo você agora.');
+  setTextSafe('sourceCalendarState','Sua agenda fica na aba Reuniões.');
   setTextSafe('sourceSlackState', slack.length ? `${slack.length} item(ns) vieram do Slack entre DMs e canais de futebol.` : 'Sem item aberto do Slack no momento.');
 }
 
@@ -5095,6 +5095,7 @@ function renderJamesHealth(){
   const h=jamesHealth[source==='slack'?'slack':'google'];
   const n=items.filter(x=>x.source===source&&!['treated','postponed'].includes(x.status)).length;
   const fresh=h?.connected&&!h.last_error&&h.last_scan_at&&Date.now()-new Date(h.last_scan_at).getTime()<=30*60000;
+  if(source==='calendar'){setTextSafe(id,'Sua agenda fica na aba Reuniões.');continue}
   setTextSafe(id,n?n+' item(ns) pendente(s).'+(fresh?'':' A leitura da fonte precisa ser atualizada.'):fresh?'Nenhuma pendência identificada na última leitura de '+label+'.':label+' não foi verificado por completo. Confira o aviso acima.');
  }
  if(jamesHealth.google?.needs_google_connect||/invalid_grant|expired|revoked/i.test(jamesHealth.google?.last_error||'')){const b=document.getElementById('googleConnectBtn');if(b){b.style.display='';b.textContent='Reconectar Google'}}
