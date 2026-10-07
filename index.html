@@ -3092,14 +3092,23 @@ async function saveSlackTriage(messages){
       treated_at:it.status==='treated'?new Date().toISOString():null
     };
 
-    if(old?.status_locked){row.status=old.status;row.treated_at=old.treated_at}
-    if(old?.responsible_locked)row.responsible=old.responsible;
-
-    const result=old?.id
-      ?await sb.from('assistant_items').update(row).eq('id',old.id)
-      :await sb.from('assistant_items').insert(row);
-
-    if(result.error)throw new Error('Falha ao salvar a triagem do Slack: '+result.error.message);written++;
+    if(old?.id){
+      const {status,treated_at,responsible,...metadata}=row;
+      const updated=await sb.from('assistant_items').update(metadata).eq('user_id',currentUserId).eq('id',old.id);
+      if(updated.error)throw new Error('Falha ao salvar a triagem do Slack: '+updated.error.message);
+      if(!old.status_locked){
+        const classified=await sb.from('assistant_items').update({status,treated_at}).eq('user_id',currentUserId).eq('id',old.id).eq('status_locked',false);
+        if(classified.error)throw classified.error;
+      }
+      if(!old.responsible_locked){
+        const assigned=await sb.from('assistant_items').update({responsible}).eq('user_id',currentUserId).eq('id',old.id).eq('responsible_locked',false);
+        if(assigned.error)throw assigned.error;
+      }
+    }else{
+      const inserted=await sb.from('assistant_items').upsert(row,{onConflict:'user_id,fingerprint',ignoreDuplicates:true});
+      if(inserted.error)throw new Error('Falha ao salvar a triagem do Slack: '+inserted.error.message);
+    }
+    written++;
   }
   return {written};
 }
@@ -3496,9 +3505,9 @@ async function loadJames(syncFinance=true){
   if(syncFinance)try{await callEdge('finance-status',{})}catch(e){console.warn('finance sync for James',e)}
   const [{data:scan,error:scanErr},{data:normalItems,error:itemErr},{data:travelAlert,error:travelErr},{data:closedItems,error:closedErr}]=await Promise.all([
     sb.from('assistant_scans').select('*').order('scan_time',{ascending:false}).limit(1).maybeSingle(),
-    sb.from('assistant_items').select('*').eq('user_id',currentUserId).neq('status','treated').order('due_at',{ascending:true,nullsFirst:false}).order('last_seen_at',{ascending:false}).limit(1000),
+    sb.from('assistant_items').select('*').eq('user_id',currentUserId).is('hidden_at',null).neq('status','treated').order('due_at',{ascending:true,nullsFirst:false}).order('last_seen_at',{ascending:false}).limit(1000),
     sb.from('assistant_items').select('*').eq('user_id',currentUserId).eq('source','travel').eq('fingerprint','travel:packing-list').maybeSingle(),
-    sb.from('assistant_items').select('*').eq('user_id',currentUserId).eq('status','treated').order('last_seen_at',{ascending:false}).limit(120)
+    sb.from('assistant_items').select('*').eq('user_id',currentUserId).is('hidden_at',null).eq('status','treated').order('treated_at',{ascending:false,nullsFirst:false}).limit(1000)
   ]);
   if(scanErr||itemErr||travelErr||closedErr){cloudMsg('Erro ao carregar James: '+(scanErr?.message||itemErr?.message||travelErr?.message||closedErr?.message));return}
   const combined=[...(normalItems||[]),...(closedItems||[])];const items=travelAlert?[travelAlert,...combined.filter(x=>x.id!==travelAlert.id)]:combined;
@@ -3508,7 +3517,7 @@ async function loadJames(syncFinance=true){
   const delegated=(items||[]).filter(x=>x.status==='delegated');
   const drafts=(items||[]).filter(x=>x.status==='draft_waiting');
   const postponed=(items||[]).filter(x=>x.status==='postponed');
-  const treated=(items||[]).filter(x=>x.status==='treated').slice(0,8);
+  const treated=(items||[]).filter(x=>x.status==='treated');
 
   document.getElementById('needsCount').textContent=needs.length;
   document.getElementById('delegatedCount').textContent=delegated.length;
@@ -3560,7 +3569,7 @@ async function setAssistantStatus(id,status){
   else patch.treated_at=null;
 
   const {error}=await sb.from('assistant_items').update(patch).eq('id',id);
-  if(error){cloudMsg(error.message);return}
+  if(error)throw new Error(error.message);
   await loadJames();
 }
 async function completeAssistantItem(id){
@@ -3574,6 +3583,7 @@ async function completeAssistantItem(id){
     cloudMsg('Concluído • movido para Já tratado',true);
   }catch(e){
     if(card)card.style.opacity='1';
+    cloudMsg('Não foi possível concluir: '+(e?.message||String(e)));
     throw e;
   }
 }

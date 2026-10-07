@@ -29,13 +29,14 @@ for(const m of messages){
 assert.equal(ctx.buildSlackTriageBatches([]).length,0);
 let saved=[],edgeCalls=[];
 const old={id:'kept',status:'treated',status_locked:true,responsible:'Pessoa escolhida',responsible_locked:true,treated_at:'2026-10-01T00:00:00Z'};
-ctx.sb={from(){return {select(){return this},eq(){return this},async maybeSingle(){return {data:old}},update(row){saved.push(row);return {eq:async()=>({})}},async insert(row){saved.push(row);return {}}}}};
+ctx.sb={from(){return {select(){return this},eq(){return this},async maybeSingle(){return {data:old}},update(row){saved.push(row);return {eq(){return this},then(resolve){resolve({})}}},async upsert(row){saved.push(row);return {}}}}};
 ctx.callManagementAdvisor=async(_,q)=>{assert(q.length<=8000);return JSON.stringify({items:[{source_ref:'channel:1',status:'needs_me',responsible:'Outra pessoa'}]})};
 ctx.callEdge=async(name,body)=>{edgeCalls.push(body?.action||'read');return {messages:[msg(1,'precisa agir')],partial:false}};
 (async()=>{
  await ctx.scanSlackLive();
  assert.deepEqual(edgeCalls,['read','confirm_triage']);
- assert.equal(saved[0].status,old.status);assert.equal(saved[0].responsible,old.responsible);assert.equal(saved[0].treated_at,old.treated_at);
+ assert(!('status' in saved[0]));assert(!('responsible' in saved[0]));assert(!('treated_at' in saved[0]));
+ assert.equal(old.status,'treated');assert.equal(old.responsible,'Pessoa escolhida');
  edgeCalls=[];ctx.callManagementAdvisor=async()=>{throw new Error('análise falhou')};
  await assert.rejects(ctx.scanSlackLive(),/análise falhou/);
  assert.deepEqual(edgeCalls,['read']);

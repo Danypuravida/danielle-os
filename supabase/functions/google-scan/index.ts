@@ -18,6 +18,27 @@ function outputText(r:any){if(typeof r?.output_text==="string")return r.output_t
 function parseJsonLoose(s:string){const a=s.indexOf("{"),b=s.lastIndexOf("}");if(a<0||b<a)throw new Error("AI_JSON_INVALID");return JSON.parse(s.slice(a,b+1))}
 function isoLocalDate(d:Date){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(d)}
 function timeLocal(d:Date){return new Intl.DateTimeFormat("en-GB",{timeZone:"America/Sao_Paulo",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(d)}
+function gmailMessageForItem(item:any,messages:any[]){
+ const ref=String(item.source_ref||"");
+ return messages.find(m=>m.id===ref)
+  ||messages.find(m=>m.threadId===ref&&m.url===item.source_url)
+  ||messages.find(m=>m.threadId===ref);
+}
+async function persistGmailItem(admin:any,userId:string,item:any,message:any){
+ const status=["needs_me","delegated","draft_waiting","treated"].includes(item.status)?item.status:"needs_me";
+ const row={user_id:userId,source:"gmail",source_ref:message.id,source_url:message.url,source_context:"Google scan",sender_name:item.sender_name||message.from||null,title:item.title||message.subject||"Sem título",summary:item.summary||null,why_it_needs_me:item.why_it_needs_me||null,due_at:item.due_at||null,urgency:["low","normal","high","urgent"].includes(item.urgency)?item.urgency:"normal",status,suggested_reply:item.suggested_reply||null,responsible:item.responsible||null,fingerprint:"gmail:"+message.id,last_seen_at:new Date().toISOString(),treated_at:status==="treated"?new Date().toISOString():null};
+ // The unique fingerprint comes from Gmail, never from model-generated text.
+ const inserted=await admin.from("assistant_items").upsert(row,{onConflict:"user_id,fingerprint",ignoreDuplicates:true});
+ if(inserted.error)throw inserted.error;
+ const {status:unusedStatus,treated_at:unusedTreated,responsible:unusedResponsible,...metadata}=row;
+ const updated=await admin.from("assistant_items").update(metadata).eq("user_id",userId).eq("fingerprint",row.fingerprint).is("hidden_at",null);
+ if(updated.error)throw updated.error;
+ // Conditions run atomically in Postgres, including when completion races with a scan.
+ const classified=await admin.from("assistant_items").update({status,treated_at:row.treated_at}).eq("user_id",userId).eq("fingerprint",row.fingerprint).eq("status_locked",false).is("hidden_at",null);
+ if(classified.error)throw classified.error;
+ const assigned=await admin.from("assistant_items").update({responsible:row.responsible}).eq("user_id",userId).eq("fingerprint",row.fingerprint).eq("responsible_locked",false).is("hidden_at",null);
+ if(assigned.error)throw assigned.error;
+}
 Deno.serve(async(req)=>{
  if(req.method==="OPTIONS")return new Response("ok",{headers:cors(req)});
  if(req.method!=="POST")return json(req,{error:"Método não permitido."},405);
@@ -68,7 +89,7 @@ Deno.serve(async(req)=>{
   const prompt={
     now:new Date().toISOString(),
     timezone:"America/Sao_Paulo",
-    instructions:"Analise mensagens de Gmail. Os eventos servem apenas de contexto para as 3 linhas do dia e são exibidos na aba Reuniões. Nunca transforme a existência de um compromisso em um item de pendência. Identifique todas as pendências concretas. Uma resposta enviada não prova que a ação prometida foi executada. Só inclua o que exige resposta, decisão, preparação ou ação da Danielle. Convites aceitos/recusados, newsletters, FYI, notificações automáticas e informativos sem ação devem ser ignorados. Para cada EMAIL pendente, sempre gere suggested_reply curto, natural e pronto para copiar, sem inventar fatos. Status: needs_me quando Danielle precisa decidir/executar; draft_waiting quando o principal próximo passo é responder; delegated quando depende claramente de outra pessoa; treated só se os dados mostrarem que já foi resolvido. due_at: use prazo explícito; sem prazo, sugira um prazo conservador. Gere também 3 linhas: como está o dia; coisa mais importante; o que está prestes a atrasar. Retorne SOMENTE JSON válido.",
+    instructions:"Analise mensagens de Gmail. Os eventos servem apenas de contexto para as 3 linhas do dia e são exibidos na aba Reuniões. Nunca transforme a existência de um compromisso em um item de pendência. Identifique todas as pendências concretas. Uma resposta enviada não prova que a ação prometida foi executada. Só inclua o que exige resposta, decisão, preparação ou ação da Danielle. Convites aceitos/recusados, newsletters, FYI, notificações automáticas e informativos sem ação devem ser ignorados. Retorne um único item por mensagem do Gmail, reunindo suas ações. source_ref precisa ser o id exato da mensagem; não use o assunto como identificador. Para cada EMAIL pendente, sempre gere suggested_reply curto, natural e pronto para copiar, sem inventar fatos. Status: needs_me quando Danielle precisa decidir/executar; draft_waiting quando o principal próximo passo é responder; delegated quando depende claramente de outra pessoa; treated só se os dados mostrarem que já foi resolvido. due_at: use prazo explícito; sem prazo, sugira um prazo conservador. Gere também 3 linhas: como está o dia; coisa mais importante; o que está prestes a atrasar. Retorne SOMENTE JSON válido.",
     schema:{items:[{source:"gmail",source_ref:"",source_url:"",sender_name:"",title:"",summary:"",why_it_needs_me:"",due_at:null,urgency:"low|normal|high|urgent",status:"needs_me|delegated|draft_waiting|treated",suggested_reply:"",responsible:"",fingerprint:""}],morning_line_1:"",morning_line_2:"",morning_line_3:""},
     messages,events:events.map((e:any)=>({id:e.id,title:e.summary,start:e.start,end:e.end,status:e.status,response:(e.attendees??[]).find((a:any)=>a.self)?.responseStatus,organizer:e.organizer?.email,description:String(e.description??"").slice(0,2500)}))
   };
@@ -76,17 +97,12 @@ Deno.serve(async(req)=>{
   const oj=await or.json(); if(!or.ok)throw new Error(oj?.error?.message||"Falha na IA");
   const tri=parseJsonLoose(outputText(oj)); const items=Array.isArray(tri.items)?tri.items:[];
   for(const it of items){
-    // Calendar events belong to Meetings; only genuine email actions enter James.
-    if(!messages.some((m:any)=>m.id===it.source_ref||m.threadId===it.source_ref))continue;
-    if(!it.fingerprint)it.fingerprint="gmail:"+String(it.source_ref||it.title||crypto.randomUUID());
-    const {data:existing}=await admin.from("assistant_items").select("id,status_locked,responsible_locked,status,responsible").eq("user_id",user.id).eq("fingerprint",it.fingerprint).maybeSingle();
-    const row={user_id:user.id,source:"gmail",source_ref:it.source_ref||null,source_url:it.source_url||null,source_context:"Google scan",sender_name:it.sender_name||null,title:it.title||"Sem título",summary:it.summary||null,why_it_needs_me:it.why_it_needs_me||null,due_at:it.due_at||null,urgency:["low","normal","high","urgent"].includes(it.urgency)?it.urgency:"normal",status:["needs_me","delegated","draft_waiting","treated"].includes(it.status)?it.status:"needs_me",suggested_reply:it.suggested_reply||null,responsible:it.responsible||null,fingerprint:it.fingerprint,last_seen_at:new Date().toISOString()};
-    if(existing?.status_locked){row.status=existing.status}
-    if(existing?.responsible_locked){row.responsible=existing.responsible}
-    if(existing?.id)await admin.from("assistant_items").update(row).eq("id",existing.id); else await admin.from("assistant_items").insert(row);
+    const message=gmailMessageForItem(it,messages);
+    if(!message)continue;
+    await persistGmailItem(admin,user.id,it,message);
   }
 
-  const {data:all}=await admin.from("assistant_items").select("status,urgency,due_at").eq("user_id",user.id);
+  const {data:all}=await admin.from("assistant_items").select("status,urgency,due_at").eq("user_id",user.id).is("hidden_at",null);
   const needs=(all??[]).filter((x:any)=>x.status==="needs_me").length, drafts=(all??[]).filter((x:any)=>x.status==="draft_waiting").length, treated=(all??[]).filter((x:any)=>x.status==="treated").length;
   const delegatedAttention=(all??[]).some((x:any)=>x.status==="delegated" && ((x.due_at&&new Date(x.due_at)<=new Date())||["high","urgent"].includes(x.urgency)));
   const cat=(needs||drafts||delegatedAttention)?"awake":"sleeping";

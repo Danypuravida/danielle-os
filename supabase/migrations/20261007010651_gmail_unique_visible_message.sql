@@ -1,0 +1,1 @@
+create unique index if not exists assistant_items_visible_gmail_message_key on public.assistant_items (user_id, (coalesce(substring(source_url from '#all/([0-9a-f]{16})'),case when source_ref ~ '^[0-9a-f]{16}$' then source_ref end))) where source='gmail' and hidden_at is null;

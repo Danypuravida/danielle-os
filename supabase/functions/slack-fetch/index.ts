@@ -72,7 +72,7 @@ Deno.serve(async(req:Request)=>{
       listConversations(token,"im")
     ]);
     const targets=[
-      ...channels.filter((c:any)=>c.is_member&&/futebol|botafogo/i.test(String(c.name??""))),
+      ...channels.filter((c:any)=>c.is_member&&String(c.name??"").toLowerCase()!=="botafogo_sac"&&/futebol|botafogo/i.test(String(c.name??""))),
       ...ims
     ];
 
