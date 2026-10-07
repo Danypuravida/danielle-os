@@ -9,12 +9,17 @@ const ctx=vm.createContext({currentUserId:'owner',assistantCache:{},document:{ge
 vm.runInContext(declarations+health+resume,ctx);
 const run=s=>vm.runInContext(s,ctx);
 run("jamesHealth={google:{connected:true,last_scan_at:new Date().toISOString()},slack:{connected:true,last_scan_at:'2026-10-01',last_error:'Mensagens lidas; triagem ainda não confirmada.'},todoist:{today:2,overdue:1}};");
+assert.equal(ctx.jamesReadNeedsAttention(),false,'pending analysis is not a source failure');
+ctx.renderJamesHealth();assert.equal(text.jamesStateText,'James: atualização pendente');assert.match(banner.textContent,/análise ainda não confirmada/);
+run("jamesSlackProgress='Slack: analisando lote 2 de 4…'");ctx.renderJamesHealth();assert.equal(text.jamesStateText,'James está lendo as fontes…');assert.match(banner.textContent,/lote 2 de 4/);run("jamesSlackProgress=''");
 assert.equal(ctx.shouldResumeJamesRead(),true,'interrupted Slack must restart even outside the James tab');
 run('jamesScanRunning=true');assert.equal(ctx.shouldResumeJamesRead(),false,'no duplicate scan');ctx.renderJamesHealth();
 assert.equal(text.jamesStateText,'James está lendo as fontes…');assert.match(banner.textContent,/andamento/);
 run('jamesScanRunning=false;jamesAutoAt=Date.now()');assert.equal(ctx.shouldResumeJamesRead(),false,'retry cooldown');
 run('jamesAutoAt=0;jamesHealth.slack.last_error=null;jamesHealth.slack.last_scan_at=new Date().toISOString()');assert.equal(ctx.shouldResumeJamesRead(),false,'healthy sources should not trigger a scan');
 run("jamesHealth.slack.last_scan_at='2026-10-01'");assert.equal(ctx.shouldResumeJamesRead(),false,'outside James, staleness alone must not increase scan frequency');
+ctx.renderJamesHealth();assert.equal(text.jamesStateText,'James: atualização pendente');assert.equal(ctx.jamesReadNeedsAttention(),false);
+run("jamesHealth.slack.last_error='conversations.history:rate_limited'");ctx.renderJamesHealth();assert.equal(text.jamesStateText,'James: uma fonte precisa de atenção');assert.match(banner.textContent,/rate_limited/);run('jamesHealth.slack.last_error=null');
 visible=true;assert.equal(ctx.shouldResumeJamesRead(),true,'stale source refreshes on the James tab');
 ctx.currentUserId=null;assert.equal(ctx.shouldResumeJamesRead(),false,'no scan without login');
 console.log('PASS: interrupted scan restarts outside James; scan deduplication and cooldown; progress state; healthy-source and login guards.');

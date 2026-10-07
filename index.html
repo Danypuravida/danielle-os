@@ -5066,6 +5066,12 @@ renderTravelList();
 
 /* Source health: failed or stale reads cannot mean "nothing pending". */
 let jamesHealth={google:null,slack:null,todoist:null},jamesHealthAt=0,jamesHealthFlight=null,jamesAutoAt=0,jamesScanRunning=false;
+let jamesSlackReadFlight=null,jamesSlackProgress='';
+function jamesAwaitingTriage(error){return String(error||'').replace(/\.$/,'')==='Mensagens lidas; triagem ainda não confirmada'}
+function jamesReadNeedsAttention(){
+ return ['google','slack'].some(key=>{const h=jamesHealth[key];return h&&(!h.connected||(h.last_error&&!jamesAwaitingTriage(h.last_error)))})||!!jamesHealth.todoist?.error;
+}
+function jamesReadTime(at){return new Date(at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
 const jamesEdgeOriginal=callEdge;
 callEdge=async function(name,payload={}){
  try{
@@ -5086,34 +5092,37 @@ function jamesReadIssues(){
   const h=jamesHealth[key];
   if(!h)out.push(label+': leitura ainda não conferida');
   else if(!h.connected)out.push(label+': conexão não disponível');
+  else if(jamesAwaitingTriage(h.last_error))out.push(label+': mensagens recebidas, análise ainda não confirmada');
   else if(h.last_error)out.push(label+': '+h.last_error);
-  else if(!h.last_scan_at||Date.now()-new Date(h.last_scan_at).getTime()>30*60000)out.push(label+': leitura desatualizada');
+  else if(!h.last_scan_at)out.push(label+': primeira análise ainda não confirmada');
+  else if(Date.now()-new Date(h.last_scan_at).getTime()>30*60000)out.push(label+': última leitura em '+jamesReadTime(h.last_scan_at)+'; atualização pendente');
  }
  if(!jamesHealth.todoist||jamesHealth.todoist.error)out.push('Todoist: '+(jamesHealth.todoist?.error||'leitura ainda não conferida'));
  return out;
 }
 function renderJamesHealth(){
  const banner=document.getElementById('jamesReadStatus');if(!banner)return;
- const issues=jamesReadIssues(),items=Object.values(assistantCache||{});
+ const issues=jamesReadIssues(),items=Object.values(assistantCache||{}),reading=jamesScanRunning||!!jamesSlackProgress,attention=jamesReadNeedsAttention();
  const open=items.filter(x=>['needs_me','draft_waiting','delegated','postponed'].includes(x.status));
  const tasks=(jamesHealth.todoist?.today||0)+(jamesHealth.todoist?.overdue||0);
- const awake=issues.length>0||open.length+tasks>0;
+ const awake=reading||issues.length>0||open.length+tasks>0;
  const cat=document.getElementById('jamesCat');
  cat?.classList.toggle('awake',awake);cat?.classList.toggle('sleeping',!awake);
  cat?.setAttribute('aria-label',awake?'James acordado':'James dormindo');
- setTextSafe('jamesStateText',jamesScanRunning?'James está lendo as fontes…':issues.length?'James: leitura incompleta':awake?'James está acordado':'James está dormindo');
- setTextSafe('jamesStateSub',jamesScanRunning?'Aguarde a análise terminar. As pendências já registradas continuam disponíveis.':issues.length?'Não é possível afirmar que suas pendências estão em dia.':awake?open.length+' item(ns) no James • '+tasks+' tarefa(s) no Todoist.':'Nenhuma pendência encontrada nas fontes verificadas.');
- banner.textContent=jamesScanRunning?'Leitura em andamento. O resultado será confirmado quando todas as análises terminarem.':issues.length?'Atenção: '+issues.join(' • '):'Fontes verificadas. As tarefas do Todoist também contam como pendências.';
- banner.classList.toggle('danger',issues.length>0&&!jamesScanRunning);
+ setTextSafe('jamesStateText',reading?'James está lendo as fontes…':attention?'James: uma fonte precisa de atenção':issues.length?'James: atualização pendente':awake?'James está acordado':'James está dormindo');
+ setTextSafe('jamesStateSub',reading?'Aguarde a análise terminar. As pendências já registradas continuam disponíveis.':issues.length?'Suas pendências continuam disponíveis. Confira abaixo o estado de cada fonte.':awake?open.length+' item(ns) no James • '+tasks+' tarefa(s) no Todoist.':'Nenhuma pendência encontrada nas fontes verificadas.');
+ banner.textContent=reading?(jamesSlackProgress||'Leitura em andamento. O resultado será confirmado quando todas as análises terminarem.'):issues.length?(attention?'Fonte com aviso: ':'Atualização pendente: ')+issues.join(' • '):'Fontes verificadas. As tarefas do Todoist também contam como pendências.';
+ banner.classList.toggle('danger',attention&&!reading);
  for(const [source,label,id] of [['gmail','Gmail','sourceGmailState'],['calendar','Agenda','sourceCalendarState'],['slack','Slack','sourceSlackState']]){
   const h=jamesHealth[source==='slack'?'slack':'google'];
   const n=items.filter(x=>x.source===source&&!['treated','postponed'].includes(x.status)).length;
   const fresh=h?.connected&&!h.last_error&&h.last_scan_at&&Date.now()-new Date(h.last_scan_at).getTime()<=30*60000;
   if(source==='calendar'){setTextSafe(id,'Sua agenda fica na aba Reuniões.');continue}
-  setTextSafe(id,n?n+' item(ns) pendente(s).'+(fresh?'':' A leitura da fonte precisa ser atualizada.'):fresh?'Nenhuma pendência identificada na última leitura de '+label+'.':label+' não foi verificado por completo. Confira o aviso acima.');
+  const note=source==='slack'&&jamesSlackProgress?jamesSlackProgress:h?.last_error?jamesAwaitingTriage(h.last_error)?'Mensagens recebidas; análise ainda não confirmada.':'Aviso: '+h.last_error:h?.last_scan_at?'Última leitura: '+jamesReadTime(h.last_scan_at)+'.':label+': aguardando confirmação da primeira leitura.';
+  setTextSafe(id,(n?n+' item(ns) pendente(s). ':fresh?'Nenhuma pendência identificada. ':'')+note);
  }
  if(jamesHealth.google?.needs_google_connect||/invalid_grant|expired|revoked/i.test(jamesHealth.google?.last_error||'')){const b=document.getElementById('googleConnectBtn');if(b){b.style.display='';b.textContent='Reconectar Google'}}
- if(issues.length&&!jamesScanRunning)setHtmlSafe('morningBrief','<div>Leitura incompleta das integrações.</div><div>'+esc(open.length+' pendência(s) registrada(s) • '+tasks+' tarefa(s) no Todoist.')+'</div><div>'+esc(issues[0])+'</div>');
+
 }
 loadJamesTodoist=async function(){
  try{
@@ -5175,23 +5184,33 @@ saveSlackTriage=async function(messages){
  const batches=buildSlackTriageBatches(messages);
  let written=0;
  for(let i=0;i<batches.length;i++){
-  setTextSafe('sourceSlackState','Mensagens lidas • James analisando lote '+(i+1)+' de '+batches.length+'…');
+  jamesSlackProgress='Slack: analisando lote '+(i+1)+' de '+batches.length+'…';
+  renderJamesHealth();
   const r=await jamesTriageOriginal(batches[i]);written+=r.written||0;
  }
  return {written};
 };
-scanSlackLive=async function(){
- const data=await callEdge('slack-fetch');
- const tri=await saveSlackTriage(data.messages||[]);
- await callEdge('slack-fetch',{action:'confirm_triage',partial:!!data.partial});
- jamesHealth.slack={...(jamesHealth.slack||{}),connected:true,last_scan_at:new Date().toISOString(),last_error:data.partial?'Leitura parcial: '+(data.warnings||[]).join(' • '):null};
- renderJamesHealth();return {...data,...tri};
+scanSlackLive=function(){
+ if(jamesSlackReadFlight)return jamesSlackReadFlight;
+ jamesSlackReadFlight=(async()=>{
+  jamesSlackProgress='Slack: lendo mensagens…';renderJamesHealth();
+  try{
+   const data=await callEdge('slack-fetch');
+   const tri=await saveSlackTriage(data.messages||[]);
+   jamesSlackProgress='Slack: confirmando o resultado da análise…';renderJamesHealth();
+   await callEdge('slack-fetch',{action:'confirm_triage',partial:!!data.partial});
+   jamesHealth.slack={...(jamesHealth.slack||{}),connected:true,last_scan_at:new Date().toISOString(),last_error:data.partial?'Leitura parcial: '+(data.warnings||[]).join(' • '):null};
+   return {...data,...tri};
+  }catch(e){jamesHealth.slack={...(jamesHealth.slack||{}),last_error:e?.message||String(e)};throw e}
+  finally{jamesSlackProgress='';jamesSlackReadFlight=null;renderJamesHealth()}
+ })();
+ return jamesSlackReadFlight;
 };
 const jamesGoogleStatusOriginal=loadGoogleStatus,jamesSlackStatusOriginal=loadSlackStatus;
 loadGoogleStatus=async function(){await jamesGoogleStatusOriginal();renderJamesHealth()};
 loadSlackStatus=async function(){await jamesSlackStatusOriginal();renderJamesHealth()};
 function shouldResumeJamesRead(){
- if(!currentUserId||jamesScanRunning||Date.now()-jamesAutoAt<=15*60000||!jamesReadIssues().length)return false;
+ if(!currentUserId||jamesScanRunning||jamesSlackReadFlight||Date.now()-jamesAutoAt<=15*60000||!jamesReadIssues().length)return false;
  const jamesVisible=document.querySelector('.page[data-page="james"]')?.classList.contains('active');
  const interrupted=['google','slack'].some(key=>{const h=jamesHealth[key];return h?.connected&&(h.last_error||!h.last_scan_at)});
  return !!(jamesVisible||interrupted);

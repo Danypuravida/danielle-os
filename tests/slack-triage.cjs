@@ -8,7 +8,7 @@ const helper=html.slice(html.indexOf('function buildSlackTriageQuestion('),html.
 const batch=html.slice(html.indexOf('const SLACK_TRIAGE_MAX_CHARS='),html.indexOf('const jamesTriageOriginal='));
 const save=html.slice(html.indexOf('async function saveSlackTriage('),html.indexOf('async function scanSlackLive('));
 const override=html.slice(html.indexOf('const jamesTriageOriginal='),html.indexOf('const jamesGoogleStatusOriginal='));
-const ctx=vm.createContext({console,setTextSafe(){},currentUserId:'owner',parseLooseJson:JSON.parse,renderJamesHealth(){},jamesHealth:{}});
+const ctx=vm.createContext({console,setTextSafe(){},currentUserId:'owner',parseLooseJson:JSON.parse,renderJamesHealth(){},jamesHealth:{},jamesSlackReadFlight:null,jamesSlackProgress:''});
 vm.runInContext(helper+batch+save+override,ctx);
 const msg=(id,text,channel='channel')=>({channel_id:channel,ts:String(id),sender_name:'Nathália Mesquita',text,thread_replies:null,from_me:false,nathalia:true,source_url:'https://slack.test/'+id});
 const messages=Array.from({length:153},(_,i)=>msg(i,'ação pendente '.repeat(i%5*30),'channel'+i%3));
@@ -33,12 +33,18 @@ ctx.sb={from(){return {select(){return this},eq(){return this},async maybeSingle
 ctx.callManagementAdvisor=async(_,q)=>{assert(q.length<=8000);return JSON.stringify({items:[{source_ref:'channel:1',status:'needs_me',responsible:'Outra pessoa'}]})};
 ctx.callEdge=async(name,body)=>{edgeCalls.push(body?.action||'read');return {messages:[msg(1,'precisa agir')],partial:false}};
 (async()=>{
- await ctx.scanSlackLive();
+ let releaseRead;
+ ctx.callEdge=async(name,body)=>{edgeCalls.push(body?.action||'read');if(!body?.action)return await new Promise(resolve=>{releaseRead=resolve});return {}};
+ const first=ctx.scanSlackLive(),second=ctx.scanSlackLive();assert.equal(first,second,'simultaneous requests share the same scan');
+ assert.equal(ctx.jamesSlackProgress,'Slack: lendo mensagens…');
+ releaseRead({messages:[msg(1,'precisa agir')],partial:false});await Promise.all([first,second]);
+ assert.equal(ctx.jamesSlackProgress,'');assert.equal(ctx.jamesSlackReadFlight,null);
  assert.deepEqual(edgeCalls,['read','confirm_triage']);
  assert(!('status' in saved[0]));assert(!('responsible' in saved[0]));assert(!('treated_at' in saved[0]));
  assert.equal(old.status,'treated');assert.equal(old.responsible,'Pessoa escolhida');
- edgeCalls=[];ctx.callManagementAdvisor=async()=>{throw new Error('análise falhou')};
+ edgeCalls=[];ctx.callEdge=async(name,body)=>{edgeCalls.push(body?.action||'read');return {messages:[msg(1,'precisa agir')],partial:false}};ctx.callManagementAdvisor=async()=>{throw new Error('análise falhou')};
  await assert.rejects(ctx.scanSlackLive(),/análise falhou/);
  assert.deepEqual(edgeCalls,['read']);
+ assert.equal(ctx.jamesSlackProgress,'');assert.equal(ctx.jamesHealth.slack.last_error,'análise falhou');
  console.log('PASS: JavaScript syntax; bounded batches; all 155 messages and long fragments retained; manual locks and completion date; checkpoint only after successful analysis.');
 })().catch(e=>{console.error(e);process.exitCode=1});
