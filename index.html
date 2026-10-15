@@ -1494,6 +1494,12 @@ select.field{max-width:100%}
         <div><h2>Prioridades</h2><div id="todoPriority"></div></div>
       </div>
     </div>
+
+    <div class="card c12">
+      <h2>Sem data</h2>
+      <p class="tiny muted">Tarefas abertas sem prazo, de todos os seus projetos.</p>
+      <div id="todoNoDue"></div>
+    </div>
   </div>
 </section>
 
@@ -2515,17 +2521,39 @@ function numericDelta(before,after){
 }
 
 /* ---------- TODOIST ---------- */
-async function todoistCall(payload){
-  const {data:{session}}=await sb.auth.getSession();
-  if(!session) throw new Error('Sessão expirada.');
+let todoistListFlight=null,todoistReadRevision=0,todoistLastRead=null,todoistRenderRequest=0,todoistJamesRequest=0,todoistAutoAt=0;
+function validateTodoistList(data){
+ if(data?.sync?.complete!==true||!Number.isFinite(Date.parse(data.sync.checked_at))||!Array.isArray(data.groups?.all))throw new Error('Não foi possível confirmar a leitura completa do Todoist.');
+ for(const key of ['today','overdue','upcoming','priority','no_due'])if(!Array.isArray(data.groups[key]))throw new Error('A resposta do Todoist está incompleta.');
+ if(Number(data.sync.task_count)!==data.groups.all.length)throw new Error('A contagem do Todoist não corresponde à lista recebida.');
+ return data;
+}
+function todoistSyncText(data){
+ const time=new Date(data.sync.checked_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Sao_Paulo'});
+ const account=data.sync.account?.email||data.sync.account?.name||'conta conectada';
+ return data.sync.task_count+' tarefa(s) aberta(s) lida(s) às '+time+' • '+account;
+}
+async function todoistCall(payload={}){
+ const action=payload.action||'list',revision=todoistReadRevision;
+ if(action==='list'&&todoistListFlight?.revision===revision)return todoistListFlight.promise;
+ const request=(async()=>{
+  const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error('Sessão expirada.');
   const res=await fetch(`${SUPABASE_URL}/functions/v1/todoist-proxy`,{
-    method:'POST',
-    headers:{'Authorization':`Bearer ${session.access_token}`,'apikey':SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'},
-    body:JSON.stringify(payload)
+   method:'POST',cache:'no-store',
+   headers:{'Authorization':`Bearer ${session.access_token}`,'apikey':SUPABASE_PUBLISHABLE_KEY,'Content-Type':'application/json'},
+   body:JSON.stringify(payload)
   });
-  const data=await res.json().catch(()=>({}));
-  if(!res.ok) throw new Error(data.error||`Erro ${res.status}`);
+  const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.error||`Erro ${res.status}`);
+  if(action==='list'){
+   validateTodoistList(data);if(revision===todoistReadRevision)todoistLastRead=data;
+  }else{todoistReadRevision++;todoistListFlight=null}
   return data;
+ })();
+ if(action==='list'){
+  todoistListFlight={revision,promise:request};
+  try{return await request}finally{if(todoistListFlight?.promise===request)todoistListFlight=null}
+ }
+ return await request;
 }
 function todoTaskHtml(t){
   const due=t.due?.string||t.due_date||'sem prazo';
@@ -2538,21 +2566,24 @@ function todoTaskHtml(t){
 async function loadTodoistTasks(){
   const status=document.getElementById('todoistStatus');
   if(!status)return;
-  status.textContent='Sincronizando Todoist...';
+  const request=++todoistRenderRequest;
+  status.textContent='Conferindo tarefas no Todoist…';
   try{
-    const {groups}=await todoistCall({action:'list'});
+    const data=await todoistCall({action:'list'});if(request!==todoistRenderRequest)return;
+    const {groups}=data;
     const render=(id,arr)=>document.getElementById(id).innerHTML=(arr||[]).length?(arr||[]).map(todoTaskHtml).join(''):'<span class="muted">Nada aqui.</span>';
-    render('todoToday',groups.today);render('todoOverdue',groups.overdue);render('todoUpcoming',groups.upcoming);render('todoPriority',groups.priority);
+    render('todoToday',groups.today);render('todoOverdue',groups.overdue);render('todoUpcoming',groups.upcoming);render('todoPriority',groups.priority);render('todoNoDue',groups.no_due);
     const top=[...(groups.overdue||[]),...(groups.today||[]),...(groups.priority||[])];
     const uniq=[];const seen=new Set();
     top.sort((a,b)=>(b.priority||0)-(a.priority||0)).forEach(x=>{if(!seen.has(x.id)&&uniq.length<3){seen.add(x.id);uniq.push(x)}});
     render('todoTop3',uniq);
-    status.textContent='Todoist sincronizado.';
+    status.textContent=todoistSyncText(data);
   }catch(e){
+    if(request!==todoistRenderRequest)return;
     const msg=e?.message||String(e);
-    status.textContent=msg;
-    ['todoToday','todoOverdue','todoUpcoming','todoPriority','todoTop3'].forEach(id=>{
-      const el=document.getElementById(id);if(el)el.innerHTML='<span class="muted">Conecte o Todoist para carregar tarefas.</span>';
+    status.textContent='A leitura do Todoist não foi confirmada: '+msg;
+    ['todoToday','todoOverdue','todoUpcoming','todoPriority','todoNoDue','todoTop3'].forEach(id=>{
+      const el=document.getElementById(id);if(el)el.innerHTML='<span class="muted">Não foi possível conferir esta lista agora.</span>';
     });
   }
 }
@@ -5125,16 +5156,28 @@ function renderJamesHealth(){
 
 }
 loadJamesTodoist=async function(){
+ const request=++todoistJamesRequest;
  try{
-  const {groups}=await todoistCall({action:'list'});
-  const today=(groups.today||[]).length,overdue=(groups.overdue||[]).length;
-  jamesHealth.todoist={today,overdue};
+  const data=await todoistCall({action:'list'});if(request!==todoistJamesRequest)return;
+  const {groups}=data,today=groups.today.length,overdue=groups.overdue.length;
+  jamesHealth.todoist={today,overdue,no_due:groups.no_due.length,total:groups.all.length,checked_at:data.sync.checked_at};
   setTextSafe('jamesTodoistSummary',today+' pendente(s) hoje • '+overdue+' atrasada(s)');
   setTextSafe('sourceTodoistCount',String(today+overdue));
-  setTextSafe('sourceTodoistState',today+' tarefa(s) para hoje • '+overdue+' atrasada(s).');
- }catch(e){jamesHealth.todoist={error:e.message};setTextSafe('jamesTodoistSummary','Não foi possível ler o Todoist');setTextSafe('sourceTodoistCount','—');setTextSafe('sourceTodoistState','Leitura falhou: '+e.message)}
+  setTextSafe('sourceTodoistState',today+' tarefa(s) para hoje • '+overdue+' atrasada(s) • '+groups.no_due.length+' sem data. '+todoistSyncText(data));
+ }catch(e){if(request!==todoistJamesRequest)return;jamesHealth.todoist={error:e.message};setTextSafe('jamesTodoistSummary','Não foi possível ler o Todoist');setTextSafe('sourceTodoistCount','—');setTextSafe('sourceTodoistState','Leitura falhou: '+e.message)}
  renderJamesHealth();
 };
+async function refreshVisibleTodoist(force=false){
+ if(!currentUserId||document.visibilityState==='hidden')return;
+ const page=document.querySelector('.page.active')?.dataset.page;
+ if(!['todoist','james'].includes(page))return;
+ if(Date.now()-todoistAutoAt<(force?1000:60000))return;
+ todoistAutoAt=Date.now();
+ if(page==='todoist')await loadTodoistTasks();else await loadJamesTodoist();
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshVisibleTodoist(true).catch(()=>{})});
+window.addEventListener('focus',()=>refreshVisibleTodoist(true).catch(()=>{}));
+setInterval(()=>refreshVisibleTodoist().catch(()=>{}),60000);
 const SLACK_TRIAGE_MAX_CHARS=7800;
 function splitSlackTriageMessage(message){
  if(buildSlackTriageQuestion([message]).length<=SLACK_TRIAGE_MAX_CHARS)return [message];
