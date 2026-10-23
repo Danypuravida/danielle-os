@@ -1,0 +1,44 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
+const root=path.join(__dirname,'..');
+const source=fs.readFileSync(path.join(root,'supabase/functions/finance-import/index.ts'),'utf8').replace(/^import .*;\n/gm,'');
+const c=vm.createContext({Deno:{serve(){}},console,Response,Date});vm.runInContext(source,c);
+const maps={byName:new Map(),rules:[]};
+const text='Janeiro 2026 ( 01/01/2026 - 31/01/2026 ) Entradas: R$ 5,00 • Saídas: R$ 24,00\n01/01 01/01 Saída PIX Pix enviado para LOJA -R$ 10,00\n01/01 01/01 Saída PIX Pix enviado para LOJA -R$ 10,00\n02/01 02/01 Entradas EST COMPRA DEBITO R$ 5,00\n03/01 03/01 Transferência ENVIO DE TED TRANSF -R$ 4,00';
+const parse=t=>c.parseBankRows('user',{id:'statement'},{text:t,period_year:2025},maps,'account');
+const rows=parse(text);
+assert.equal(rows.length,4);assert.equal(new Set(rows.map(r=>r.fingerprint)).size,4);
+assert.equal(rows[0].transaction_date,'2026-01-01');assert.equal(rows[2].direction,'refund');assert.equal(rows[2].exclude_from_spend,true);
+assert.equal(rows[3].raw_type,'Transferência');assert.equal(rows[3].direction,'expense');
+const existing=[{...rows[0],fingerprint:'bank:2026:1',category_id:'manual-category',direction:'transfer',classification_source:'manual'}];
+const before=JSON.stringify(existing),fresh=c.selectNewBankRows(rows,existing);
+assert.equal(fresh.length,3);assert.equal(JSON.stringify(existing),before);
+assert.equal(c.selectNewBankRows(rows,[...existing,...fresh]).length,0);
+assert.throws(()=>parse(text.replace('Saídas: R$ 24,00','Saídas: R$ 25,00')),/totais/);
+assert.throws(()=>parse(text.replace('Transferência','Tipo desconhecido')),/não reconhecido/);
+assert.throws(()=>parse(text.replace('-R$ 4,00','valor ilegível')),/valor/);
+assert.equal(parse('17/01 17/01 Entradas CREDITO DE COMPRA R$ 2,00')[0].direction,'refund');
+assert.equal(parse('17/01 17/01 Entradas Devolução cartão de débito R$ 2,00')[0].direction,'refund');
+assert.equal(parse('17/01 17/01 Pagamento PGTO FAT CARTAO C6 -R$ 2,00')[0].is_card_payment,true);
+const balanceText='Período da Exportação Saldo no dia da exportação\n01/01/2026 a 31/01/2026 R$ 9.435,54\nSaldo contábil do dia 31/01/26 R$ 9.435,54';
+assert.equal(c.bankClosingBalance(balanceText),9435.54);
+assert.equal(parse('Dezembro ( 31/12/2025 - 01/01/2026 )\n31/12 31/12 Saída PIX Loja -R$ 1,00\n01/01 01/01 Saída PIX Loja -R$ 1,00')[1].transaction_date,'2026-01-01');
+function fakeDb(known){
+  let written=[];return {get written(){return written},from(table){assert.equal(table,'finance_transactions');let write=false;
+    const q={select(){return q},eq(){return q},neq(){return q},gte(){return q},lte(){return q},order(){return q},range(){return Promise.resolve({data:known,error:null})},upsert(r,opts){assert.equal(opts.ignoreDuplicates,true);written=r;write=true;return q},then(resolve,reject){return Promise.resolve({data:write?written.map((_,i)=>({id:i})):known,error:null}).then(resolve,reject)}};return q}};
+}
+(async()=>{
+  const db=fakeDb(existing),stats=await c.importBank(db,'user',{id:'statement'},{text},maps,'account');
+  assert.equal(stats.total,4);assert.equal(stats.inserted,3);assert.equal(stats.skipped,1);assert.equal(stats.period_end,'2026-01-31');
+  assert.equal(db.written.length,3);assert.equal(JSON.stringify(existing),before);
+  const again=fakeDb([...existing,...fresh]);assert.equal((await c.importBank(again,'user',{id:'statement'},{text},maps,'account')).inserted,0);assert.equal(again.written.length,0);
+  const html=fs.readFileSync(path.join(root,'index.html'),'utf8'),elements={financeBankFile:{files:[{name:'statement.txt',text:async()=>text}]},financeBankStatus:{},financeBankImportButton:{},financePdfPassword:{value:'private'},financeYear:{value:'2025'}};
+  let calls=0,release;const gate=new Promise(r=>release=r);
+  const ui=vm.createContext({document:{getElementById:id=>elements[id]},console,cloudMsg(){},loadFinance:async()=>{},loadFinanceBills:async()=>{},callEdge:async(name,payload)=>{calls++;assert(!('password' in payload));await gate;return {ok:true,transaction_count:4,inserted_count:3,skipped_count:1}}});
+  vm.runInContext(html.slice(html.indexOf('function detectFinanceStatementBalance('),html.indexOf('\nasync function addManualFinanceTransaction(')),ui);
+  assert.equal(ui.detectFinanceStatementBalance(balanceText),9435.54);
+  const first=ui.importFinanceDocument('bank');await new Promise(r=>setImmediate(r));assert.equal(elements.financeBankImportButton.disabled,true);
+  await ui.importFinanceDocument('bank');assert.equal(calls,1);release();await first;
+  assert.match(elements.financeBankStatus.textContent,/3 novos.*1 já existentes/);assert.equal(elements.financeBankImportButton.disabled,false);assert.equal(elements.financePdfPassword.value,'');
+  ui.callEdge=async()=>{throw Error('Falha de conexão')};await ui.importFinanceDocument('bank');assert.match(elements.financeBankStatus.textContent,/Falha de conexão/);assert.equal(elements.financeBankImportButton.disabled,false);
+  console.log('Finance import regression checks passed: repeated rows, overlap, manual preservation, totals, dates, refunds, persistence, retry and UI guard.');
+})().catch(e=>{console.error(e);process.exit(1)});

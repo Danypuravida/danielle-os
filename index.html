@@ -1316,8 +1316,8 @@ select.field{max-width:100%}
 
   <div class="finance-tab-panel" data-fin-panel="importar">
     <div class="finance-import-grid" style="margin-top:16px">
-      <div class="finance-import-card"><h3>SEXTA • EXTRATO DA CONTA</h3><h2>Extrato semanal</h2><p class="muted">PDF do C6 ou arquivo de texto. PDF protegido: informe a senha; ela é usada só no navegador e não é salva.</p><input class="field" type="file" id="financeBankFile" accept=".pdf,.txt"><input class="field" style="margin-top:8px" type="password" id="financePdfPassword" placeholder="Senha do PDF, se houver"><button class="btn primary" style="margin-top:10px" onclick="importFinanceDocument('bank')">Importar extrato</button><div class="finance-upload-status tiny muted" id="financeBankStatus"></div></div>
-      <div class="finance-import-card"><h3>MÊS • CARTÃO</h3><h2>Fatura mensal</h2><p class="muted">CSV exportado do cartão. Pode selecionar vários meses de uma vez; o sistema tenta identificar o mês pelo nome do arquivo.</p><input class="field" type="month" id="financeBillMonth" value="2026-10"><input class="field" style="margin-top:8px" type="file" id="financeCardFile" accept=".csv,.txt" multiple><button class="btn primary" style="margin-top:10px" onclick="importFinanceDocument('card')">Importar fatura</button><div class="finance-upload-status tiny muted" id="financeCardStatus"></div></div>
+      <div class="finance-import-card"><h3>SEXTA • EXTRATO DA CONTA</h3><h2>Extrato semanal</h2><p class="muted">PDF do C6 ou arquivo de texto. PDF protegido: informe a senha; ela é usada só no navegador e não é salva.</p><input class="field" type="file" id="financeBankFile" accept=".pdf,.txt"><input class="field" style="margin-top:8px" type="password" id="financePdfPassword" placeholder="Senha do PDF, se houver"><button class="btn primary" style="margin-top:10px" id="financeBankImportButton" onclick="importFinanceDocument('bank')">Importar extrato</button><div class="finance-upload-status tiny muted" role="status" aria-live="polite" id="financeBankStatus"></div></div>
+      <div class="finance-import-card"><h3>MÊS • CARTÃO</h3><h2>Fatura mensal</h2><p class="muted">CSV exportado do cartão. Pode selecionar vários meses de uma vez; o sistema tenta identificar o mês pelo nome do arquivo.</p><input class="field" type="month" id="financeBillMonth" value="2026-10"><input class="field" style="margin-top:8px" type="file" id="financeCardFile" accept=".csv,.txt" multiple><button class="btn primary" style="margin-top:10px" id="financeCardImportButton" onclick="importFinanceDocument('card')">Importar fatura</button><div class="finance-upload-status tiny muted" role="status" aria-live="polite" id="financeCardStatus"></div></div>
     </div>
     <div class="card" style="margin-top:16px"><h2>Lançamento manual</h2><p class="muted">Para dinheiro, ajuste ou movimentação que não veio em extrato/fatura.</p><div class="row"><input class="field" id="finManualDate" type="date" style="max-width:160px"><select class="field" id="finManualDirection" style="max-width:150px"><option value="expense">Despesa</option><option value="income">Entrada</option><option value="savings">Economia / investimento</option><option value="refund">Estorno / reembolso</option></select><input class="field" id="finManualDescription" placeholder="Descrição" style="flex:2"><input class="field" id="finManualAmount" type="number" step="0.01" placeholder="Valor" style="max-width:150px"><select class="field" id="finManualCategory" style="flex:1"><option value="">Categoria</option></select><button class="btn" onclick="addManualFinanceTransaction()">Adicionar</button></div></div>
     <div class="card" style="margin-top:16px"><h2>Como o agente trata os arquivos</h2><div class="finance-health"><div class="finance-health-item"><b>1x</b><span>Pagamento de fatura é conciliado, não duplicado.</span></div><div class="finance-health-item"><b>PIX</b><span>Destinatários desconhecidos vão para revisão.</span></div><div class="finance-health-item"><b>↔</b><span>Transferência própria não vira consumo.</span></div><div class="finance-health-item"><b>↩</b><span>Estorno e reembolso são separados.</span></div></div></div>
@@ -4418,21 +4418,70 @@ async function classifyFinanceGroup(ids,name,selectId,dirId,ruleId,excludeId){
   }
   cloudMsg('Classificação salva',true);await loadFinance()
 }
-async function extractPdfText(file,password){const pdfjs=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';const data=new Uint8Array(await file.arrayBuffer());const pdf=await pdfjs.getDocument({data,password:password||undefined}).promise;const lines=[];for(let p=1;p<=pdf.numPages;p++){const page=await pdf.getPage(p),content=await page.getTextContent(),byY=new Map();for(const item of content.items){const y=Math.round(item.transform?.[5]||0),x=item.transform?.[4]||0;if(!byY.has(y))byY.set(y,[]);byY.get(y).push({x,s:item.str||''})}const ys=[...byY.keys()].sort((a,b)=>b-a);for(const y of ys){const line=byY.get(y).sort((a,b)=>a.x-b.x).map(z=>z.s).join(' ').replace(/\s+/g,' ').trim();if(line)lines.push(line)}}return lines.join('\n')}
+async function extractPdfText(file,password){
+  let pdf;
+  try{
+    const pdfjs=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');
+    pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
+    pdf=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()),password:password||undefined}).promise;
+    const lines=[];
+    for(let p=1;p<=pdf.numPages;p++){
+      const page=await pdf.getPage(p),content=await page.getTextContent(),byY=new Map();
+      for(const item of content.items){const y=Math.round(item.transform?.[5]||0),x=item.transform?.[4]||0;if(!byY.has(y))byY.set(y,[]);byY.get(y).push({x,s:item.str||''})}
+      for(const y of [...byY.keys()].sort((a,b)=>b-a)){const line=byY.get(y).sort((a,b)=>a.x-b.x).map(z=>z.s).join(' ').replace(/\s+/g,' ').trim();if(line)lines.push(line)}
+      page.cleanup();
+    }
+    return lines.join('\n');
+  }catch(e){
+    if(e?.name==='PasswordException')throw new Error('PDF protegido: informe a senha do extrato e tente novamente.');
+    if(e instanceof TypeError || /worker|fetch|module/i.test(e?.message||''))throw new Error('Não consegui carregar o leitor de PDF. Verifique a conexão e tente novamente.');
+    throw e;
+  }finally{if(pdf)await pdf.destroy()}
+}
 function inferBillMonthFromName(name,year){const n=normalizeText(String(name||''));const map={JANEIRO:'01',FEVEREIRO:'02',MARCO:'03',ABRIL:'04',MAIO:'05',JUNHO:'06',JULHO:'07',AGOSTO:'08',SETEMBRO:'09',OUTUBRO:'10',NOVEMBRO:'11',DEZEMBRO:'12'};for(const [k,v] of Object.entries(map))if(n.includes(k))return `${year}-${v}`;const m=n.match(/(?:^|[^0-9])(0?[1-9]|1[0-2])[-_ ]?(20\d{2})(?:[^0-9]|$)/);if(m)return `${m[2]}-${String(m[1]).padStart(2,'0')}`;return null}
 function normalizeText(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
 function detectFinanceStatementBalance(text){
   const s=String(text||'').replace(/\u00a0/g,' ');
-  const patterns=[
-    /(?:saldo\s+(?:final|dispon[ií]vel|em\s+conta|atual))[^\d-]{0,30}(?:R\$\s*)?(-?[\d.]+,\d{2})/gi,
-    /(?:saldo)[^\n]{0,80}(?:R\$\s*)?(-?[\d.]+,\d{2})/gi
-  ];
-  let last=null;
-  for(const re of patterns){let m;while((m=re.exec(s))!==null)last=m[1];if(last)break}
-  if(!last)return null;
-  const n=Number(last.replace(/\./g,'').replace(',','.'));return Number.isFinite(n)?n:null
+  const header=s.match(/Saldo no dia da exportação\s*(?:\d{2}\/\d{2}\/\d{4}\s*a\s*\d{2}\/\d{2}\/\d{4}\s*)?(-?R\$\s*[\d.]+,\d{2})/i);
+  const daily=[...s.matchAll(/Saldo contábil do dia\s+\d{2}\/\d{2}\/\d{2,4}\s+(-?R\$\s*[\d.]+,\d{2})/gi)];
+  const generic=[...s.matchAll(/saldo\s+(?:final|dispon[ií]vel|em\s+conta|atual)[^\d\n-]{0,30}(-?(?:R\$\s*)?[\d.]+,\d{2})/gi)];
+  const raw=header?.[1]||daily.at(-1)?.[1]||generic.at(-1)?.[1];
+  if(!raw)return null;
+  const n=Number(raw.replace(/R\$/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.'));return Number.isFinite(n)?n:null;
 }
-async function importFinanceDocument(kind){const isBank=kind==='bank',input=document.getElementById(isBank?'financeBankFile':'financeCardFile'),files=[...(input?.files||[])],status=document.getElementById(isBank?'financeBankStatus':'financeCardStatus');if(!files.length){if(status)status.textContent='Escolha um arquivo primeiro.';return}if(status)status.textContent='Lendo arquivo(s)…';try{let total=0,lastUnc=0,reconciled=0;const year=document.getElementById('financeYear')?.value||'2026';for(let i=0;i<files.length;i++){const file=files[i];if(status)status.textContent=`Importando ${i+1}/${files.length}: ${file.name}`;let text='';if(file.name.toLowerCase().endsWith('.pdf'))text=await extractPdfText(file,document.getElementById('financePdfPassword')?.value||'');else text=await file.text();let bill=document.getElementById('financeBillMonth')?.value||'';if(!isBank)bill=inferBillMonthFromName(file.name,year)||bill;const statementBalance=isBank?detectFinanceStatementBalance(text):null;const data=await callEdge('finance-import',{document_kind:isBank?'weekly_bank_statement':'monthly_credit_card_bill',file_name:file.name,file_type:file.type||null,text,billing_month:!isBank&&bill?bill+'-01':null,period_year:Number(year),closing_balance:statementBalance});total+=Number(data.transaction_count||0);lastUnc=Number(data.unclassified_count||0);reconciled+=Number(data.reconciled_bills?.matched||0)}if(status)status.textContent=`Importado: ${total} transações • ${reconciled} conta(s) conciliada(s) automaticamente • ${lastUnc} pendentes de classificação.`;cloudMsg(reconciled?`Financeiro atualizado • ${reconciled} conta(s) marcada(s) como paga(s)`:'Financeiro atualizado',true);await loadFinance();if(isBank)await loadFinanceBills()}catch(e){if(status)status.textContent='Erro: '+(e?.message||String(e));cloudMsg('Importação financeira: '+(e?.message||String(e)))}}
+const financeImportsInFlight=new Set();
+async function importFinanceDocument(kind){
+  if(financeImportsInFlight.has(kind))return;
+  const isBank=kind==='bank',input=document.getElementById(isBank?'financeBankFile':'financeCardFile'),files=[...(input?.files||[])],status=document.getElementById(isBank?'financeBankStatus':'financeCardStatus'),button=document.getElementById(isBank?'financeBankImportButton':'financeCardImportButton');
+  if(!files.length){if(status)status.textContent='Escolha um arquivo primeiro.';return}
+  financeImportsInFlight.add(kind);
+  if(button){button.disabled=true;button.textContent='Importando…'}
+  if(input)input.disabled=true;
+  let imported=false;
+  try{
+    let total=0,inserted=0,skipped=0,lastUnc=0,reconciled=0;
+    const year=document.getElementById('financeYear')?.value||String(new Date().getFullYear());
+    for(let i=0;i<files.length;i++){
+      const file=files[i];if(status)status.textContent=`Lendo ${i+1}/${files.length}: ${file.name}`;
+      const text=file.name.toLowerCase().endsWith('.pdf')?await extractPdfText(file,document.getElementById('financePdfPassword')?.value||''):await file.text();
+      let bill=document.getElementById('financeBillMonth')?.value||'';if(!isBank)bill=inferBillMonthFromName(file.name,year)||bill;
+      if(status)status.textContent=`Conferindo e salvando ${i+1}/${files.length}…`;
+      const data=await callEdge('finance-import',{document_kind:isBank?'weekly_bank_statement':'monthly_credit_card_bill',file_name:file.name,file_type:file.type||null,text,billing_month:!isBank&&bill?bill+'-01':null,period_year:Number(year),closing_balance:isBank?detectFinanceStatementBalance(text):null});
+      if(!data?.ok)throw new Error(data?.error||'A importação não foi confirmada. Tente novamente; os lançamentos existentes serão preservados.');
+      total+=Number(data.transaction_count||0);inserted+=Number(data.inserted_count??data.transaction_count??0);skipped+=Number(data.skipped_count||0);lastUnc=Number(data.unclassified_count||0);reconciled+=Number(data.reconciled_bills?.matched||0);
+    }
+    imported=true;
+    if(status)status.textContent=`Importado: ${total} lançamentos lidos • ${inserted} novos • ${skipped} já existentes preservados • ${reconciled} conta(s) conciliada(s) • ${lastUnc} pendentes de classificação.`;
+    cloudMsg('Financeiro atualizado',true);
+    try{await loadFinance();if(isBank)await loadFinanceBills()}catch(e){if(status)status.textContent+=' Dados salvos. Reabra o Financeiro para atualizar a tela.'}
+  }catch(e){
+    const message=e?.message||String(e);if(status)status.textContent='Não foi possível concluir: '+message;cloudMsg('Importação financeira: '+message);
+  }finally{
+    financeImportsInFlight.delete(kind);if(input)input.disabled=false;
+    if(button){button.disabled=false;button.textContent=isBank?'Importar extrato':'Importar fatura'}
+    if(imported&&isBank){const password=document.getElementById('financePdfPassword');if(password)password.value=''}
+  }
+}
 async function addManualFinanceTransaction(){const date=document.getElementById('finManualDate')?.value||isoDateLocal(),direction=document.getElementById('finManualDirection')?.value||'expense',description=document.getElementById('finManualDescription')?.value.trim(),amount=Number(document.getElementById('finManualAmount')?.value||0),category=document.getElementById('finManualCategory')?.value||null;if(!description||amount<=0)return cloudMsg('Preencha descrição e valor.');const id=crypto.randomUUID(),row={user_id:currentUserId,transaction_date:date,description,normalized_description:normalizeText(description),amount,direction,category_id:category,classification_source:category?'manual':'unclassified',classification_confidence:category?1:null,exclude_from_spend:false,fingerprint:'manual:'+id,raw_type:'manual',source_document_kind:'manual_import',source_file:'manual'};const {error}=await sb.from('finance_transactions').insert(row);if(error)return cloudMsg('Financeiro: '+error.message);document.getElementById('finManualDescription').value='';document.getElementById('finManualAmount').value='';cloudMsg('Lançamento adicionado',true);loadFinance()}
 let financeBillTemplatesCache=[],financeBillMonthlyCache=[];
 function financeBillMonthValue(){const direct=document.getElementById('financeBillsMonth')?.value;if(direct)return direct;const p=financePeriod(),m=p.months?.length?p.months[p.months.length-1]:String(new Date().getMonth()+1).padStart(2,'0');return p.year+'-'+m}
@@ -5008,271 +5057,4 @@ function renderTravelList(){
   const note=document.getElementById('travelAlertNote');note.hidden=!alert;
   note.textContent=alert?`Faltam ${total-done} itens. Eles estão em vermelho e aparecem como alerta no James.`:'';
   document.getElementById('travelAddButton').disabled=!travelReady||travelAdding;
-  document.getElementById('travelItems').innerHTML=travelItems.length?travelItems.map(x=>{
-    const busy=travelBusyIds.has(x.id),id=esc(x.id);
-    return `<div class="travel-item ${x.checked?'done':alert?'pending':''}" data-travel-id="${id}">
-      <label><input type="checkbox" ${x.checked?'checked':''} ${busy?'disabled':''} onchange="toggleTravelItem('${id}',this.checked)"><span>${esc(x.label)}</span></label>
-      <button class="btn tiny" type="button" ${busy?'disabled':''} aria-label="Excluir ${esc(x.label)}" title="Excluir item" onclick="deleteTravelItem('${id}')">×</button>
-    </div>`;
-  }).join(''):(travelReady?'<p class="muted">Sua lista está vazia. Use o + para adicionar itens.</p>':'');
-}
-async function loadTravelList(quiet=false){
-  if(travelPending)return;
-  if(!currentUserId){travelReady=false;travelItems=[];renderTravelList();travelSaveState('Entre na sua conta para usar a lista.');return}
-  const owner=currentUserId,version=++travelLoadVersion;
-  if(travelOwner!==owner){travelOwner=owner;travelItems=[];travelReady=false;renderTravelList()}
-  if(!quiet)travelSaveState('Atualizando lista…');
-  try{
-    if(!travelReady){const {error}=await sb.rpc('ensure_travel_checklist');if(error)throw error}
-    const {data,error}=await sb.from('travel_checklist_items').select('id,label,checked,sort_order').eq('user_id',owner).order('sort_order').order('id');
-    if(error)throw error;
-    if(version!==travelLoadVersion||owner!==currentUserId||travelPending)return;
-    travelItems=data||[];travelReady=true;renderTravelList();
-    if(!quiet)travelSaveState('Lista salva e sincronizada com sua conta.');
-  }catch(e){if(version===travelLoadVersion)travelSaveState('Não foi possível atualizar a lista: '+e.message,true)}
-}
-function queueTravelWrite(write,undo){
-  const owner=currentUserId;travelPending++;travelLoadVersion++;
-  travelSaveState('Salvando…');
-  const operation=travelWriteQueue.then(async()=>{
-    try{
-      if(owner!==currentUserId)throw new Error('A conta mudou. Abra a lista novamente.');
-      const {error}=await write(owner);if(error)throw error;
-      travelSaveState('Lista salva e sincronizada com sua conta.');
-    }catch(e){if(owner===currentUserId){undo();travelSaveState('Não foi possível salvar: '+e.message,true)}}
-    finally{
-      travelPending--;renderTravelList();
-      if(!travelPending){
-        await loadTravelList(true);
-        clearTimeout(travelJamesTimer);travelJamesTimer=setTimeout(()=>loadJames(false).catch(()=>{}),300);
-      }
-    }
-  });
-  travelWriteQueue=operation.catch(()=>{});return operation;
-}
-function toggleTravelItem(id,checked){
-  const item=travelItems.find(x=>x.id===id);if(!item||travelBusyIds.has(id)||!travelReady)return;
-  const previous=item.checked;item.checked=checked;travelBusyIds.add(id);renderTravelList();
-  return queueTravelWrite(async owner=>{
-    try{return await sb.from('travel_checklist_items').update({checked}).eq('id',id).eq('user_id',owner).select('id').single()}
-    finally{travelBusyIds.delete(id)}
-  },()=>{item.checked=previous});
-}
-function deleteTravelItem(id){
-  const index=travelItems.findIndex(x=>x.id===id);if(index<0||travelBusyIds.has(id)||!travelReady)return;
-  const item=travelItems[index];travelItems.splice(index,1);travelBusyIds.add(id);renderTravelList();
-  return queueTravelWrite(async owner=>{
-    try{return await sb.from('travel_checklist_items').delete().eq('id',id).eq('user_id',owner).select('id').single()}
-    finally{travelBusyIds.delete(id)}
-  },()=>{travelItems.splice(Math.min(index,travelItems.length),0,item)});
-}
-function addTravelItem(){
-  const input=document.getElementById('travelNewItem'),label=input.value.trim();
-  if(!label||label.length>200||!travelReady||travelAdding)return;
-  const order=Math.max(0,...travelItems.map(x=>x.sort_order))+1;
-  travelAdding=true;renderTravelList();
-  return queueTravelWrite(async owner=>{
-    try{
-      const result=await sb.from('travel_checklist_items').insert({user_id:owner,label,checked:false,sort_order:order}).select('id,label,checked,sort_order').single();
-      if(!result.error){travelItems.push(result.data);if(input.value.trim()===label)input.value=''}
-      return result;
-    }finally{travelAdding=false}
-  },()=>{});
-}
-function refreshTravelSurface(){
-  if(document.hidden||!currentUserId)return;
-  if(document.getElementById('travelListPage').classList.contains('active'))loadTravelList(true);
-  else if(document.querySelector('.page[data-page="james"]')?.classList.contains('active'))loadJames(false).catch(()=>{});
-}
-window.addEventListener('focus',refreshTravelSurface);
-document.addEventListener('visibilitychange',refreshTravelSurface);
-setInterval(refreshTravelSurface,20000);
-sb.auth.onAuthStateChange((event)=>{
-  if(event==='SIGNED_OUT'){travelLoadVersion++;travelOwner=null;travelReady=false;travelItems=[];renderTravelList()}
-  if(event==='SIGNED_IN'||event==='INITIAL_SESSION')setTimeout(refreshTravelSurface,0);
-});
-renderTravelList();
-</script>
-<script>
-
-/* Source health: failed or stale reads cannot mean "nothing pending". */
-let jamesHealth={google:null,slack:null,todoist:null},jamesHealthAt=0,jamesHealthFlight=null,jamesAutoAt=0,jamesScanRunning=false;
-let jamesSlackReadFlight=null,jamesSlackProgress='';
-function jamesAwaitingTriage(error){return String(error||'').replace(/\.$/,'')==='Mensagens lidas; triagem ainda não confirmada'}
-function jamesReadNeedsAttention(){
- return ['google','slack'].some(key=>{const h=jamesHealth[key];return h&&(!h.connected||(h.last_error&&!jamesAwaitingTriage(h.last_error)))})||!!jamesHealth.todoist?.error;
-}
-function jamesReadTime(at){return new Date(at).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}
-const jamesEdgeOriginal=callEdge;
-callEdge=async function(name,payload={}){
- try{
-  const data=await jamesEdgeOriginal(name,payload);
-  if(name==='google-status')jamesHealth.google=data;
-  if(name==='slack-status')jamesHealth.slack=data;
-  if(name==='google-scan')jamesHealth.google={connected:true,last_scan_at:new Date().toISOString(),last_error:null};
-  renderJamesHealth();return data;
- }catch(e){
-  if(name==='google-scan'||name==='google-calendar-sync'||name==='google-status')jamesHealth.google={...(jamesHealth.google||{}),last_error:e.message,needs_google_connect:!!e.data?.needs_google_connect};
-  if(name==='slack-fetch'||name==='slack-status')jamesHealth.slack={...(jamesHealth.slack||{}),last_error:e.message};
-  renderJamesHealth();throw e;
- }
-};
-function jamesReadIssues(){
- const out=[];
- for(const [key,label] of [['google','Gmail e Agenda'],['slack','Slack']]){
-  const h=jamesHealth[key];
-  if(!h)out.push(label+': leitura ainda não conferida');
-  else if(!h.connected)out.push(label+': conexão não disponível');
-  else if(jamesAwaitingTriage(h.last_error))out.push(label+': mensagens recebidas, análise ainda não confirmada');
-  else if(h.last_error)out.push(label+': '+h.last_error);
-  else if(!h.last_scan_at)out.push(label+': primeira análise ainda não confirmada');
-  else if(Date.now()-new Date(h.last_scan_at).getTime()>30*60000)out.push(label+': última leitura em '+jamesReadTime(h.last_scan_at)+'; atualização pendente');
- }
- if(!jamesHealth.todoist||jamesHealth.todoist.error)out.push('Todoist: '+(jamesHealth.todoist?.error||'leitura ainda não conferida'));
- return out;
-}
-function renderJamesHealth(){
- const banner=document.getElementById('jamesReadStatus');if(!banner)return;
- const issues=jamesReadIssues(),items=Object.values(assistantCache||{}),reading=jamesScanRunning||!!jamesSlackProgress,attention=jamesReadNeedsAttention();
- const open=items.filter(x=>['needs_me','draft_waiting','delegated','postponed'].includes(x.status));
- const tasks=(jamesHealth.todoist?.today||0)+(jamesHealth.todoist?.overdue||0);
- const awake=reading||issues.length>0||open.length+tasks>0;
- const cat=document.getElementById('jamesCat');
- cat?.classList.toggle('awake',awake);cat?.classList.toggle('sleeping',!awake);
- cat?.setAttribute('aria-label',awake?'James acordado':'James dormindo');
- setTextSafe('jamesStateText',reading?'James está lendo as fontes…':attention?'James: uma fonte precisa de atenção':issues.length?'James: atualização pendente':awake?'James está acordado':'James está dormindo');
- setTextSafe('jamesStateSub',reading?'Aguarde a análise terminar. As pendências já registradas continuam disponíveis.':issues.length?'Suas pendências continuam disponíveis. Confira abaixo o estado de cada fonte.':awake?open.length+' item(ns) no James • '+tasks+' tarefa(s) no Todoist.':'Nenhuma pendência encontrada nas fontes verificadas.');
- banner.textContent=reading?(jamesSlackProgress||'Leitura em andamento. O resultado será confirmado quando todas as análises terminarem.'):issues.length?(attention?'Fonte com aviso: ':'Atualização pendente: ')+issues.join(' • '):'Fontes verificadas. As tarefas do Todoist também contam como pendências.';
- banner.classList.toggle('danger',attention&&!reading);
- for(const [source,label,id] of [['gmail','Gmail','sourceGmailState'],['calendar','Agenda','sourceCalendarState'],['slack','Slack','sourceSlackState']]){
-  const h=jamesHealth[source==='slack'?'slack':'google'];
-  const n=items.filter(x=>x.source===source&&!['treated','postponed'].includes(x.status)).length;
-  const fresh=h?.connected&&!h.last_error&&h.last_scan_at&&Date.now()-new Date(h.last_scan_at).getTime()<=30*60000;
-  if(source==='calendar'){setTextSafe(id,'Sua agenda fica na aba Reuniões.');continue}
-  const note=source==='slack'&&jamesSlackProgress?jamesSlackProgress:h?.last_error?jamesAwaitingTriage(h.last_error)?'Mensagens recebidas; análise ainda não confirmada.':'Aviso: '+h.last_error:h?.last_scan_at?'Última leitura: '+jamesReadTime(h.last_scan_at)+'.':label+': aguardando confirmação da primeira leitura.';
-  setTextSafe(id,(n?n+' item(ns) pendente(s). ':fresh?'Nenhuma pendência identificada. ':'')+note);
- }
- if(jamesHealth.google?.needs_google_connect||/invalid_grant|expired|revoked/i.test(jamesHealth.google?.last_error||'')){const b=document.getElementById('googleConnectBtn');if(b){b.style.display='';b.textContent='Reconectar Google'}}
-
-}
-loadJamesTodoist=async function(){
- const request=++todoistJamesRequest;
- try{
-  const data=await todoistCall({action:'list'});if(request!==todoistJamesRequest)return;
-  const {groups}=data,today=groups.today.length,overdue=groups.overdue.length;
-  jamesHealth.todoist={today,overdue,no_due:groups.no_due.length,total:groups.all.length,checked_at:data.sync.checked_at};
-  setTextSafe('jamesTodoistSummary',today+' pendente(s) hoje • '+overdue+' atrasada(s)');
-  setTextSafe('sourceTodoistCount',String(today+overdue));
-  setTextSafe('sourceTodoistState',today+' tarefa(s) para hoje • '+overdue+' atrasada(s) • '+groups.no_due.length+' sem data. '+todoistSyncText(data));
- }catch(e){if(request!==todoistJamesRequest)return;jamesHealth.todoist={error:e.message};setTextSafe('jamesTodoistSummary','Não foi possível ler o Todoist');setTextSafe('sourceTodoistCount','—');setTextSafe('sourceTodoistState','Leitura falhou: '+e.message)}
- renderJamesHealth();
-};
-async function refreshVisibleTodoist(force=false){
- if(!currentUserId||document.visibilityState==='hidden')return;
- const page=document.querySelector('.page.active')?.dataset.page;
- if(!['todoist','james'].includes(page))return;
- if(Date.now()-todoistAutoAt<(force?1000:60000))return;
- todoistAutoAt=Date.now();
- if(page==='todoist')await loadTodoistTasks();else await loadJamesTodoist();
-}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refreshVisibleTodoist(true).catch(()=>{})});
-window.addEventListener('focus',()=>refreshVisibleTodoist(true).catch(()=>{}));
-setInterval(()=>refreshVisibleTodoist().catch(()=>{}),60000);
-const SLACK_TRIAGE_MAX_CHARS=7800;
-function splitSlackTriageMessage(message){
- if(buildSlackTriageQuestion([message]).length<=SLACK_TRIAGE_MAX_CHARS)return [message];
- const fragments=[];
- const base={...message,text:'',thread_replies:null,context_fragment:true};
- for(const field of ['text','thread_replies']){
-  const content=String(message[field]||'');
-  let offset=0;
-  while(offset<content.length){
-   let low=1,high=content.length-offset,fit=0;
-   while(low<=high){
-    const size=Math.floor((low+high)/2);
-    const fragment={...base,fragment_field:field,fragment_offset:offset,fragment_total_chars:content.length,[field]:content.slice(offset,offset+size)};
-    if(buildSlackTriageQuestion([fragment]).length<=SLACK_TRIAGE_MAX_CHARS){fit=size;low=size+1}else high=size-1;
-   }
-   if(!fit)throw new Error('Mensagem do Slack com dados de origem grandes demais para análise.');
-   if(offset+fit<content.length&&/[\uD800-\uDBFF]/.test(content[offset+fit-1]))fit--;
-   if(!fit)throw new Error('Não foi possível dividir a mensagem do Slack para análise.');
-   fragments.push({...base,fragment_field:field,fragment_offset:offset,fragment_total_chars:content.length,[field]:content.slice(offset,offset+fit)});
-   offset+=fit;
-  }
- }
- if(!fragments.length)throw new Error('Dados de origem do Slack grandes demais para análise.');
- return fragments;
-}
-function buildSlackTriageBatches(messages){
- const groups=new Map(),batches=[];
- for(const m of messages||[]){const a=groups.get(m.channel_id)||[];a.push(...splitSlackTriageMessage(m));groups.set(m.channel_id,a)}
- for(const group of groups.values()){
-  let batch=[];
-  for(const message of group){
-   if(batch.length&&buildSlackTriageQuestion([...batch,message]).length>SLACK_TRIAGE_MAX_CHARS){
-    batches.push(batch);
-    // Carry recent context only when it fits with the next unread message.
-    const context=batch.slice(-2);
-    while(context.length&&buildSlackTriageQuestion([...context,message]).length>SLACK_TRIAGE_MAX_CHARS)context.shift();
-    batch=context;
-   }
-   batch.push(message);
-  }
-  if(batch.length)batches.push(batch);
- }
- return batches;
-}
-const jamesTriageOriginal=saveSlackTriage;
-saveSlackTriage=async function(messages){
- const batches=buildSlackTriageBatches(messages);
- let written=0;
- for(let i=0;i<batches.length;i++){
-  jamesSlackProgress='Slack: analisando lote '+(i+1)+' de '+batches.length+'…';
-  renderJamesHealth();
-  const r=await jamesTriageOriginal(batches[i]);written+=r.written||0;
- }
- return {written};
-};
-scanSlackLive=function(){
- if(jamesSlackReadFlight)return jamesSlackReadFlight;
- jamesSlackReadFlight=(async()=>{
-  jamesSlackProgress='Slack: lendo mensagens…';renderJamesHealth();
-  try{
-   const data=await callEdge('slack-fetch');
-   const tri=await saveSlackTriage(data.messages||[]);
-   jamesSlackProgress='Slack: confirmando o resultado da análise…';renderJamesHealth();
-   await callEdge('slack-fetch',{action:'confirm_triage',partial:!!data.partial});
-   jamesHealth.slack={...(jamesHealth.slack||{}),connected:true,last_scan_at:new Date().toISOString(),last_error:data.partial?'Leitura parcial: '+(data.warnings||[]).join(' • '):null};
-   return {...data,...tri};
-  }catch(e){jamesHealth.slack={...(jamesHealth.slack||{}),last_error:e?.message||String(e)};throw e}
-  finally{jamesSlackProgress='';jamesSlackReadFlight=null;renderJamesHealth()}
- })();
- return jamesSlackReadFlight;
-};
-const jamesGoogleStatusOriginal=loadGoogleStatus,jamesSlackStatusOriginal=loadSlackStatus;
-loadGoogleStatus=async function(){await jamesGoogleStatusOriginal();renderJamesHealth()};
-loadSlackStatus=async function(){await jamesSlackStatusOriginal();renderJamesHealth()};
-function shouldResumeJamesRead(){
- if(!currentUserId||jamesScanRunning||jamesSlackReadFlight||Date.now()-jamesAutoAt<=15*60000||!jamesReadIssues().length)return false;
- const jamesVisible=document.querySelector('.page[data-page="james"]')?.classList.contains('active');
- const interrupted=['google','slack'].some(key=>{const h=jamesHealth[key];return h?.connected&&(h.last_error||!h.last_scan_at)});
- return !!(jamesVisible||interrupted);
-}
-const jamesScanOriginal=scanJamesNow;
-scanJamesNow=async function(btn){
- if(jamesScanRunning)return;
- jamesScanRunning=true;jamesAutoAt=Date.now();renderJamesHealth();
- try{await jamesScanOriginal(btn)}finally{jamesScanRunning=false;renderJamesHealth()}
-};
-const jamesLoadOriginal=loadJames;
-loadJames=async function(syncFinance=true){
- await jamesLoadOriginal(syncFinance);
- if(!currentUserId)return;
- if(!jamesHealthFlight&&Date.now()-jamesHealthAt>60000){jamesHealthAt=Date.now();jamesHealthFlight=Promise.allSettled([loadGoogleStatus(),loadSlackStatus(),loadJamesTodoist()]).finally(()=>{jamesHealthFlight=null})}
- if(jamesHealthFlight)await jamesHealthFlight;
- renderJamesHealth();
- if(shouldResumeJamesRead()){jamesAutoAt=Date.now();scanJamesNow(document.getElementById('jamesScanBtn')).catch(e=>cloudMsg('James: '+e.message))}
-};
-
-</script>
-</body></html>
+  document.getElementById('travelItems').innerHTML=travelItems.length?trav
