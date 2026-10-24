@@ -216,7 +216,9 @@ function bankClosingBalance(text){
   const s=String(text||"").replace(/\u00a0/g," ");
   const header=s.match(/Saldo no dia da exportação\s*(?:\d{2}\/\d{2}\/\d{4}\s*a\s*\d{2}\/\d{2}\/\d{4}\s*)?(-?R\$\s*[\d.]+,\d{2})/i);
   if(header)return moneyBR(header[1]);
-  const balances=[...s.matchAll(/Saldo contábil do dia\s+\d{2}\/\d{2}\/\d{2,4}\s+(-?R\$\s*[\d.]+,\d{2})/gi)];
+  const legacyHeader=s.match(/Saldo do dia\s*[•·][^\n]*?(-?R\$\s*[\d.]+,\d{2})/i);
+  if(legacyHeader)return moneyBR(legacyHeader[1]);
+  const balances=[...s.matchAll(/Saldo (?:contábil )?do dia\s+\d{2}\/\d{2}\/\d{2,4}\s+(-?R\$\s*[\d.]+,\d{2})/gi)];
   return balances.length?moneyBR(balances.at(-1)[1]):null;
 }
 function bankRowIdentity(r){return JSON.stringify([r.transaction_date,normalize(r.raw_type),normalize(r.description),Math.round(Number(r.amount)*100)])}

@@ -21,6 +21,7 @@ assert.equal(parse('17/01 17/01 Entradas Devolução cartão de débito R$ 2,00'
 assert.equal(parse('17/01 17/01 Pagamento PGTO FAT CARTAO C6 -R$ 2,00')[0].is_card_payment,true);
 const balanceText='Período da Exportação Saldo no dia da exportação\n01/01/2026 a 31/01/2026 R$ 9.435,54\nSaldo contábil do dia 31/01/26 R$ 9.435,54';
 assert.equal(c.bankClosingBalance(balanceText),9435.54);
+assert.equal(c.bankClosingBalance('Saldo do dia • 15 de outubro de 2026 • R$ 2.545,57'),2545.57);
 assert.equal(parse('Dezembro ( 31/12/2025 - 01/01/2026 )\n31/12 31/12 Saída PIX Loja -R$ 1,00\n01/01 01/01 Saída PIX Loja -R$ 1,00')[1].transaction_date,'2026-01-01');
 function fakeDb(known){
   let written=[];return {get written(){return written},from(table){assert.equal(table,'finance_transactions');let write=false;
@@ -36,6 +37,7 @@ function fakeDb(known){
   const ui=vm.createContext({document:{getElementById:id=>elements[id]},console,cloudMsg(){},loadFinance:async()=>{},loadFinanceBills:async()=>{},callEdge:async(name,payload)=>{calls++;assert(!('password' in payload));await gate;return {ok:true,transaction_count:4,inserted_count:3,skipped_count:1}}});
   vm.runInContext(html.slice(html.indexOf('function detectFinanceStatementBalance('),html.indexOf('\nasync function addManualFinanceTransaction(')),ui);
   assert.equal(ui.detectFinanceStatementBalance(balanceText),9435.54);
+  assert.equal(ui.detectFinanceStatementBalance('Saldo do dia • 15 de outubro de 2026 • R$ 2.545,57'),2545.57);
   const first=ui.importFinanceDocument('bank');await new Promise(r=>setImmediate(r));assert.equal(elements.financeBankImportButton.disabled,true);
   await ui.importFinanceDocument('bank');assert.equal(calls,1);release();await first;
   assert.match(elements.financeBankStatus.textContent,/3 novos.*1 já existentes/);assert.equal(elements.financeBankImportButton.disabled,false);assert.equal(elements.financePdfPassword.value,'');
