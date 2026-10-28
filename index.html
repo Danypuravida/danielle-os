@@ -1741,7 +1741,7 @@ sb.auth.onAuthStateChange((_event, session) => {
 </script>
 
 <script>
-const pages=[['overview','Overview'],['painel','Painel'],['james','James'],['financeiro','Financeiro'],['lista-viagem','Lista viagem'],['metas-pessoais','Metas pessoais'],['mentoria','Mentoria'],['rotina','Hoje'],['todoist','Todoist'],['reunioes','Reuniões'],['gestao','Gestão'],['reflexao','Decisões'],['senioridade','Resultados'],['desenvolvimento','Desenvolvimento'],['score','Scorecard'],['perfil','Perfil'],['plano','Plano até dezembro'],['coach','Conselheiro IA']];
+const pages=[['overview','Overview'],['central','Central de desenvolvimento'],['painel','Painel'],['james','James'],['financeiro','Financeiro'],['lista-viagem','Lista viagem'],['metas-pessoais','Metas pessoais'],['mentoria','Mentoria'],['rotina','Hoje'],['todoist','Todoist'],['reunioes','Reuniões'],['gestao','Gestão'],['reflexao','Decisões'],['senioridade','Resultados'],['desenvolvimento','Desenvolvimento'],['score','Scorecard'],['perfil','Perfil'],['plano','Plano até dezembro'],['coach','Conselheiro IA']];
 const freehandStartIndex=pages.findIndex(x=>x[0]==='financeiro');
 const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist();loadWhatsAppStatus()}if(id==='financeiro')loadFinance();if(id==='lista-viagem')loadTravelList();if(id==='metas-pessoais')loadPersonalGoals();if(id==='mentoria')loadMentorship();if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}if(id==='overview')loadOverview();if(i>=freehandStartIndex)setTimeout(()=>ensureFreehandBoard(id),40)};nav.appendChild(b)});
 
@@ -1818,8 +1818,8 @@ async function requireUser(){
 async function loadTeamCloud(){
   if(!currentUserId) return;
   const {data,error}=await sb.from('team_members')
-    .select('id,name,role,area,autonomy_level,manager_notes,status')
-    .eq('status','active').order('created_at',{ascending:true});
+    .select('id,name,role,area,autonomy_level,manager_notes,status,relationship_type')
+    .eq('status','active').neq('relationship_type','manager').order('created_at',{ascending:true});
   if(error){ cloudMsg('Falha ao carregar equipe: '+error.message); return; }
   team=(data||[]).map(x=>({
     id:x.id,name:x.name,disc:'',aut:'N'+(x.autonomy_level||1),
@@ -2021,7 +2021,7 @@ async function cockpitLoadPeople(){
   if(!currentUserId) return;
   const {data,error}=await sb.from('team_members')
     .select('id,name,role,area,autonomy_level,current_development_goal,strengths,development_points,motivators,demotivators,communication_preferences,manager_notes,status')
-    .eq('status','active').order('created_at',{ascending:true});
+    .eq('status','active').neq('relationship_type','manager').order('created_at',{ascending:true});
   const el=document.getElementById('cockpitPeople');
   if(error){el.innerHTML='<span class="danger">'+esc(error.message)+'</span>';return;}
   el.innerHTML=(data||[]).map(p=>`
@@ -2038,6 +2038,8 @@ document.getElementById('cockpitAddPerson').addEventListener('click',async()=>{
 });
 
 async function openMember(id){
+  const {data:relationship}=await sb.from('team_members').select('relationship_type').eq('id',id).single();
+  if(relationship?.relationship_type==='manager'){openDevelopmentCentral('team',id);return;}
   selectedMemberId=id;
   await cockpitLoadPeopleButtonsOnly();
   const [{data:p,error},{data:assess}]=await Promise.all([
@@ -2050,7 +2052,7 @@ async function openMember(id){
   await Promise.all([loadEvidence(id),loadOneOnOnes(id),loadFeedbacks(id),loadDelegations(id)]);
 }
 async function cockpitLoadPeopleButtonsOnly(){
-  const {data}=await sb.from('team_members').select('id,name,role,autonomy_level').eq('status','active').order('created_at',{ascending:true});
+  const {data}=await sb.from('team_members').select('id,name,role,autonomy_level').eq('status','active').neq('relationship_type','manager').order('created_at',{ascending:true});
   const el=document.getElementById('cockpitPeople');
   el.innerHTML=(data||[]).map(p=>`
     <button class="person-btn ${selectedMemberId===p.id?'active':''}" onclick="openMember('${p.id}')">
@@ -2351,7 +2353,7 @@ async function refreshDashboardMetrics(){
   const [ev,goals,teamRows]=await Promise.all([
     sb.from('seniority_evidence').select('id',{count:'exact',head:true}),
     sb.from('development_goals').select('id',{count:'exact',head:true}).eq('status','active'),
-    sb.from('team_members').select('autonomy_level').eq('status','active')
+    sb.from('team_members').select('autonomy_level').eq('status','active').neq('relationship_type','manager')
   ]);
   const evEl=document.getElementById('dashEvidenceCount');
   const goalEl=document.getElementById('dashActiveGoals');
@@ -5043,6 +5045,38 @@ window.addEventListener('resize',()=>{for(const id of Object.keys(freehandBoards
 @media(max-width:600px){.travel-card{padding:12px}.travel-item{gap:6px}.travel-item label{gap:10px}}
 </style>
 <script>
+(function(){
+  const origin=location.origin;
+  const section=document.createElement('section');section.className='page';section.dataset.page='central';
+  section.innerHTML='<div class="card" style="margin-bottom:14px"><h2>Central de desenvolvimento</h2><p>Seu desenvolvimento, a Manu e os alinhamentos com sua líder usam a mesma base do Núcleo. Alterações salvas aparecem nos dois aplicativos.</p><div id="centralStatus" class="muted" role="status">Abra a central para carregar seus registros.</div></div><iframe id="centralFrame" title="Núcleo — desenvolvimento pessoal e da equipe" style="width:100%;height:calc(100vh - 170px);min-height:720px;border:0;border-radius:16px;background:#0c1723" referrerpolicy="same-origin"></iframe>';
+  const existing=document.querySelector('section.page');existing.parentNode.insertBefore(section,existing);
+  const frame=document.getElementById('centralFrame');let desired={page:'dashboard'},ready=false;
+  async function sendSession(){
+    const {data,error}=await sb.auth.getSession();
+    if(error||!data.session){frame.contentWindow?.postMessage({type:'NUCLEO_SIGN_OUT'},origin);document.getElementById('centralStatus').textContent='Entre no Danielle OS para acessar a central.';return;}
+    frame.contentWindow?.postMessage({type:'NUCLEO_SESSION',session:{access_token:data.session.access_token,user:{id:data.session.user.id,email:data.session.user.email}}},origin);
+  }
+  window.openDevelopmentCentral=function(page='dashboard',member=null){
+    desired={page,member};openOSPage('central');
+    if(!frame.getAttribute('src'))frame.src=new URL('../PDI2/?embedded=1',location.href).href;
+    else if(ready)frame.contentWindow.postMessage({type:'NUCLEO_NAVIGATE',...desired},origin);
+  };
+  window.addEventListener('message',async e=>{
+    if(e.origin!==origin||e.source!==frame.contentWindow)return;
+    if(e.data?.type==='NUCLEO_READY')await sendSession();
+    if(e.data?.type==='NUCLEO_LOADED'){ready=true;document.getElementById('centralStatus').textContent='Base compartilhada conectada · atualização automática enquanto a central estiver aberta.';frame.contentWindow.postMessage({type:'NUCLEO_NAVIGATE',...desired},origin);}
+    if(e.data?.type==='NUCLEO_SAVED'){cloudMsg('Desenvolvimento atualizado na base compartilhada',true);}
+  });
+  const b=document.querySelector('#nav [data-page="central"]');if(b)b.addEventListener('click',()=>{if(!frame.getAttribute('src'))frame.src=new URL('../PDI2/?embedded=1',location.href).href;});
+  for(const [id,page] of [['desenvolvimento','pdi'],['gestao','team']]){
+    const button=document.querySelector('#nav [data-page="'+id+'"]');if(button)button.onclick=()=>openDevelopmentCentral(page);
+  }
+  sb.auth.onAuthStateChange((event,session)=>{if(['TOKEN_REFRESHED','SIGNED_IN'].includes(event)&&frame.getAttribute('src'))setTimeout(sendSession,0);if(event==='SIGNED_OUT'){ready=false;frame.contentWindow?.postMessage({type:'NUCLEO_SIGN_OUT'},origin);frame.removeAttribute('src');document.getElementById('centralStatus').textContent='Sessão encerrada.';}});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&frame.getAttribute('src'))sendSession();});
+})();
+
+</script>
+<script>
 /* Travel checklist: save each item separately so devices never overwrite the whole list. */
 let travelItems=[],travelOwner=null,travelReady=false,travelLoadVersion=0;
 let travelWriteQueue=Promise.resolve(),travelPending=0,travelAdding=false,travelJamesTimer=null;
@@ -5059,3 +5093,5 @@ function renderTravelList(){
   note.textContent=alert?`Faltam ${total-done} itens. Eles estão em vermelho e aparecem como alerta no James.`:'';
   document.getElementById('travelAddButton').disabled=!travelReady||travelAdding;
   document.getElementById('travelItems').innerHTML=travelItems.length?trav
+
+
