@@ -1317,7 +1317,7 @@ select.field{max-width:100%}
   <div class="finance-tab-panel" data-fin-panel="importar">
     <div class="finance-import-grid" style="margin-top:16px">
       <div class="finance-import-card"><h3>SEXTA • EXTRATO DA CONTA</h3><h2>Extrato semanal</h2><p class="muted">PDF do C6 ou arquivo de texto. PDF protegido: informe a senha; ela é usada só no navegador e não é salva.</p><input class="field" type="file" id="financeBankFile" accept=".pdf,.txt"><input class="field" style="margin-top:8px" type="password" id="financePdfPassword" placeholder="Senha do PDF, se houver"><button class="btn primary" style="margin-top:10px" id="financeBankImportButton" onclick="importFinanceDocument('bank')">Importar extrato</button><div class="finance-upload-status tiny muted" role="status" aria-live="polite" id="financeBankStatus"></div></div>
-      <div class="finance-import-card"><h3>MÊS • CARTÃO</h3><h2>Fatura mensal</h2><p class="muted">CSV exportado do cartão. Pode selecionar vários meses de uma vez; o sistema tenta identificar o mês pelo nome do arquivo.</p><input class="field" type="month" id="financeBillMonth" value="2026-10"><input class="field" style="margin-top:8px" type="file" id="financeCardFile" accept=".csv,.txt" multiple><button class="btn primary" style="margin-top:10px" id="financeCardImportButton" onclick="importFinanceDocument('card')">Importar fatura</button><div class="finance-upload-status tiny muted" role="status" aria-live="polite" id="financeCardStatus"></div></div>
+      <div class="finance-import-card"><h3>MÊS • CARTÃO</h3><h2>Fatura mensal</h2><p class="muted">PDF, Excel (.xlsx ou .xls) ou CSV exportado do cartão. Confira a prévia antes de importar. A senha do PDF é usada só no navegador e não é salva.</p><input class="field" type="month" id="financeBillMonth" aria-label="Mês de vencimento da fatura" onchange="this.dataset.manual='true';clearFinanceCardPreview()"><input class="field" style="margin-top:8px" type="file" id="financeCardFile" aria-label="Arquivo da fatura" accept=".pdf,.xlsx,.xls,.csv,.txt,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv" onchange="clearFinanceCardPreview()" multiple><input class="field" style="margin-top:8px" type="password" id="financeCardPdfPassword" aria-label="Senha do PDF da fatura" placeholder="Senha do PDF da fatura, se houver"><input class="field" style="margin-top:8px" id="financeCardLast4" inputmode="numeric" maxlength="4" placeholder="Final do cartão, se não constar no arquivo" aria-label="Final do cartão, se não constar no arquivo" onchange="clearFinanceCardPreview()"><button class="btn primary" style="margin-top:10px" id="financeCardImportButton" onclick="importFinanceDocument('card')">Ler e conferir fatura</button><div class="finance-upload-status tiny muted" role="status" aria-live="polite" id="financeCardStatus"></div><div id="financeCardPreview"></div></div>
     </div>
     <div class="card" style="margin-top:16px"><h2>Lançamento manual</h2><p class="muted">Para dinheiro, ajuste ou movimentação que não veio em extrato/fatura.</p><div class="row"><input class="field" id="finManualDate" type="date" style="max-width:160px"><select class="field" id="finManualDirection" style="max-width:150px"><option value="expense">Despesa</option><option value="income">Entrada</option><option value="savings">Economia / investimento</option><option value="refund">Estorno / reembolso</option></select><input class="field" id="finManualDescription" placeholder="Descrição" style="flex:2"><input class="field" id="finManualAmount" type="number" step="0.01" placeholder="Valor" style="max-width:150px"><select class="field" id="finManualCategory" style="flex:1"><option value="">Categoria</option></select><button class="btn" onclick="addManualFinanceTransaction()">Adicionar</button></div></div>
     <div class="card" style="margin-top:16px"><h2>Como o agente trata os arquivos</h2><div class="finance-health"><div class="finance-health-item"><b>1x</b><span>Pagamento de fatura é conciliado, não duplicado.</span></div><div class="finance-health-item"><b>PIX</b><span>Destinatários desconhecidos vão para revisão.</span></div><div class="finance-health-item"><b>↔</b><span>Transferência própria não vira consumo.</span></div><div class="finance-health-item"><b>↩</b><span>Estorno e reembolso são separados.</span></div></div></div>
@@ -4459,7 +4459,13 @@ async function extractPdfText(file,password){
     throw e;
   }finally{if(pdf)await pdf.destroy()}
 }
-function inferBillMonthFromName(name,year){const n=normalizeText(String(name||''));const map={JANEIRO:'01',FEVEREIRO:'02',MARCO:'03',ABRIL:'04',MAIO:'05',JUNHO:'06',JULHO:'07',AGOSTO:'08',SETEMBRO:'09',OUTUBRO:'10',NOVEMBRO:'11',DEZEMBRO:'12'};for(const [k,v] of Object.entries(map))if(n.includes(k))return `${year}-${v}`;const m=n.match(/(?:^|[^0-9])(0?[1-9]|1[0-2])[-_ ]?(20\d{2})(?:[^0-9]|$)/);if(m)return `${m[2]}-${String(m[1]).padStart(2,'0')}`;return null}
+function inferBillMonthFromName(name,year){
+  const n=normalizeText(String(name||''));
+  const iso=n.match(/(?:^|[^0-9])(20\d{2})[-_ ](0[1-9]|1[0-2])(?:[^0-9]|$)/);if(iso)return `${iso[1]}-${iso[2]}`;
+  const map={JANEIRO:'01',FEVEREIRO:'02',MARCO:'03',ABRIL:'04',MAIO:'05',JUNHO:'06',JULHO:'07',AGOSTO:'08',SETEMBRO:'09',OUTUBRO:'10',NOVEMBRO:'11',DEZEMBRO:'12'};
+  for(const [k,v] of Object.entries(map))if(n.includes(k))return `${n.match(/20\d{2}/)?.[0]||year}-${v}`;
+  const m=n.match(/(?:^|[^0-9])(0?[1-9]|1[0-2])[-_ ]?(20\d{2})(?:[^0-9]|$)/);return m?`${m[2]}-${m[1].padStart(2,'0')}`:null;
+}
 function normalizeText(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase()}
 function detectFinanceStatementBalance(text){
   const s=String(text||'').replace(/\u00a0/g,' ');
@@ -4471,9 +4477,55 @@ function detectFinanceStatementBalance(text){
   if(!raw)return null;
   const n=Number(raw.replace(/R\$/g,'').replace(/\s/g,'').replace(/\./g,'').replace(',','.'));return Number.isFinite(n)?n:null;
 }
+let financeCardPreview=null;
+function clearFinanceCardPreview(){
+  financeCardPreview=null;
+  const preview=document.getElementById('financeCardPreview');if(preview)preview.innerHTML='';
+  const button=document.getElementById('financeCardImportButton');if(button&&!button.disabled)button.textContent='Ler e conferir fatura';
+}
+function financeCardMonth(){const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`}
+function financeCardBillMonth(fileName){const field=document.getElementById('financeBillMonth');return field?.dataset?.manual==='true'?field.value:(inferBillMonthFromName(fileName,document.getElementById('financeYear')?.value||String(new Date().getFullYear()))||field?.value||financeCardMonth())}
+async function readFinanceCardFile(file,bill,parser){
+  if(file.size>15*1024*1024)throw Error('A fatura deve ter até 15 MB.');
+  const ext=file.name.toLowerCase().split('.').pop(),options={billingMonth:bill,cardLast4:document.getElementById('financeCardLast4')?.value.trim()||''};
+  if(ext==='pdf')return parser.parseCardPdfText(await extractPdfText(file,document.getElementById('financeCardPdfPassword')?.value||''),options);
+  if(ext==='xlsx'||ext==='xls'){
+    let XLSX;try{XLSX=await import('https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs')}catch{throw Error('Não consegui carregar o leitor de Excel. Verifique a conexão e tente novamente.')}
+    const book=XLSX.read(await file.arrayBuffer(),{type:'array',cellDates:true}),tables=[];
+    for(const name of book.SheetNames){const table=XLSX.utils.sheet_to_json(book.Sheets[name],{header:1,raw:true,defval:''}).map(row=>row.map(v=>v instanceof Date?`${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}-${String(v.getDate()).padStart(2,'0')}`:v));if(parser.cardTableHasHeader(table))tables.push(table)}
+    if(tables.length>1)throw Error('Há várias abas com compras. Salve apenas a aba da fatura que deseja importar e selecione novamente.');
+    return parser.parseCardTable(tables[0]||[],options);
+  }
+  if(!['csv','txt'].includes(ext))throw Error('Selecione PDF, Excel (.xlsx ou .xls) ou CSV.');
+  const bytes=await file.arrayBuffer();let text=new TextDecoder('utf-8').decode(bytes);if(text.includes('\uFFFD'))text=new TextDecoder('windows-1252').decode(bytes);
+  return parser.parseCardCSV(text,options);
+}
+async function prepareFinanceCardImport(){
+  if(financeImportsInFlight.has('card'))return;
+  const input=document.getElementById('financeCardFile'),files=[...(input?.files||[])],status=document.getElementById('financeCardStatus'),button=document.getElementById('financeCardImportButton');
+  if(!files.length){if(status)status.textContent='Escolha a fatura em PDF, Excel ou CSV.';return}
+  financeImportsInFlight.add('card');clearFinanceCardPreview();if(input)input.disabled=true;if(button){button.disabled=true;button.textContent='Lendo…'}
+  try{
+    const parser=await import('./supabase/functions/finance-import/card-parser.mjs'),prepared=[];
+    for(let i=0;i<files.length;i++){
+      const file=files[i],bill=financeCardBillMonth(file.name);if(status)status.textContent=`Lendo ${i+1}/${files.length}: ${file.name}`;
+      const rows=await readFinanceCardFile(file,bill,parser);
+      if(rows.some(r=>!r.last4))throw Error('Não encontrei o final de um cartão. Preencha os quatro últimos números no campo acima e leia a fatura novamente.');
+      prepared.push({fileName:file.name,bill,rows,payload:{document_kind:'monthly_credit_card_bill',file_name:file.name,file_type:file.type||null,billing_month:bill+'-01',text:parser.cardRowsToCSV(rows)}});
+    }
+    financeCardPreview=prepared;
+    const preview=document.getElementById('financeCardPreview');
+    if(preview)preview.innerHTML=prepared.map(p=>`<div class="finance-import-card"><strong>${finEsc(p.fileName)}</strong><p>Vencimento: ${finEsc(p.bill)} • ${p.rows.length} lançamentos • Soma dos lançamentos: ${Number(p.rows.reduce((s,r)=>s+Math.round(r.amount*100),0)/100).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</p><p class="tiny muted">Confira os dados antes de importar. A soma pode diferir do total da fatura por saldo anterior, juros e pagamentos.</p><div style="max-height:300px;overflow:auto"><table style="width:100%"><thead><tr><th>Data</th><th>Compra</th><th>Cartão</th><th>Parcela</th><th>Valor</th></tr></thead><tbody>${p.rows.map(r=>`<tr><td>${finEsc(r.purchase_date)}</td><td>${finEsc(r.description)}</td><td>${finEsc(r.last4)}</td><td>${finEsc(r.installment||'—')}</td><td>${Number(r.amount).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}</td></tr>`).join('')}</tbody></table></div></div>`).join('');
+    if(status)status.textContent='Leitura pronta. Confira a prévia e clique em Importar fatura para salvar.';
+    const password=document.getElementById('financeCardPdfPassword');if(password)password.value='';
+  }catch(e){clearFinanceCardPreview();if(status)status.textContent='Não foi possível ler: '+(e?.message||String(e))}
+  finally{financeImportsInFlight.delete('card');if(input)input.disabled=false;if(button){button.disabled=false;button.textContent=financeCardPreview?'Importar fatura':'Ler e conferir fatura'}}
+}
+
 const financeImportsInFlight=new Set();
 async function importFinanceDocument(kind){
   if(financeImportsInFlight.has(kind))return;
+  if(kind==='card'&&!financeCardPreview)return prepareFinanceCardImport();
   const isBank=kind==='bank',input=document.getElementById(isBank?'financeBankFile':'financeCardFile'),files=[...(input?.files||[])],status=document.getElementById(isBank?'financeBankStatus':'financeCardStatus'),button=document.getElementById(isBank?'financeBankImportButton':'financeCardImportButton');
   if(!files.length){if(status)status.textContent='Escolha um arquivo primeiro.';return}
   financeImportsInFlight.add(kind);
@@ -4485,14 +4537,16 @@ async function importFinanceDocument(kind){
     const year=document.getElementById('financeYear')?.value||String(new Date().getFullYear());
     for(let i=0;i<files.length;i++){
       const file=files[i];if(status)status.textContent=`Lendo ${i+1}/${files.length}: ${file.name}`;
-      const text=file.name.toLowerCase().endsWith('.pdf')?await extractPdfText(file,document.getElementById('financePdfPassword')?.value||''):await file.text();
-      let bill=document.getElementById('financeBillMonth')?.value||'';if(!isBank)bill=inferBillMonthFromName(file.name,year)||bill;
+      let payload;
+      if(isBank){const text=file.name.toLowerCase().endsWith('.pdf')?await extractPdfText(file,document.getElementById('financePdfPassword')?.value||''):await file.text();payload={document_kind:'weekly_bank_statement',file_name:file.name,file_type:file.type||null,text,period_year:Number(year),closing_balance:detectFinanceStatementBalance(text)}}
+      else payload=financeCardPreview[i].payload;
       if(status)status.textContent=`Conferindo e salvando ${i+1}/${files.length}…`;
-      const data=await callEdge('finance-import',{document_kind:isBank?'weekly_bank_statement':'monthly_credit_card_bill',file_name:file.name,file_type:file.type||null,text,billing_month:!isBank&&bill?bill+'-01':null,period_year:Number(year),closing_balance:isBank?detectFinanceStatementBalance(text):null});
+      const data=await callEdge('finance-import',payload);
       if(!data?.ok)throw new Error(data?.error||'A importação não foi confirmada. Tente novamente; os lançamentos existentes serão preservados.');
       total+=Number(data.transaction_count||0);inserted+=Number(data.inserted_count??data.transaction_count??0);skipped+=Number(data.skipped_count||0);lastUnc=Number(data.unclassified_count||0);reconciled+=Number(data.reconciled_bills?.matched||0);
     }
     imported=true;
+    if(!isBank)clearFinanceCardPreview();
     if(status)status.textContent=`Importado: ${total} lançamentos lidos • ${inserted} novos • ${skipped} já existentes preservados • ${reconciled} conta(s) conciliada(s) • ${lastUnc} pendentes de classificação.`;
     cloudMsg('Financeiro atualizado',true);
     try{await loadFinance();if(isBank)await loadFinanceBills()}catch(e){if(status)status.textContent+=' Dados salvos. Reabra o Financeiro para atualizar a tela.'}
@@ -4500,7 +4554,7 @@ async function importFinanceDocument(kind){
     const message=e?.message||String(e);if(status)status.textContent='Não foi possível concluir: '+message;cloudMsg('Importação financeira: '+message);
   }finally{
     financeImportsInFlight.delete(kind);if(input)input.disabled=false;
-    if(button){button.disabled=false;button.textContent=isBank?'Importar extrato':'Importar fatura'}
+    if(button){button.disabled=false;button.textContent=isBank?'Importar extrato':(financeCardPreview?'Importar fatura':'Ler e conferir fatura')}
     if(imported&&isBank){const password=document.getElementById('financePdfPassword');if(password)password.value=''}
   }
 }

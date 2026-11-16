@@ -1,0 +1,25 @@
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const root=path.join(__dirname,'..'),source=fs.readFileSync(path.join(root,'supabase/functions/finance-import/card-parser.mjs'),'utf8');
+const c=vm.createContext({console,Deno:{serve(){}},Date,Response});vm.runInContext(source.replace(/^export /gm,''),c);vm.runInContext(fs.readFileSync(path.join(root,'supabase/functions/finance-import/index.ts'),'utf8').replace(/^import .*;\n/gm,''),c);
+const options={billingMonth:'2026-11'},table=[['Descrição','Data de Compra','Valor (em R$)','Categoria','Final do Cartão','Parcela'],['LOJA A','02/11/2026','1.234,56','Compras','0629','1/3'],['LOJA A','02/11/2026','1.234,56','Compras','0629','1/3'],['ESTORNO','03/11/2026','-5,20','','0629','Única']];
+const parsed=c.parseCardTable(table,options);assert.equal(parsed.length,3);assert.equal(parsed[0].amount,1234.56);assert.equal(parsed[2].amount,-5.2);
+assert.equal(JSON.stringify(c.parseCardCSV(c.cardRowsToCSV(parsed),options)),JSON.stringify(parsed));
+assert.equal(c.parseCardCSV('\uFEFFsep=;\n'+c.cardRowsToCSV(parsed),options).length,3);
+assert.equal(c.parseCardCSV('Data,Descrição,Valor,Cartão\n02/11/2026,"LOJA, A",1.50,629',options)[0].last4,'0629');
+assert.equal(c.cardDate('31/12','2027-01'),'2026-12-31');assert.equal(c.cardDate('02/11/26','2026-11'),'2026-11-02');
+assert.throws(()=>c.cardDate('31/02/2026','2026-11'),/inválida/);assert.throws(()=>c.cardAmount('1,2,3'),/Valor/);assert.throws(()=>c.parseCardCSV('Data;Descrição;Valor\n02/11/26;Loja;',options),/incompleta/);
+const pdf='C6 Bank Fatura do cartão\n20/11/2026 Vencimento da fatura R$ 9.000,00\nCartão final 0629\nData Descrição Parcela Valor\n02/11/2026 LOJA A 1/3 R$ 1.234,56\n02/11/2026 LOJA A 1/3 R$ 1.234,56\n03/11/2026 ESTORNO -R$ 5,20';
+const pdfRows=c.parseCardPdfText(pdf,options);assert.equal(pdfRows.length,3);assert.equal(pdfRows[0].installment,'1/3');assert.equal(pdfRows[2].amount,-5.2);
+assert.throws(()=>c.parseCardPdfText(pdf+'\n04/11/2026 VALOR ILEGIVEL',options),/valor/);assert.throws(()=>c.parseCardPdfText('Fatura digitalizada',options),/legível/);assert.throws(()=>c.parseCardPdfText('Extrato da conta\n'+pdf,options),/extrato semanal/);
+const csv=c.cardRowsToCSV(parsed),writes=[];let known=[],accountReads=0;
+const admin={from(table){let op='read';const q={select(){return q},eq(){return q},order(){return q},range(){return Promise.resolve({data:known,error:null})},limit(){return q},maybeSingle(){accountReads++;return Promise.resolve({data:{id:'account'},error:null})},upsert(rows,opts){assert.equal(opts.ignoreDuplicates,true);writes.push(...rows);op='write';return q},then(resolve,reject){return Promise.resolve({data:op==='write'?writes.map((_,i)=>({id:i})):known,error:null}).then(resolve,reject)}};return q}};
+(async()=>{
+  const stats=await c.importCard(admin,'user',{id:'statement'},{text:csv,billing_month:'2026-11-01',file_name:'invoice.xlsx'},{byName:new Map(),rules:[]});
+  assert.equal(stats.inserted,3);assert.equal(stats.total,3);assert.equal(accountReads,1);assert.equal(new Set(writes.map(r=>r.fingerprint)).size,3);assert(writes.every(r=>r.billing_month==='2026-11-01'));assert.equal(writes[2].direction,'refund');
+  known=writes.map(r=>({...r,fingerprint:'legacy',classification_source:'manual',category_id:'manual',direction:'transfer'}));const before=JSON.stringify(known);writes.length=0;
+  const replay=await c.importCard(admin,'user',{id:'statement2'},{text:csv,billing_month:'2026-11-01'},{byName:new Map(),rules:[]});assert.equal(replay.inserted,0);assert.equal(replay.skipped,3);assert.equal(writes.length,0);assert.equal(JSON.stringify(known),before);
+  const html=fs.readFileSync(path.join(root,'index.html'),'utf8'),ui=vm.createContext({console});vm.runInContext(html.slice(html.indexOf('function inferBillMonthFromName('),html.indexOf('function detectFinanceStatementBalance(')),ui);
+  assert.equal(ui.inferBillMonthFromName('Fatura_2026-11-20.xlsx','2025'),'2026-11');assert.equal(ui.inferBillMonthFromName('fatura novembro 2026.pdf','2025'),'2026-11');assert.equal(ui.inferBillMonthFromName('fatura_11_2026.csv','2025'),'2026-11');
+  assert.match(html,/accept="\.pdf,\.xlsx,\.xls,\.csv/);assert.match(html,/financeCardPdfPassword/);assert.match(html,/if\(kind==='card'&&!financeCardPreview\)return prepareFinanceCardImport/);
+  console.log('Card import checks passed: CSV, Excel tables, PDF text, amounts, dates, month detection, repeated purchases, reimport and manual preservation.');
+})().catch(e=>{console.error(e);process.exit(1)});

@@ -1,6 +1,7 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { parseCardCSV, requireCardMonth, selectNewCardRows } from "./card-parser.mjs";
 
 const ALLOWED=new Set(["https://danypuravida.github.io","http://localhost:3000","http://127.0.0.1:5500"]);
 function cors(req){const o=req.headers.get("origin")||"";return {
@@ -110,18 +111,20 @@ async function ensureCard(admin,userId,last4){
   if(ins.error)throw ins.error;return ins.data.id;
 }
 async function importCard(admin,userId,statement,body,maps){
-  const data=parseCSV(body.text||"");
-  if(!data.length)throw new Error("CSV vazio ou não reconhecido.");
-  const rows=[];
+  const month=requireCardMonth(body.billing_month)+"-01";
+  const data=parseCardCSV(body.text||"",{billingMonth:month});
+  if(data.some(r=>!r.last4))throw new Error("Informe o final do cartão antes de importar a fatura.");
+  const rows=[],occurrences=new Map(),cardAccounts=new Map();
   for(const r of data){
-    const desc=String(r["Descrição"]||"").trim();if(!desc)continue;
-    const rawCat=String(r["Categoria"]||"").trim();
-    const amountRaw=Number(String(r["Valor (em R$)"]||"0").replace(",", "."))||0;
+    const desc=r.description;
+    const rawCat=r.category;
+    const amountRaw=r.amount;
     const abs=Math.abs(amountRaw);
-    const last4=String(r["Final do Cartão"]||"").trim();
-    const accountId=last4?await ensureCard(admin,userId,last4):null;
-    const inst=parseInstallment(r["Parcela"]);
-    const purchase=dmyToISO(r["Data de Compra"],String(body.billing_month||"2026").slice(0,4));
+    const last4=r.last4;
+    if(!cardAccounts.has(last4))cardAccounts.set(last4,await ensureCard(admin,userId,last4));
+    const accountId=cardAccounts.get(last4);
+    const inst=parseInstallment(r.installment);
+    const purchase=r.purchase_date;
     const ndesc=normalize(desc);
     let direction=amountRaw<0?"refund":"expense";
     let exclude=false,isCardPayment=false;
@@ -135,10 +138,12 @@ async function importCard(admin,userId,statement,body,maps){
     }
     if(direction==="refund"&&!categoryId&&maps.byName.get("Estorno / reembolso")){categoryId=maps.byName.get("Estorno / reembolso");source="rule"}
     if(direction==="transfer"&&!categoryId&&maps.byName.get("Transferência própria")){categoryId=maps.byName.get("Transferência própria");source="rule"}
-    const fp=hashText(["card",body.billing_month,last4,purchase,desc,r["Parcela"],amountRaw].join("|"));
+    const base=hashText(["card",month,last4,purchase,desc,r.installment,amountRaw].join("|"));
+    const occurrence=(occurrences.get(base)||0)+1;occurrences.set(base,occurrence);
+    const fp=occurrence===1?base:base+":"+occurrence;
     rows.push({
       user_id:userId,statement_id:statement.id,account_id:accountId,
-      transaction_date:String(body.billing_month||purchase||"2026-01-01"),purchase_date:purchase,billing_month:body.billing_month||null,
+      transaction_date:month,purchase_date:purchase,billing_month:month,
       description:desc,normalized_description:normalize(desc),merchant:desc,counterparty:desc,
       amount:abs,direction,category_id:categoryId,classification_source:source,classification_confidence:source==="rule"?0.98:null,
       exclude_from_spend:exclude,is_card_payment:isCardPayment,reconciliation_status:isCardPayment?"review":"not_applicable",
@@ -147,11 +152,18 @@ async function importCard(admin,userId,statement,body,maps){
       installment_number:inst.n,installment_total:inst.total,statement_line_key:fp
     });
   }
-  if(rows.length){
-    const q=await admin.from("finance_transactions").upsert(rows,{onConflict:"user_id,fingerprint"});
-    if(q.error)throw q.error;
+  const existing=[];
+  for(let offset=0;;offset+=1000){
+    const q=await admin.from("finance_transactions").select("billing_month,card_last4,purchase_date,description,installment_number,installment_total,amount")
+      .eq("user_id",userId).eq("billing_month",month).eq("source_document_kind","monthly_credit_card_bill").order("id").range(offset,offset+999);
+    if(q.error)throw q.error;existing.push(...(q.data||[]));if((q.data||[]).length<1000)break;
   }
-  return rows.length;
+  const fresh=selectNewCardRows(rows,existing);let inserted=0;
+  if(fresh.length){
+    const q=await admin.from("finance_transactions").upsert(fresh,{onConflict:"user_id,fingerprint",ignoreDuplicates:true}).select("id");
+    if(q.error)throw q.error;inserted=(q.data||[]).length;
+  }
+  return {total:rows.length,inserted,skipped:rows.length-inserted};
 }
 function parseBankRows(userId,statement,body,maps,accountId){
   const text=String(body.text||"").replace(/\u00a0/g," ");
@@ -321,6 +333,7 @@ Deno.serve(async req=>{
     const admin=createClient(Deno.env.get("SUPABASE_URL")||"",Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")||"",{auth:{persistSession:false}});
     const body=await req.json();
     if(!body?.text)return send(req,{error:"Arquivo sem conteúdo extraído."},400);
+    if(body.document_kind==="monthly_credit_card_bill")body.billing_month=requireCardMonth(body.billing_month)+"-01";
     const maps=await categoryMaps(admin,userId);
     let accountId=body.account_id||null;
     if(!accountId && body.document_kind!=="monthly_credit_card_bill"){
@@ -333,11 +346,12 @@ Deno.serve(async req=>{
     }
     const st=await ensureStatement(admin,userId,body,accountId);
     importContext={admin,userId,statementId:st.id};
-    let count=0,bankStats=null;
-    if(body.document_kind==="monthly_credit_card_bill")count=await importCard(admin,userId,st,body,maps);
+    let count=0,bankStats=null,cardStats=null;
+    if(body.document_kind==="monthly_credit_card_bill"){cardStats=await importCard(admin,userId,st,body,maps);count=cardStats.total}
     else {bankStats=await importBank(admin,userId,st,body,maps,accountId);count=bankStats.total}
     const {count:unc}=await admin.from("finance_transactions").select("id",{count:"exact",head:true}).eq("user_id",userId).eq("classification_source","unclassified");
     const statementPatch={status:"ready",transaction_count:count,reviewed_at:new Date().toISOString()};
+    if(cardStats)statementPatch.parse_notes=`${count} movimentos lidos; ${cardStats.inserted} novos; ${cardStats.skipped} já existentes preservados.`;
     let balanceCaptured=null;
     if(body.document_kind!=="monthly_credit_card_bill"){
       statementPatch.period_start=bankStats.period_start;
@@ -362,7 +376,7 @@ Deno.serve(async req=>{
     }
     const saved=await admin.from("finance_statements").update(statementPatch).eq("id",st.id).eq("user_id",userId);if(saved.error)throw saved.error;
     const reconciliation=body.document_kind==="monthly_credit_card_bill"?{matched:0,items:[]}:await reconcileBills(admin,userId,st.id);
-    return send(req,{ok:true,statement_id:st.id,transaction_count:count,inserted_count:bankStats?.inserted??count,skipped_count:bankStats?.skipped??0,unclassified_count:unc||0,closing_balance:balanceCaptured,reconciled_bills:reconciliation});
+    return send(req,{ok:true,statement_id:st.id,transaction_count:count,inserted_count:(bankStats||cardStats)?.inserted??count,skipped_count:(bankStats||cardStats)?.skipped??0,unclassified_count:unc||0,closing_balance:balanceCaptured,reconciled_bills:reconciliation});
   }catch(e){
     if(importContext){const {admin,userId,statementId}=importContext;await admin.from("finance_statements").update({status:"error",parse_notes:e instanceof Error?e.message:String(e)}).eq("id",statementId).eq("user_id",userId)}
     return send(req,{error:e instanceof Error?e.message:String(e)},500);
