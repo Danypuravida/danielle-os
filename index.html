@@ -3033,7 +3033,7 @@ async function scanSlackOnly(btn,quiet=false){
     const result=await scanSlackLive();
     try{await callEdge('james-summary')}catch{}
     await Promise.all([loadJames(),loadSlackStatus()]);
-    setTextSafe('sourceSlackState',`Slack atualizado • ${result.messages_seen??result.messages?.length??0} mensagem(ns) lida(s) • ${result.written??0} item(ns) relevante(s).`);
+    setTextSafe('sourceSlackState',`Slack atualizado • ${result.messages_seen??result.messages?.length??0} mensagem(ns) lida(s) • ${result.written??0} item(ns) relevante(s)${result.batches>1?' • '+result.batches+' blocos analisados':''}.`);
     if(!quiet)cloudMsg('Slack atualizado no James',true);
     return result;
   }catch(e){
@@ -3088,19 +3088,38 @@ REGRAS:
 MENSAGENS:
 ${JSON.stringify(compact)}`;
 }
+function chunkSlackMessages(messages,maxChars=6000){
+  const batches=[];let batch=[],size=0;
+  for(const m of messages||[]){
+    const len=JSON.stringify(m).length;
+    if(batch.length&&size+len>maxChars){batches.push(batch);batch=[];size=0}
+    batch.push(m);size+=len;
+  }
+  if(batch.length)batches.push(batch);
+  return batches;
+}
 async function saveSlackTriage(messages){
-  if(!messages?.length)return {written:0};
-  const compact=messages;
-  const question=buildSlackTriageQuestion(compact);
+  if(!messages?.length)return {written:0,batches:0};
+  const batches=chunkSlackMessages(messages,6000);
+  const items=[];
+  for(let i=0;i<batches.length;i++){
+    const compact=batches[i];
+    const question=buildSlackTriageQuestion(compact);
+    const answer=await callManagementAdvisor(`James • triagem Slack • bloco ${i+1}/${batches.length}`,question);
+    const parsed=parseLooseJson(answer);
+    if(!Array.isArray(parsed.items))throw new Error('A análise do Slack retornou dados incompletos no bloco '+(i+1)+'.');
+    for(const it of parsed.items){
+      const ref=String(it.source_ref||'');
+      if(!compact.some(m=>m.channel_id+':'+m.ts===ref))continue;
+      items.push(it);
+    }
+  }
 
-  const answer=await callManagementAdvisor('James • triagem Slack',question);
-  const parsed=parseLooseJson(answer);
-  if(!Array.isArray(parsed.items))throw new Error('A análise do Slack retornou dados incompletos. Tente atualizar novamente.');
-  const items=parsed.items;
-
+  const dedup=new Map();
+  for(const it of items){const ref=String(it.source_ref||'');if(ref)dedup.set(ref,it)}
   let written=0;
-  for(const it of items){
-    const ref=String(it.source_ref||'');if(!compact.some(m=>m.channel_id+':'+m.ts===ref))throw new Error('Origem inválida na triagem do Slack. Tente atualizar novamente.');const fp='slack:'+ref;
+  for(const it of dedup.values()){
+    const ref=String(it.source_ref||'');const fp='slack:'+ref;
     const {data:old}=await sb.from('assistant_items')
       .select('id,status,status_locked,responsible,responsible_locked,treated_at')
       .eq('user_id',currentUserId).eq('fingerprint',fp).maybeSingle();
@@ -3143,7 +3162,7 @@ async function saveSlackTriage(messages){
     }
     written++;
   }
-  return {written};
+  return {written,batches:batches.length};
 }
 
 async function scanSlackLive(){
