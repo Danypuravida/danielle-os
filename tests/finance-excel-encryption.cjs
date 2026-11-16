@@ -37,7 +37,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),asse
   let saved=0;
   const context=vm.createContext({Date,TextDecoder,Uint8Array,document:{getElementById:id=>elements[id]},finEsc:s=>String(s).replace(/[&<>"']/g,'_'),cloudMsg(){},loadFinance:async()=>{},loadFinanceBills:async()=>{},callEdge:async(name,data)=>{saved++;assert(!JSON.stringify(data).includes(password));return {ok:true,transaction_count:2,inserted_count:2,skipped_count:0}}});
   const excelModule={readFinanceExcelWorkbook:(data,pwd)=>readFinanceExcelWorkbook(data,pwd,dependencies)};
-  const makeModule=values=>{const m=new vm.SyntheticModule(Object.keys(values),function(){for(const[k,v]of Object.entries(values))this.setExport(k,v)},{context});return m.link(()=>{}).then(()=>m.evaluate()).then(()=>m)};
+  const makeModule=async values=>{const m=new vm.SyntheticModule(Object.keys(values),function(){for(const[k,v]of Object.entries(values))this.setExport(k,v)},{context});await m.link(()=>{});await m.evaluate();return m};
   const excelVM=await makeModule(excelModule),parserVM=await makeModule(parser);
   const script=html.slice(html.indexOf('function inferBillMonthFromName('),html.indexOf('async function addManualFinanceTransaction('));
   new vm.Script(script,{importModuleDynamically:async specifier=>specifier.includes('finance-excel-reader')?excelVM:parserVM}).runInContext(context);
