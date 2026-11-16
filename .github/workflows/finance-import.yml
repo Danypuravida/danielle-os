@@ -1,0 +1,38 @@
+name: Finance import regression
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'finance-excel-reader.mjs'
+      - 'supabase/functions/finance-import/**'
+      - 'tests/finance-*.cjs'
+      - '.github/workflows/finance-import.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'finance-excel-reader.mjs'
+      - 'supabase/functions/finance-import/**'
+      - 'tests/finance-*.cjs'
+permissions:
+  contents: read
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install encryption test dependencies
+        run: |
+          npm install --no-save --package-lock=false --ignore-scripts xlsx-populate@1.21.0
+          curl --fail --location --retry 2 https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs --output "$RUNNER_TEMP/card-xlsx.mjs"
+      - name: Verify bank and card regressions
+        run: |
+          node tests/finance-import.cjs
+          node tests/finance-card.cjs
+      - name: Verify encrypted workbook through browser readers
+        env:
+          CARD_XLSX_MODULE: ${{ runner.temp }}/card-xlsx.mjs
+        run: node --experimental-vm-modules tests/finance-excel-encryption.cjs
