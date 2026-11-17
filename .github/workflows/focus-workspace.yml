@@ -1,0 +1,28 @@
+name: Todoist focus regression
+on:
+  push:
+    paths:
+      - 'focus-workspace.*'
+      - 'index.html'
+      - 'tests/focus-*.cjs'
+      - '.github/workflows/focus-workspace.yml'
+  pull_request:
+    paths:
+      - 'focus-workspace.*'
+      - 'index.html'
+      - 'tests/focus-*.cjs'
+permissions:
+  contents: read
+jobs:
+  focus:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tests/focus-workspace.cjs
+      - run: node tests/focus-controller.cjs
+      - run: node tests/james-page.cjs
+      - run: node tests/todoist-sync.cjs

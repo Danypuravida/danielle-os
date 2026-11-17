@@ -668,6 +668,7 @@ select.field{max-width:100%}
 </style>
 
 <link rel="stylesheet" href="./career-portfolio.css?v=3">
+<link rel="stylesheet" href="./focus-workspace.css?v=1">
 </head><body>
 <div id="authScreen" class="auth-screen">
   <div class="auth-card">
@@ -1527,8 +1528,31 @@ select.field{max-width:100%}
 </section>
 
 <section class="page" data-page="todoist">
-  <h1>Todoist</h1>
-  <p class="lead">O Todoist continua sendo sua fonte oficial de tarefas. Aqui você vê o essencial e executa sem sair do Danielle OS.</p>
+  <div class="fp-shell">
+    <aside class="fp-side"><div class="fp-brand">foco <em>& tempo</em></div><nav aria-label="Foco e tempo"><button data-fp-view="today" aria-pressed="true">Hoje</button><button data-fp-view="plan" aria-pressed="false">Planejar o dia</button><button data-fp-view="history" aria-pressed="false">Histórico</button><button data-fp-view="stats" aria-pressed="false">Estatísticas</button><button data-fp-view="settings" aria-pressed="false">Configurações</button></nav><div class="fp-goal"><strong id="fpGoalCount">—</strong><span>ciclos de foco hoje</span><div class="fp-goal-track"><i id="fpGoalBar"></i></div><small>Um ciclo de cada vez.</small></div></aside>
+    <div class="fp-body">
+      <header class="fp-heading"><div><p class="fp-eyebrow">TODOIST · FOCO E GESTÃO DO TEMPO</p><h1>Meu dia <em>em foco</em></h1><p>Planeje suas tarefas. Escolha uma. Dê espaço para fazer.</p></div><button class="fp-btn fp-primary" data-fp-action="new">＋ Nova tarefa</button></header>
+      <div class="fp-toolbar"><label for="fpDay">Seu dia<input type="date" id="fpDay"></label><button class="fp-btn" id="fpToday">Ir para hoje</button><button class="fp-btn" id="fpRefresh">↻ Atualizar</button><span id="fpSync" class="fp-small">Conferindo Todoist…</span></div>
+      <p id="fpNotice" class="fp-notice" role="status" aria-live="polite"></p>
+      <div class="fp-kpis" id="fpKpis"></div>
+      <div class="fp-columns" id="fpTodayPanel">
+        <section class="fp-panel fp-timer-panel" aria-labelledby="fpTimerTitle"><div class="fp-panel-head"><h2 id="fpTimerTitle">Um ciclo de atenção</h2><span id="fpPhaseLabel" class="fp-badge">Foco · 25 min</span></div>
+          <div class="fp-timer-modes"><button data-fp-kind="focus" aria-pressed="true">Foco</button><button data-fp-kind="break" aria-pressed="false">Pausa</button></div>
+          <div class="fp-clock" id="fpClock"><div><time id="fpTime" aria-label="Tempo restante">25:00</time><span id="fpClockState">Pronto para começar</span></div></div>
+          <p class="fp-now-label">AGORA</p><p id="fpCurrentTask" class="fp-current-task">Escolha uma tarefa do seu dia</p>
+          <div class="fp-timer-actions"><button class="fp-btn fp-primary" id="fpStart">Começar foco</button><button class="fp-btn" id="fpPause" hidden>Pausar</button><button class="fp-btn" id="fpStop" hidden>Encerrar</button></div><p id="fpTimerHint" class="fp-small">25 minutos de foco, 5 de pausa. Você inicia cada ciclo.</p>
+          <div class="fp-recent"><h3>Últimas sessões do dia</h3><div id="fpRecent"></div></div>
+        </section>
+        <section class="fp-panel fp-plan-panel" id="fpPlanPanel" aria-labelledby="fpPlanTitle"><div class="fp-panel-head"><h2 id="fpPlanTitle">Tarefas do dia</h2><span class="fp-small" id="fpPlanCount"></span></div><p class="fp-small">Escolha a tarefa de cada ciclo e informe uma estimativa em minutos.</p><div id="fpTasks"></div><div class="fp-add-plan"><label for="fpTaskPicker">Trazer outra tarefa para este dia</label><select id="fpTaskPicker"><option value="">Selecione uma tarefa do Todoist…</option></select><button class="fp-btn" id="fpAddPlan">＋ Incluir no dia</button></div><p class="fp-small fp-plan-help">Planejar aqui mantém o prazo original no Todoist. A caixa de seleção conclui a tarefa no Todoist.</p></section>
+        <aside class="fp-stack" id="fpInsights"><section class="fp-panel"><h2>Onde foi meu tempo</h2><div id="fpAreas"></div><p class="fp-small">Tempo de foco registrado por área. Pausas ficam separadas.</p></section><section class="fp-panel"><h2>Últimos 7 dias</h2><div id="fpWeek"></div></section><section class="fp-panel fp-tip"><h2>Seu ritmo</h2><p id="fpRhythm" class="fp-small">Seu horário de maior foco aparece conforme você usa o timer.</p></section></aside>
+      </div>
+      <section class="fp-panel" id="fpHistoryPanel" hidden><div class="fp-panel-head"><h2>Histórico do dia</h2><span class="fp-small">Foco e pausas, com horários reais</span></div><div id="fpHistory"></div></section>
+      <section class="fp-panel" id="fpStatsPanel" hidden><h2>Seu tempo em perspectiva</h2><p class="fp-small">Os gráficos consideram os sete dias que terminam na data selecionada.</p><div id="fpStatsContent"></div></section>
+      <section class="fp-panel fp-settings" id="fpSettingsPanel" hidden><h2>Seu jeito de focar</h2><p class="fp-small">As novas durações valem para os próximos ciclos. O ciclo atual mantém a duração em que começou.</p><form id="fpSettingsForm"><label for="fpFocusMinutes">Foco (minutos)<input type="number" id="fpFocusMinutes" min="1" max="120" value="25" required></label><label for="fpBreakMinutes">Pausa (minutos)<input type="number" id="fpBreakMinutes" min="1" max="30" value="5" required></label><label for="fpDailyGoal">Meta de ciclos por dia<input type="number" id="fpDailyGoal" min="1" max="24" value="8" required></label><button class="fp-btn fp-primary" type="submit">Salvar configurações</button></form></section>
+      <footer class="fp-footer"><span id="fpCloudState">Seu planejamento e suas sessões ficam na sua conta.</span><button class="fp-text-btn" data-fp-action="all">Todas as tarefas do Todoist ↗</button></footer>
+    </div>
+  </div>
+  <details id="fpTodoistOriginal" class="fp-legacy"><summary>Todas as tarefas do Todoist e criação de tarefas</summary>
   <div class="grid">
     <div class="card c4">
       <h2>Criar tarefa</h2>
@@ -1558,6 +1582,7 @@ select.field{max-width:100%}
       <div id="todoNoDue"></div>
     </div>
   </div>
+  </details>
 </section>
 
 <section class="page" data-page="reunioes">
@@ -5482,4 +5507,5 @@ loadJames=async function(syncFinance=true){
 
 </script>
 <script src="./career-portfolio.js?v=3"></script>
+<script src="./focus-workspace.js?v=1"></script>
 </body></html>
