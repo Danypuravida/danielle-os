@@ -8,6 +8,15 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),asse
   const password='fixture-password-only';
   const encrypted=await fixture.outputAsync({type:'arraybuffer',password});
   const plain=await fixture.outputAsync({type:'arraybuffer'});
+  // Synthetic C6 layout: blank inline cells and strings stored as rich-text
+  // runs. Keep personal invoices and their passwords out of the repository.
+  const zip=await require('jszip').loadAsync(plain);
+  const xmlText=s=>String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const table=[['Fatura de teste','','','',''],['Descrição','Data de Compra','Valor (em R$)','Final do Cartão','Parcela'],['LOJA DE TESTE','02/11/2026',1234.56,'0629','1/3'],['ESTORNO DE TESTE','03/11/2026',-5.20,'0629','']];
+  const sheet='<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><dimension ref="A1"/><sheetData>'+table.map((row,i)=>'<row r="'+(i+1)+'">'+row.map((value,j)=>{const address=String.fromCharCode(65+j)+(i+1);return typeof value==='number'?'<c r="'+address+'"><v>'+value+'</v></c>':'<c r="'+address+'" t="inlineStr">'+(value?'<is><r><t xml:space="preserve">'+xmlText(value.slice(0,2))+'</t></r><r><t xml:space="preserve">'+xmlText(value.slice(2))+'</t></r></is>':'')+'</c>'}).join('')+'</row>').join('')+'</sheetData></worksheet>';
+  zip.file('xl/worksheets/sheet1.xml',sheet);
+  const Encryptor=require('xlsx-populate/lib/Encryptor');
+  const c6Encrypted=new Encryptor().encrypt(await zip.generateAsync({type:'nodebuffer'}),password);
   assert.throws(()=>XLSX.read(encrypted,{type:'array'}),/password|encrypt/i,'Fixture must actually be encrypted');
   const browser={console,crypto:webcrypto,setTimeout,clearTimeout,setImmediate,clearImmediate,Uint8Array,Uint32Array,Int32Array,ArrayBuffer,DataView,TextEncoder,TextDecoder,Blob,navigator:{userAgent:'Encryption regression test'}};
   browser.window=browser;browser.self=browser;
@@ -24,8 +33,13 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),asse
   assert.equal(transactions.length,2);
   const payload=parser.cardRowsToCSV(transactions);assert(!payload.includes(password));assert(!payload.includes('password'));
   assert.equal(decryptLoads,1);
+  const c6Result=await readFinanceExcelWorkbook(c6Encrypted,password,dependencies);
+  const c6Table=XLSX.utils.sheet_to_json(c6Result.book.Sheets[c6Result.book.SheetNames[0]],{header:1,raw:true,defval:''});
+  const c6Rows=parser.parseCardTable(c6Table,{billingMonth:'2026-11'});
+  assert.equal(c6Rows.length,2);assert.equal(c6Rows[0].description,'LOJA DE TESTE');assert.equal(c6Rows[0].amount,1234.56);assert.equal(c6Rows[0].last4,'0629');assert.equal(c6Rows[1].amount,-5.2);
+  const loadsBeforeMissing=decryptLoads;
   await assert.rejects(()=>readFinanceExcelWorkbook(encrypted,'',dependencies),/Excel protegido.*senha/);
-  assert.equal(decryptLoads,1,'Missing password must not load a decryptor');
+  assert.equal(decryptLoads,loadsBeforeMissing,'Missing password must not load a decryptor');
   await assert.rejects(()=>readFinanceExcelWorkbook(encrypted,'wrong-password',dependencies),/Confira a senha/);
   const before=decryptLoads;
   const unprotected=await readFinanceExcelWorkbook(plain,'',dependencies);
@@ -41,7 +55,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),asse
   const excelVM=await makeModule(excelModule),parserVM=await makeModule(parser);
   const script=html.slice(html.indexOf('function inferBillMonthFromName('),html.indexOf('async function addManualFinanceTransaction('));
   new vm.Script(script,{importModuleDynamically:async specifier=>specifier.includes('finance-excel-reader')?excelVM:parserVM}).runInContext(context);
-  elements.financeCardFile.files=[{name:'Fatura-CPF.xlsx',size:encrypted.byteLength,arrayBuffer:async()=>encrypted}];
+  elements.financeCardFile.files=[{name:'Fatura-CPF.xlsx',size:c6Encrypted.byteLength,arrayBuffer:async()=>c6Encrypted}];
   await context.importFinanceDocument('card');
   assert.match(status.textContent,/Leitura pronta/);assert.equal(saved,0);assert.equal(elements.financeCardPdfPassword.value,'');
   await context.importFinanceDocument('card');
