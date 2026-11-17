@@ -667,6 +667,7 @@ select.field{max-width:100%}
 .field option{color:var(--text);}
 </style>
 
+<link rel="stylesheet" href="./career-portfolio.css?v=1">
 </head><body>
 <div id="authScreen" class="auth-screen">
   <div class="auth-card">
@@ -1025,55 +1026,97 @@ select.field{max-width:100%}
 
 
 <section class="page" data-page="senioridade">
-  <h1>Portfólio de senioridade</h1>
-  <p class="lead">Não registre “trabalhei muito”. Registre decisões, sistemas, desenvolvimento de pessoas, influência e impacto que demonstrem um nível maior de atuação.</p>
-  <div class="grid">
-    <div class="card c5">
-      <h2>Nova evidência</h2>
-      <div class="formgrid">
-        <div><label>Competência</label>
-          <select id="seCompetency" class="field">
-            <option>Técnico/Operacional</option><option>Gestão de pessoas</option><option>Processo/Sistema</option><option>Dados/Indicadores</option><option>Stakeholders</option><option>Estratégia</option><option>Comunicação/Liderança</option><option>Delegação</option><option>Decisão</option><option>Projeto estratégico</option>
-          </select>
+  <div class="cp-shell">
+    <aside class="cp-side">
+      <div class="cp-brand">carreira <em id="cpBrandYear">2026</em></div>
+      <nav aria-label="Seções do portfólio">
+        <button type="button" data-cp-view="overview" aria-pressed="true">Visão geral</button>
+        <button type="button" data-cp-view="delivery" aria-pressed="false">Entregas</button>
+        <button type="button" data-cp-view="project" aria-pressed="false">Projetos</button>
+        <button type="button" data-cp-view="feedback" aria-pressed="false">Feedbacks</button>
+        <button type="button" data-cp-view="course" aria-pressed="false">Cursos</button>
+        <button type="button" data-cp-view="talk" aria-pressed="false">Palestras</button>
+        <button type="button" data-cp-view="materials" aria-pressed="false">Fotos e materiais</button>
+        <button type="button" data-cp-view="summary" aria-pressed="false">Resumo da avaliação</button>
+      </nav>
+      <div class="cp-side-note"><strong id="cpArchiveCount">—</strong>registros no seu acervo<br><br>Seu trabalho tem história.<br>Guarde as evidências.</div>
+    </aside>
+    <div class="cp-body">
+      <header class="cp-heading">
+        <div><p class="cp-eyebrow">Resultados · Meu acervo profissional</p><h1>Portfólio <em>de carreira</em></h1><p class="cp-subtitle">Entregas, aprendizados e conquistas que contam a sua trajetória.</p></div>
+        <button type="button" class="cp-btn cp-primary" id="cpAdd"><span aria-hidden="true">＋</span> Novo registro</button>
+      </header>
+      <div class="cp-filters">
+        <label for="cpYear">Ano<select id="cpYear" aria-label="Ano do portfólio"></select></label>
+        <label for="cpMonth">Período<select id="cpMonth"><option value="">Ano inteiro</option><option value="01">Janeiro</option><option value="02">Fevereiro</option><option value="03">Março</option><option value="04">Abril</option><option value="05">Maio</option><option value="06">Junho</option><option value="07">Julho</option><option value="08">Agosto</option><option value="09">Setembro</option><option value="10">Outubro</option><option value="11">Novembro</option><option value="12">Dezembro</option></select></label>
+        <label for="cpSearch" class="cp-search">Buscar no acervo<input id="cpSearch" type="search" placeholder="Conquista, competência ou pessoa…"></label>
+        <button type="button" class="cp-btn" id="cpRefresh" aria-label="Atualizar portfólio">↻ Atualizar</button>
+      </div>
+      <p id="cpStatus" class="cp-status" role="status" aria-live="polite">Carregando seu portfólio…</p>
+      <div class="cp-kpis" id="cpKpis" aria-label="Indicadores do período"></div>
+      <div id="cpHighlights" class="cp-highlights"></div>
+      <div class="cp-columns" id="cpMainColumns">
+        <div class="cp-stack">
+          <section class="cp-panel" id="cpListPanel" aria-labelledby="cpListTitle">
+            <div class="cp-panel-head"><h2 id="cpListTitle">Entregas e resultados</h2><span class="cp-small" id="senioritySummary">—</span></div>
+            <div id="seniorityList"></div>
+          </section>
+          <section class="cp-panel cp-summary" id="cpSummaryPanel" aria-labelledby="cpSummaryTitle">
+            <div class="cp-panel-head"><h2 id="cpSummaryTitle">Resumo para a avaliação</h2><span class="cp-tag">A partir dos seus registros</span></div>
+            <p class="cp-small">Ajuste o rascunho antes de copiar. O texto reúne o período e os filtros selecionados.</p>
+            <textarea id="cpSummaryText" aria-label="Texto do resumo para copiar" spellcheck="true"></textarea>
+            <div class="cp-summary-tools"><button type="button" class="cp-btn" id="cpCopy">Copiar resumo</button><button type="button" class="cp-btn" id="cpRegenerate">Refazer com os registros</button></div>
+            <p class="cp-small" id="cpCopyStatus" role="status"></p>
+          </section>
+          <section class="cp-panel cp-review" id="cpReviewPanel">
+            <details><summary>Fechamento mensal completo</summary><p class="cp-small">Mantém o balanço do mês atual com reuniões, decisões, delegações e scorecards.</p><button type="button" class="cp-btn" onclick="generateMonthlyReview()">Gerar fechamento do mês atual</button><div id="monthlyReview"></div></details>
+          </section>
         </div>
-        <div><label>Força da evidência</label>
-          <select id="seStrength" class="field"><option value="1">1 — fraca</option><option value="2">2</option><option value="3" selected>3 — boa</option><option value="4">4</option><option value="5">5 — muito forte</option></select>
-        </div>
+        <aside class="cp-stack cp-insights" id="cpInsights" aria-label="Leitura do período">
+          <section class="cp-panel"><div class="cp-panel-head"><h2>Entregas por mês</h2></div><p class="cp-small" id="cpChartCaption">Entregas, projetos e palestras registrados no ano.</p><div id="cpMonthlyChart"></div></section>
+          <section class="cp-panel"><div class="cp-panel-head"><h2>Competências evidenciadas</h2></div><p class="cp-small">Quantidade de entregas, projetos e palestras por competência.</p><div id="cpCompetencies"></div></section>
+          <section class="cp-panel"><div class="cp-panel-head"><h2>Feedbacks recebidos</h2></div><div id="cpFeedbacks"></div></section>
+        </aside>
       </div>
-      
-      <br><label>Área técnica / frente <span class="muted">(quando aplicável)</span></label>
-      <select id="seTechnicalArea" class="field">
-        <option value="">Não se aplica</option><option>Ticketing</option><option>Acesso</option><option>Biometria</option>
-        <option>Bilheteria</option><option>Integrações/API</option><option>Contingência</option>
-        <option>Dashboard/Automação</option><option>Análise de dados</option><option>Parametrização</option><option>Produto/Processo</option>
-      </select>
-      <br><br><div class="formgrid">
-        <div><label>Antes</label><input id="seBefore" class="field" placeholder="Ex.: 7"></div>
-        <div><label>Depois</label><input id="seAfter" class="field" placeholder="Ex.: 3"></div>
-        <div><label>Unidade</label><input id="seUnit" class="field" placeholder="min, %, casos, h/jogo..."></div>
-        <div><label>Fonte da evidência</label><input id="seSource" class="field" placeholder="Dashboard, relatório, e-mail..."></div>
-      </div>
-<br><label>Situação</label><textarea id="seSituation" class="field" rows="3"></textarea>
-      <br><label>Minha ação</label><textarea id="seAction" class="field" rows="3"></textarea>
-      <br><label>Resultado</label><textarea id="seResult" class="field" rows="3"></textarea>
-      <br><label>Impacto mensurável</label><textarea id="seImpact" class="field" rows="2" placeholder="Tempo, retrabalho, autonomia, satisfação, receita, risco, qualidade..."></textarea>
-      <br><label>Stakeholder envolvido</label><input id="seStakeholder" class="field">
-      <br><br><label>Aprendizado</label><textarea id="seLearning" class="field" rows="2"></textarea>
-      <br><button class="btn primary" onclick="saveSeniorityEvidence()">Registrar evidência</button>
-    </div>
-    <div class="card c7">
-      <div class="row" style="justify-content:space-between"><h2>Meu histórico</h2><span class="tag" id="senioritySummary">—</span></div>
-      <div id="seniorityList" class="timeline"></div>
-    </div>
-  
-    <div class="card c12">
-      <div class="row" style="justify-content:space-between;align-items:flex-start">
-        <div><h2>Fechamento mensal</h2><p class="muted">Gera seu balanço objetivo do mês a partir dos dados registrados.</p></div>
-        <button class="btn primary" onclick="generateMonthlyReview()">Gerar fechamento do mês</button>
-      </div>
-      <div id="monthlyReview"></div>
+      <section class="cp-panel" id="cpMaterialsPanel" hidden aria-labelledby="cpMaterialsTitle"><div class="cp-panel-head"><h2 id="cpMaterialsTitle">Fotos e materiais</h2><span class="cp-small" id="cpMaterialsCount"></span></div><p class="cp-small">Fotos de palestras, certificados, apresentações e documentos vinculados aos seus registros.</p><div id="cpGallery" class="cp-gallery"></div></section>
+      <footer class="cp-footer"><span id="cpFootnote">Seu acervo é privado. Você escolhe o que registrar e destacar.</span><span>Danielle OS · carreira em construção</span></footer>
     </div>
   </div>
+  <dialog class="cp-dialog" id="cpEditor" aria-labelledby="cpEditorTitle">
+    <form id="cpForm">
+      <header><div><h2 id="cpEditorTitle">Novo registro</h2><p>Transforme o que aconteceu em uma evidência da sua trajetória.</p></div><button type="button" class="cp-close" id="cpClose" aria-label="Fechar registro">×</button></header>
+      <div class="cp-editor-body">
+        <div class="cp-form-grid">
+          <div><label for="cpEntryType">Tipo</label><select class="field" id="cpEntryType"><option value="delivery">Entrega / resultado</option><option value="project">Projeto</option><option value="feedback">Feedback recebido</option><option value="course">Curso concluído</option><option value="talk">Palestra / evento</option><option value="material">Material profissional</option></select></div>
+          <div><label for="cpEntryDate">Data do acontecimento</label><input class="field" id="cpEntryDate" type="date" required></div>
+          <div class="cp-full"><label for="cpEntryTitle">Título</label><input class="field" id="cpEntryTitle" maxlength="180" placeholder="Ex.: Reduzi o tempo de liberação de acesso" required></div>
+          <div><label for="seCompetency">Competência</label><select id="seCompetency" class="field"><option>Técnico/Operacional</option><option>Gestão de pessoas</option><option>Processo/Sistema</option><option>Dados/Indicadores</option><option>Stakeholders</option><option>Estratégia</option><option>Comunicação/Liderança</option><option>Delegação</option><option>Decisão</option><option>Projeto estratégico</option></select></div>
+          <div><label for="seStakeholder" id="cpStakeholderLabel">Pessoas envolvidas</label><input class="field" id="seStakeholder" placeholder="Nome, equipe ou organização"></div>
+          <div class="cp-full"><label for="seResult" id="cpResultLabel">O que mudou? Qual foi o resultado?</label><textarea class="field" id="seResult" rows="3" placeholder="Descreva o resultado e o que comprova essa conquista." required></textarea></div>
+        </div>
+        <label class="cp-feature-label"><input id="cpFeatured" type="checkbox"> Destacar esta conquista na visão geral</label>
+        <details class="cp-editor-details" id="cpEvidenceDetails"><summary>Contexto, métricas e aprendizado</summary>
+          <div class="cp-form-grid">
+            <div class="cp-full"><label for="seSituation">Situação / desafio</label><textarea id="seSituation" class="field" rows="2"></textarea></div>
+            <div class="cp-full"><label for="seAction">Minha ação</label><textarea id="seAction" class="field" rows="2"></textarea></div>
+            <div><label for="seBefore">Antes</label><input id="seBefore" class="field" placeholder="Ex.: 7"></div>
+            <div><label for="seAfter">Depois</label><input id="seAfter" class="field" placeholder="Ex.: 3"></div>
+            <div><label for="seUnit">Unidade da métrica</label><input id="seUnit" class="field" placeholder="min, casos, horas…"></div>
+            <div><label for="seStrength">Força da evidência (sua avaliação)</label><select id="seStrength" class="field"><option value="1">1 — inicial</option><option value="2">2</option><option value="3" selected>3 — boa</option><option value="4">4</option><option value="5">5 — muito forte</option></select></div>
+            <div class="cp-full"><label for="seImpact">Impacto mensurável</label><textarea id="seImpact" class="field" rows="2" placeholder="Tempo, retrabalho, autonomia, receita, qualidade…"></textarea></div>
+            <div class="cp-full"><label for="seTechnicalArea">Área técnica / frente (se aplicável)</label><select id="seTechnicalArea" class="field"><option value="">Não se aplica</option><option>Ticketing</option><option>Acesso</option><option>Biometria</option><option>Bilheteria</option><option>Integrações/API</option><option>Contingência</option><option>Dashboard/Automação</option><option>Análise de dados</option><option>Parametrização</option><option>Produto/Processo</option></select></div>
+            <div class="cp-full"><label for="seLearning">Aprendizado</label><textarea id="seLearning" class="field" rows="2"></textarea></div>
+          </div>
+        </details>
+        <label for="seSource">Fonte / link da evidência</label><input id="seSource" class="field" placeholder="Link, relatório, e-mail, certificado…">
+        <br><br><label for="cpFiles">Fotos e arquivos</label><input class="field" type="file" id="cpFiles" multiple accept=".jpg,.jpeg,.png,.webp,.pdf,.ppt,.pptx,.doc,.docx,.xls,.xlsx,.csv">
+        <p class="cp-editor-help">Até 10 arquivos por registro, 20 MB por arquivo. JPG, PNG, WebP, PDF, PowerPoint, Word, Excel ou CSV. Arquivos privados, vinculados ao registro.</p>
+        <div class="cp-editor-files" id="cpEditorFiles"></div>
+        <p class="cp-editor-status" id="cpEditorStatus" role="status" aria-live="polite"></p>
+      </div>
+      <footer><button type="button" class="cp-btn" id="cpCancel">Cancelar</button><button type="submit" class="cp-btn cp-primary" id="cpSave">Salvar registro</button></footer>
+    </form>
+  </dialog>
 </section>
 
 <section class="page" data-page="desenvolvimento">
@@ -1743,7 +1786,7 @@ sb.auth.onAuthStateChange((_event, session) => {
 <script>
 const pages=[['overview','Overview'],['central','Central de desenvolvimento'],['painel','Painel'],['james','James'],['financeiro','Financeiro'],['lista-viagem','Lista viagem'],['metas-pessoais','Metas pessoais'],['mentoria','Mentoria'],['rotina','Hoje'],['todoist','Todoist'],['reunioes','Reuniões'],['gestao','Gestão'],['reflexao','Decisões'],['senioridade','Resultados'],['desenvolvimento','Desenvolvimento'],['score','Scorecard'],['perfil','Perfil'],['plano','Plano até dezembro'],['coach','Conselheiro IA']];
 const freehandStartIndex=pages.findIndex(x=>x[0]==='financeiro');
-const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='senioridade')loadSeniorityEvidence();if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist();loadWhatsAppStatus()}if(id==='financeiro')loadFinance();if(id==='lista-viagem')loadTravelList();if(id==='metas-pessoais')loadPersonalGoals();if(id==='mentoria')loadMentorship();if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}if(id==='overview')loadOverview();if(i>=freehandStartIndex)setTimeout(()=>ensureFreehandBoard(id),40)};nav.appendChild(b)});
+const nav=document.getElementById('nav');pages.forEach(([id,n],i)=>{let b=document.createElement('button');b.textContent=n;b.dataset.page=id;b.className=i?'':'active';b.onclick=()=>{document.querySelectorAll('.page').forEach(x=>x.classList.toggle('active',x.dataset.page===id));document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');const mc=document.getElementById('managementCockpit');if(mc)mc.style.display=id==='gestao'?'block':'none';if(id==='desenvolvimento')loadDevelopmentGoals();if(id==='reflexao'){loadDecisionRecords();loadDecisionAIHistory();loadCoachingCases()}if(id==='james'){loadJames();loadGoogleStatus();loadSlackStatus();loadJamesTodoist();loadWhatsAppStatus()}if(id==='financeiro')loadFinance();if(id==='lista-viagem')loadTravelList();if(id==='metas-pessoais')loadPersonalGoals();if(id==='mentoria')loadMentorship();if(id==='todoist')loadTodoistTasks();if(id==='reunioes'){ensureMeetingDate();syncMeetingsForSelectedDate(null,true)}if(id==='senioridade'){loadSeniorityEvidence();loadMonthlyReview()}if(id==='overview')loadOverview();if(i>=freehandStartIndex)setTimeout(()=>ensureFreehandBoard(id),40)};nav.appendChild(b)});
 
 function openOSPage(id){
   const btn=document.querySelector(`#nav button[data-page="${id}"]`);
@@ -5424,4 +5467,5 @@ loadJames=async function(syncFinance=true){
 };
 
 </script>
+<script src="./career-portfolio.js?v=1"></script>
 </body></html>
