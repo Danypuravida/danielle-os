@@ -4,6 +4,7 @@ on:
     paths:
       - 'index.html'
       - 'finance-excel-reader.mjs'
+      - 'finance-pdf-reader.mjs'
       - 'supabase/functions/finance-import/**'
       - 'tests/finance-*.cjs'
       - '.github/workflows/finance-import.yml'
@@ -11,6 +12,7 @@ on:
     paths:
       - 'index.html'
       - 'finance-excel-reader.mjs'
+      - 'finance-pdf-reader.mjs'
       - 'supabase/functions/finance-import/**'
       - 'tests/finance-*.cjs'
 permissions:
@@ -32,6 +34,7 @@ jobs:
         run: |
           node tests/finance-import.cjs
           node tests/finance-card.cjs
+          node tests/finance-pdf.cjs
       - name: Verify encrypted workbook through browser readers
         env:
           CARD_XLSX_MODULE: ${{ runner.temp }}/card-xlsx.mjs

@@ -4440,24 +4440,8 @@ async function classifyFinanceGroup(ids,name,selectId,dirId,ruleId,excludeId){
   cloudMsg('Classificação salva',true);await loadFinance()
 }
 async function extractPdfText(file,password){
-  let pdf;
-  try{
-    const pdfjs=await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs');
-    pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs';
-    pdf=await pdfjs.getDocument({data:new Uint8Array(await file.arrayBuffer()),password:password||undefined}).promise;
-    const lines=[];
-    for(let p=1;p<=pdf.numPages;p++){
-      const page=await pdf.getPage(p),content=await page.getTextContent(),byY=new Map();
-      for(const item of content.items){const y=Math.round(item.transform?.[5]||0),x=item.transform?.[4]||0;if(!byY.has(y))byY.set(y,[]);byY.get(y).push({x,s:item.str||''})}
-      for(const y of [...byY.keys()].sort((a,b)=>b-a)){const line=byY.get(y).sort((a,b)=>a.x-b.x).map(z=>z.s).join(' ').replace(/\s+/g,' ').trim();if(line)lines.push(line)}
-      page.cleanup();
-    }
-    return lines.join('\n');
-  }catch(e){
-    if(e?.name==='PasswordException')throw new Error('PDF protegido: informe a senha do extrato e tente novamente.');
-    if(e instanceof TypeError || /worker|fetch|module/i.test(e?.message||''))throw new Error('Não consegui carregar o leitor de PDF. Verifique a conexão e tente novamente.');
-    throw e;
-  }finally{if(pdf)await pdf.destroy()}
+  const {extractFinancePdfText}=await import('./finance-pdf-reader.mjs');
+  return extractFinancePdfText(file,password);
 }
 function inferBillMonthFromName(name,year){
   const n=normalizeText(String(name||''));
