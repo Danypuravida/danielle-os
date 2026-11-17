@@ -45,6 +45,6 @@ ctx.callEdge=async(name,body)=>{edgeCalls.push(body?.action||'read');return {mes
  edgeCalls=[];ctx.callEdge=async(name,body)=>{edgeCalls.push(body?.action||'read');return {messages:[msg(1,'precisa agir')],partial:false}};ctx.callManagementAdvisor=async()=>{throw new Error('análise falhou')};
  await assert.rejects(ctx.scanSlackLive(),/análise falhou/);
  assert.deepEqual(edgeCalls,['read']);
- assert.equal(ctx.jamesSlackProgress,'');assert.equal(ctx.jamesHealth.slack.last_error,'análise falhou');
+ assert.equal(ctx.jamesSlackProgress,'');assert.match(ctx.jamesHealth.slack.last_error,/Mensagens recebidas; a análise não terminou: análise falhou/);
  console.log('PASS: JavaScript syntax; bounded batches; all 155 messages and long fragments retained; manual locks and completion date; checkpoint only after successful analysis.');
 })().catch(e=>{console.error(e);process.exitCode=1});

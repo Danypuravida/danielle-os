@@ -1,0 +1,31 @@
+name: James regression
+on:
+  push:
+    paths:
+      - 'index.html'
+      - 'tests/james-*.cjs'
+      - 'tests/slack-triage.cjs'
+      - '.github/workflows/james.yml'
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'tests/james-*.cjs'
+      - 'tests/slack-triage.cjs'
+permissions:
+  contents: read
+jobs:
+  james:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify complete app and source state
+        run: |
+          node tests/james-page.cjs
+          node tests/slack-triage.cjs
+          node tests/james-resume.cjs
+          node tests/todoist-sync.cjs
+          node tests/gmail-identity.cjs
