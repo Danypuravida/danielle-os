@@ -58,8 +58,12 @@
       return {file,mime:MIME[ext],safeName:file.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-140)};
     });
   }
+  function duplicateUpload(error){
+    const status=String(error?.statusCode||error?.status||'');
+    return status==='409' || ['ResourceAlreadyExists','KeyAlreadyExists','Duplicate'].includes(error?.code||error?.error) || (status==='400' && /already exists/i.test(error?.message||''));
+  }
   // Export only pure helpers for regression tests; production runs as a classic script.
-  if(typeof module!=='undefined' && module.exports) module.exports={typeOf,dateOf,filterRecords,statistics,summaryText,sourceLink,validateFiles};
+  if(typeof module!=='undefined' && module.exports) module.exports={typeOf,dateOf,filterRecords,statistics,summaryText,sourceLink,validateFiles,duplicateUpload};
   if(typeof document==='undefined') return;
 
   const el=id=>document.getElementById(id);
@@ -142,7 +146,7 @@
     el('senioritySummary').textContent=visible.length+' registro'+(visible.length===1?'':'s');
     renderHighlights(visible);renderList(visible);renderChart(f);renderCompetencies(period);renderFeedbacks(period);renderGallery(visible);
     const key=JSON.stringify([state.owner,f.year,f.month,f.search,state.view]);
-    if(state.summaryKey && el('cpSummaryText').value) state.summaryDrafts.set(state.summaryKey,el('cpSummaryText').value);
+    if(key!==state.summaryKey)el('cpCopyStatus').textContent='';
     state.summaryKey=key;
     el('cpSummaryText').value=state.summaryDrafts.get(key)||summaryText(visible,summaryLabel(f));
     el('cpFootnote').textContent='Indicadores do período selecionado. Busca e seções filtram a lista e o resumo. Arquivos privados.';
@@ -281,7 +285,7 @@
         if(!upload){upload={id:crypto.randomUUID(),path:owner+'/'+id+'/'+crypto.randomUUID()+'-'+safeName};state.uploads.set(file,upload);}
         const path=upload.path;
         const uploaded=await client().storage.from(BUCKET).upload(path,file,{contentType:mime,upsert:false});
-        if(uploaded.error && String(uploaded.error.statusCode)!=='409')throw new Error('Registro salvo, mas não consegui enviar '+file.name+'. Tente salvar novamente para reenviar os arquivos pendentes.');
+        if(uploaded.error && !duplicateUpload(uploaded.error))throw new Error('Registro salvo, mas não consegui enviar '+file.name+'. Tente salvar novamente para reenviar os arquivos pendentes.');
         const asset={id:upload.id,user_id:owner,evidence_id:id,storage_path:path,file_name:file.name,mime_type:mime,file_size:file.size};
         const metadata=await client().from('career_portfolio_assets').insert(asset);
         if(metadata.error){
@@ -349,6 +353,7 @@
   el('cpRefresh').addEventListener('click',()=>load(true));
   ['cpYear','cpMonth'].forEach(id=>el(id).addEventListener('change',render));el('cpSearch').addEventListener('input',render);
   el('cpCopy').addEventListener('click',copySummary);
+  el('cpSummaryText').addEventListener('input',()=>{state.summaryDrafts.set(state.summaryKey,el('cpSummaryText').value);});
   el('cpRegenerate').addEventListener('click',()=>{const f=filters();state.summaryDrafts.delete(state.summaryKey);el('cpSummaryText').value=summaryText(filterRecords(state.records,f),summaryLabel(f));el('cpCopyStatus').textContent='Resumo refeito a partir dos registros atuais.';});
   document.querySelector('[data-page="senioridade"]').addEventListener('click',event=>{
     const button=event.target.closest('[data-cp-view],[data-cp-action]');if(!button)return;

@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
-const {typeOf,filterRecords,statistics,summaryText,sourceLink,validateFiles} = require('../career-portfolio.js');
+const {typeOf,filterRecords,statistics,summaryText,sourceLink,validateFiles,duplicateUpload} = require('../career-portfolio.js');
 
 const evidence=[
   {id:'old',user_id:'owner',evidence_date:'2025-11-02',competency:'Projeto estratégico',result:'Entrega anterior'},
@@ -29,6 +29,8 @@ assert.throws(()=>validateFiles([{name:'photo.svg',size:100}]),/Formato/);
 assert.throws(()=>validateFiles([{name:'big.pdf',size:21*1024*1024}]),/20 MB/);
 assert.throws(()=>validateFiles([{name:'x.pdf',size:10}],10),/10 arquivos/);
 assert.equal(validateFiles([{name:'certificado.PDF',size:10,type:''}])[0].mime,'application/pdf');
+assert(duplicateUpload({statusCode:'409'}));assert(duplicateUpload({statusCode:'400',message:'The resource already exists'}));
+assert(!duplicateUpload({statusCode:'400',message:'Invalid MIME type'}));
 
 // Run the actual UI controller against an in-memory adapter. No production rows or files are created.
 async function controllerTests(){
@@ -78,6 +80,7 @@ async function controllerTests(){
   assert.equal(assets.length,1,'A lost metadata response is confirmed, never duplicated');
   assert.equal(objects.size,1,'Committed metadata never loses its referenced object');
   assert.equal(el('cpEditor').open,false,'The editor closes only after every file is confirmed');
+  assert.match(el('cpSummaryText').value,/Entrega nova/,'An initial empty state never becomes a stale draft after data loads');
   assert(queries.filter(q=>q.mode==='read').every(q=>q.filters.some(([k])=>k==='user_id')),'All archive reads are explicitly scoped to the signed-in owner');
   const before=el('seniorityList').innerHTML;failRead=true;await context.window.CareerPortfolio.load(true);
   assert.equal(el('seniorityList').innerHTML,before,'A failed refresh preserves the last confirmed list');
