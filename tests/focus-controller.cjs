@@ -16,7 +16,7 @@ const sb={async rpc(){return {data:{session:null,server_now:new Date().toISOStri
 const win={listeners:{},addEventListener(name,fn){this.listeners[name]=fn;}};
 const ctx={window:win,document:{title:'Danielle OS',visibilityState:'visible',activeElement:null,getElementById:node,querySelector:s=>s==='.page.active'?{dataset:{page:'todoist'}}:node(s),querySelectorAll:()=>[],addEventListener(){}},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},sb,Intl,Date,console,crypto:{randomUUID:()=> 'id-'+(++sequence)},setInterval(){},clearInterval(){},
  get currentUserId(){return uid;},todoistReadRevision:0,
- async todoistCall(p={}){if(p.action==='close'){ctx.todoistReadRevision++;return {ok:true};}return {groups:{all:tasks},sync:{complete:true}};},
+ async todoistCall(p={}){if(p.action==='close'){ctx.todoistReadRevision++;return {ok:true};}return {groups:{all:tasks},sync:{provider:'danielle-os',complete:true}};},
  todoistSyncText:()=> 'PRIVATE OWNER ACCOUNT',async loadTodoistTasks(){return ctx.todoistCall({action:'list'});},async closeTodoistTask(id){return ctx.todoistCall({action:'close',id});}};
 async function run(){
  vm.createContext(ctx);vm.runInContext(fs.readFileSync(path.join(__dirname,'../focus-workspace.js'),'utf8'),ctx);
@@ -28,7 +28,7 @@ async function run(){
  assert.equal(tables.focus_task_plans[0].estimated_minutes,45);
  assert(!Object.hasOwn(writes.at(-1).payload,'completed_at'),'Editing estimates must not clear a completion from another device');
  offline=true;edit.target.value='60';node('fpTasks').listeners.change(edit);await new Promise(setImmediate);
- assert.equal(tables.focus_task_plans[0].estimated_minutes,45);assert(storage.get('danielle-focus-v1:owner').includes('estimated_minutes":60'),'Offline plan edits remain queued on the correct owner');
+ assert.equal(tables.focus_task_plans[0].estimated_minutes,45);assert(storage.get('danielle-focus-v2:owner').includes('estimated_minutes":60'),'Offline plan edits remain queued on the correct owner');
  offline=false;await win.FocusWorkspace.load();assert.equal(tables.focus_task_plans[0].estimated_minutes,60);
  await ctx.todoistCall({action:'close',id:'b'});await new Promise(setImmediate);
  assert(tables.focus_task_plans[0].completed_at,'Only confirmed Todoist completion is recorded');

@@ -1,4 +1,4 @@
-/* Focus workspace: Todoist remains the task source; private plans and timer live in Supabase. */
+/* Focus workspace: Danielle OS remains the task source; private plans and timer live in Supabase. */
 (function(){
  'use strict';
  const TZ='America/Sao_Paulo',AREAS={work:'Trabalho',study:'Estudo',personal:'Pessoal',other:'Sem área'},DEFAULTS={focus_minutes:25,break_minutes:5,daily_goal:8};
@@ -56,29 +56,30 @@
  function countdown(seconds){const n=Math.max(0,Math.ceil(seconds));return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');}
  function dailyRows(tasks,plans,day){
   const map=new Map();
-  tasks.filter(t=>String(t.due_date||t.due?.date||'').slice(0,10)===day).forEach(t=>map.set(String(t.id),{task_id:String(t.id),task_name:t.content,category:'other',day,available:true,priority:t.priority||1}));
+  tasks.filter(t=>String(t.due_date||t.due?.date||'').slice(0,10)===day).forEach(t=>map.set(String(t.id),{task_id:String(t.id),task_name:t.content,category:'other',day,available:t.status!=='completed',completed_at:t.status==='completed'?t.completed_at:null,priority:t.priority||1}));
   plans.filter(p=>p.day===day).forEach(p=>{const task=tasks.find(t=>String(t.id)===p.task_id);map.set(p.task_id,{...map.get(p.task_id),...p,task_name:task?.content||p.task_name,available:!!task,priority:task?.priority||1});});
   return [...map.values()].filter(p=>!p.excluded).sort((a,b)=>Number(!!a.completed_at)-Number(!!b.completed_at)||(b.priority||1)-(a.priority||1)||a.task_name.localeCompare(b.task_name));
  }
  if(typeof module!=='undefined'&&module.exports)module.exports={elapsed,segments,pauseSnapshot,summarize,duration,countdown,dailyRows,dayOf,addDays};
  if(typeof document==='undefined')return;
  const el=id=>document.getElementById(id),owner=()=>typeof currentUserId==='undefined'?null:currentUserId,db=()=>sb;
- const state={owner:null,tasks:[],todoistConfirmed:false,syncText:'Aguardando leitura do Todoist.',plans:[],sessions:[],settings:{...DEFAULTS},active:null,last:null,phase:'focus',selected:null,view:'today',offset:0,busy:false,loaded:false,request:0,loading:null,lastCloud:0,lastPoll:0,startingId:null,pending:null,planQueue:new Map(),planFlight:null};
+ const state={owner:null,tasks:[],nativeRecords:[],todoistConfirmed:false,syncText:'Aguardando leitura do Danielle OS.',plans:[],sessions:[],settings:{...DEFAULTS},active:null,last:null,phase:'focus',selected:null,view:'today',offset:0,busy:false,loaded:false,request:0,loading:null,lastCloud:0,lastPoll:0,startingId:null,pending:null,planQueue:new Map(),planFlight:null};
  const originalTitle=document.title;
+ const CACHE_PREFIX='danielle-focus-v2:';
  const now=()=>Date.now()+state.offset,today=()=>dayOf(now());
  const notify=(text,error=false)=>{el('fpNotice').textContent=text;el('fpNotice').dataset.error=String(error);};
  const dateLabel=d=>new Date(d+'T12:00:00Z').toLocaleDateString('pt-BR',{day:'2-digit',month:'short',timeZone:TZ});
  const timeLabel=d=>new Date(d).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:TZ});
  function cache(){
   if(!state.owner)return;
-  try{localStorage.setItem('danielle-focus-v1:'+state.owner,JSON.stringify({active:state.active,last:state.last,pending:state.pending,planQueue:[...state.planQueue.values()],settings:state.settings}));}
+  try{localStorage.setItem(CACHE_PREFIX+state.owner,JSON.stringify({active:state.active,last:state.last,pending:state.pending,planQueue:[...state.planQueue.values()],settings:state.settings}));}
   catch{if(state.pending||state.planQueue.size)notify('Não consegui guardar as alterações neste navegador. Mantenha a página aberta para sincronizar.',true);}
  }
  function resetOwner(){
   const id=owner();if(id===state.owner)return false;
-  state.owner=id;state.request++;state.tasks=[];state.todoistConfirmed=false;state.plans=[];state.sessions=[];state.active=null;state.last=null;state.pending=null;state.planQueue=new Map();state.planFlight=null;state.loaded=false;state.loading=null;state.selected=null;state.offset=0;state.startingId=null;state.settings={...DEFAULTS};state.phase='focus';
-  state.syncText=id?'Aguardando leitura do Todoist.':'Entre na sua conta para planejar.';state.busy=false;state.lastCloud=0;state.lastPoll=0;
-  if(id){try{const data=JSON.parse(localStorage.getItem('danielle-focus-v1:'+id)||'null');if(data){if(data.active?.user_id===id)state.active=data.active;if(data.last?.user_id===id)state.last=data.last;if(data.pending?.owner===id)state.pending=data.pending;for(const p of data.planQueue||[])if(p.user_id===id)state.planQueue.set(p.day+':'+p.task_id,p);if(data.settings?.focus_minutes>=1&&data.settings?.break_minutes>=1&&data.settings?.daily_goal>=1)state.settings={...DEFAULTS,...data.settings};}}catch{}}
+  state.owner=id;state.request++;state.tasks=[];state.nativeRecords=[];state.todoistConfirmed=false;state.plans=[];state.sessions=[];state.active=null;state.last=null;state.pending=null;state.planQueue=new Map();state.planFlight=null;state.loaded=false;state.loading=null;state.selected=null;state.offset=0;state.startingId=null;state.settings={...DEFAULTS};state.phase='focus';
+  state.syncText=id?'Aguardando leitura do Danielle OS.':'Entre na sua conta para planejar.';state.busy=false;state.lastCloud=0;state.lastPoll=0;
+  if(id){try{const saved=localStorage.getItem(CACHE_PREFIX+id);const previous=!saved?JSON.parse(localStorage.getItem('danielle-focus-v1:'+id)||'null'):null;const data=saved?JSON.parse(saved):previous?{...previous,planQueue:[]}:null;if(data){if(data.active?.user_id===id)state.active=data.active;if(data.last?.user_id===id)state.last=data.last;if(data.pending?.owner===id)state.pending=data.pending;for(const p of data.planQueue||[])if(p.user_id===id)state.planQueue.set(p.day+':'+p.task_id,p);if(data.settings?.focus_minutes>=1&&data.settings?.break_minutes>=1&&data.settings?.daily_goal>=1)state.settings={...DEFAULTS,...data.settings};}}catch{}}
   if(state.active)state.sessions=[state.active];el('fpDay').value=today();notify('');render();return true;
  }
  async function readPages(table,configure,id){const rows=[];for(let from=0;;from+=1000){let query=configure(db().from(table).select('*').eq('user_id',id));query=table==='focus_sessions'?query.order('started_at').order('id'):query.order('day').order('task_id');const {data,error}=await query.range(from,from+999);if(error)throw error;rows.push(...(data||[]));if(!data||data.length<1000)return rows;}}
@@ -111,7 +112,7 @@
  }
  function queuePlan(task,patch,day=el('fpDay').value){
   const key=day+':'+task.task_id,old=state.plans.find(p=>p.day+':'+p.task_id===key)||{};
-  const payload={...(state.planQueue.get(key)||{}),user_id:state.owner,day,task_id:task.task_id,task_name:task.task_name,...patch,updated_at:new Date(now()).toISOString()};
+  const payload={...(state.planQueue.get(key)||{}),user_id:state.owner,day,task_source:'native',task_id:task.task_id,task_name:task.task_name,...patch,updated_at:new Date(now()).toISOString()};
   state.planQueue.set(key,payload);state.plans=state.plans.filter(p=>p.day+':'+p.task_id!==key);state.plans.push({...old,category:'other',...old,...payload});cache();render();return flushPlans();
  }
  async function loadCloud(force=false){
@@ -123,7 +124,7 @@
    await flushPending();await flushPlans();
    if(owner()!==id||state.owner!==id)return;
    const [plans,sessions,prefs,clock]=await Promise.all([
-    readPages('focus_task_plans',q=>q.gte('day',start).lte('day',day),id),
+    readPages('focus_task_plans',q=>q.eq('task_source','native').gte('day',start).lte('day',day),id),
     readPages('focus_sessions',q=>q.lt('started_at',end+'T03:00:00Z').or('finished_at.gte.'+start+'T00:00:00Z,finished_at.is.null'),id),
     db().from('focus_settings').select('*').eq('user_id',id).maybeSingle(),rpc({p_action:'status'})
    ]);
@@ -143,7 +144,7 @@
    if(!state.loaded){notify('Confira a conexão do planejamento antes de iniciar.',true);return;}
    const task=rows().find(t=>t.task_id===state.selected);
    if(el('fpDay').value!==today()){notify('Volte para hoje para iniciar um ciclo.');return;}
-   if(state.phase==='focus'&&(!state.todoistConfirmed||!task?.available||task.completed_at)){notify('Escolha uma tarefa aberta na leitura confirmada do Todoist.',true);return;}
+   if(state.phase==='focus'&&(!state.todoistConfirmed||!task?.available||task.completed_at)){notify('Escolha uma tarefa aberta na leitura confirmada do Danielle OS.',true);return;}
    if(!state.startingId)state.startingId=crypto.randomUUID();
    payload={...payload,p_session_id:state.startingId,p_revision:null,p_kind:state.phase,p_planned_seconds:(state.phase==='focus'?state.settings.focus_minutes:state.settings.break_minutes)*60,p_task_id:state.phase==='focus'?task.task_id:null,p_task_name:state.phase==='focus'?task.task_name:'Pausa',p_category:state.phase==='focus'?task.category||'other':'other'};
    if(state.phase==='focus')queuePlan(task,{excluded:false});
@@ -163,7 +164,7 @@
    notify(state.pending?'Seu pedido de pausa/encerramento está guardado neste aparelho e aguarda conexão.':'Não consegui confirmar a ação no timer. Atualize para conferir antes de tentar novamente.',true);
   }finally{if(state.owner===id){state.busy=false;renderTimer();}}
  }
- const rows=()=>dailyRows(state.tasks,state.plans,el('fpDay').value);
+ const rows=()=>{const records=state.nativeRecords||[];const completed=records.filter(r=>r.status==='completed'&&!r.archived_at);const plans=state.plans.map(p=>{const r=records.find(t=>t.id===p.task_id);return r?{...p,completed_at:r.status==='completed'?r.completed_at:null,excluded:p.excluded||!!r.archived_at}:p;});return dailyRows([...state.tasks,...completed],plans,el('fpDay').value);};
  function allSessions(){const m=new Map(state.sessions.map(s=>[s.id,s]));if(state.active)m.set(state.active.id,state.active);return [...m.values()];}
  function stats(){return summarize(allSessions(),el('fpDay').value,now());}
  function render(){
@@ -194,9 +195,9 @@
   const s=stats();el('fpPlanCount').textContent=list.filter(t=>t.completed_at).length+' de '+list.length+' concluídas';
   el('fpTasks').innerHTML=list.length?list.map(t=>{
    const missing=!t.available&&!t.completed_at;
-   return '<article class="fp-task" data-selected="'+(t.task_id===state.selected)+'" data-done="'+!!t.completed_at+'"><div class="fp-task-main"><input type="checkbox" data-fp-complete="'+esc(t.task_id)+'" aria-label="Concluir '+esc(t.task_name)+' no Todoist" '+(t.completed_at?'checked disabled':missing||el('fpDay').value!==today()||!state.todoistConfirmed?'disabled':'')+'><span class="fp-task-name">'+esc(t.task_name)+'</span><button class="fp-focus-pick" data-fp-select="'+esc(t.task_id)+'" aria-label="Focar em '+esc(t.task_name)+'" '+(missing||t.completed_at?'disabled':'')+'>▷</button></div><div class="fp-task-meta"><label>Estimativa <input type="number" min="1" max="1440" data-fp-estimate="'+esc(t.task_id)+'" value="'+(t.estimated_minutes||'')+'" placeholder="min" aria-label="Minutos previstos para '+esc(t.task_name)+'"></label><select data-fp-area="'+esc(t.task_id)+'" aria-label="Área de '+esc(t.task_name)+'">'+Object.entries(AREAS).map(([key,name])=>'<option value="'+key+'" '+((t.category||'other')===key?'selected':'')+'>'+name+'</option>').join('')+'</select><small>'+duration(s.tasks[t.task_id]||0)+' de foco</small><button class="fp-task-remove" data-fp-remove="'+esc(t.task_id)+'" '+(state.active?.task_id===t.task_id?'disabled':'')+'>Tirar do dia</button></div>'+(missing?'<p class="fp-small">Não aparece na última lista aberta do Todoist. Confira se foi concluída, removida ou reagendada.</p>':'')+'</article>';
-  }).join(''):'<div class="fp-empty"><strong>Um dia com espaço para focar</strong>Inclua uma tarefa do Todoist no planejamento ou crie uma nova.</div>';
-  const ids=new Set(list.map(t=>t.task_id));el('fpTaskPicker').innerHTML='<option value="">Selecione uma tarefa do Todoist…</option>'+state.tasks.filter(t=>!ids.has(String(t.id))).map(t=>'<option value="'+esc(t.id)+'">'+esc(t.content)+'</option>').join('');
+   return '<article class="fp-task" data-selected="'+(t.task_id===state.selected)+'" data-done="'+!!t.completed_at+'"><div class="fp-task-main"><input type="checkbox" data-fp-complete="'+esc(t.task_id)+'" aria-label="Concluir '+esc(t.task_name)+' no Danielle OS" '+(t.completed_at?'checked disabled':missing||el('fpDay').value!==today()||!state.todoistConfirmed?'disabled':'')+'><span class="fp-task-name">'+esc(t.task_name)+'</span><button class="fp-focus-pick" data-fp-select="'+esc(t.task_id)+'" aria-label="Focar em '+esc(t.task_name)+'" '+(missing||t.completed_at?'disabled':'')+'>▷</button></div><div class="fp-task-meta"><label>Estimativa <input type="number" min="1" max="1440" data-fp-estimate="'+esc(t.task_id)+'" value="'+(t.estimated_minutes||'')+'" placeholder="min" aria-label="Minutos previstos para '+esc(t.task_name)+'"></label><select data-fp-area="'+esc(t.task_id)+'" aria-label="Área de '+esc(t.task_name)+'">'+Object.entries(AREAS).map(([key,name])=>'<option value="'+key+'" '+((t.category||'other')===key?'selected':'')+'>'+name+'</option>').join('')+'</select><small>'+duration(s.tasks[t.task_id]||0)+' de foco</small><button class="fp-task-remove" data-fp-remove="'+esc(t.task_id)+'" '+(state.active?.task_id===t.task_id?'disabled':'')+'>Tirar do dia</button></div>'+(missing?'<p class="fp-small">Essa tarefa foi concluída, arquivada ou reagendada. Confira em Minhas listas e tarefas.</p>':'')+'</article>';
+  }).join(''):'<div class="fp-empty"><strong>Um dia com espaço para focar</strong>Inclua uma tarefa do Danielle OS no planejamento ou crie uma nova.</div>';
+  const ids=new Set(list.map(t=>t.task_id));el('fpTaskPicker').innerHTML='<option value="">Selecione uma tarefa do Danielle OS…</option>'+state.tasks.filter(t=>!ids.has(String(t.id))).map(t=>'<option value="'+esc(t.id)+'">'+esc(t.content)+'</option>').join('');
   el('fpAddPlan').disabled=!state.todoistConfirmed;
  }
  function areaHtml(s){const max=Math.max(...Object.values(s.areas),1);return Object.entries(AREAS).map(([key,name])=>'<div class="fp-area"><span>'+name+'</span><div class="fp-area-track"><i style="width:'+s.areas[key]/max*100+'%"></i></div><span>'+duration(s.areas[key])+'</span></div>').join('');}
@@ -221,7 +222,7 @@
   el('fpHistory').innerHTML=records.length?records.map(s=>'<article class="fp-history-item"><time>'+timeLabel(s.started_at)+(s.finished_at?'–'+timeLabel(s.finished_at):'')+'</time><div><strong>'+esc(s.kind==='break'?'Pausa':s.task_name)+'</strong><small>'+labels[s.status]+' · '+(s.kind==='focus'?AREAS[s.category]||AREAS.other:'descanso')+'</small></div><span>'+duration(elapsed(s,now()))+'</span></article>').join(''):'<div class="fp-empty">Seus ciclos de foco e pausas aparecerão aqui.</div>';
   el('fpRecent').innerHTML=records.slice(0,3).map(s=>'<div class="fp-session-row"><span>'+esc(s.kind==='break'?'Pausa':s.task_name)+'<br><small>'+labels[s.status]+'</small></span><time>'+duration(elapsed(s,now()))+'</time></div>').join('')||'<p class="fp-small">Comece seu primeiro ciclo.</p>';
  }
- function revealLegacy(create=false){el('fpTodoistOriginal').open=true;el('fpTodoistOriginal').scrollIntoView({behavior:'smooth',block:'start'});if(create){el('tdDue').value='hoje';el('tdContent').focus({preventScroll:true});}}
+ function revealLegacy(create=false){if(create&&window.NativeTasks?.openEditor){window.NativeTasks.openEditor();return;}el('fpTodoistOriginal').open=true;el('fpTodoistOriginal').scrollIntoView({behavior:'smooth',block:'start'});if(create){el('tdDue').value='hoje';el('tdContent').focus({preventScroll:true});}}
  async function completeTask(id){
   const task=rows().find(t=>t.task_id===id);if(!task||task.completed_at||!task.available)return;
   try{await closeTodoistTask(id);}finally{render();}
@@ -232,9 +233,10 @@
   try{
    const data=await nativeTodoistCall(payload);if(owner()!==id||state.owner!==id)return data;
    const action=payload.action||'list';
-   if(action==='list'&&(typeof todoistReadRevision==='undefined'||revision===todoistReadRevision)){
-    state.tasks=data.groups.all;state.todoistConfirmed=true;state.syncText=typeof todoistSyncText==='function'?todoistSyncText(data):state.tasks.length+' tarefas abertas conferidas no Todoist.';render();loadCloud().catch(()=>{});
+   if(action==='list'&&data.sync?.provider==='danielle-os'&&(typeof todoistReadRevision==='undefined'||revision===todoistReadRevision)){
+    state.tasks=data.groups.all;state.nativeRecords=data.records||[];state.todoistConfirmed=true;state.syncText=typeof todoistSyncText==='function'?todoistSyncText(data):state.tasks.length+' tarefas abertas conferidas no Danielle OS.';render();loadCloud().catch(()=>{});
    }
+   if(['reopen','archive','restore'].includes(action)){const task=state.plans.find(p=>p.day===today()&&p.task_id===String(payload.id));if(task)queuePlan(task,action==='reopen'?{completed_at:null}:action==='archive'?{excluded:true}:{excluded:false},today());}
    if(action==='close'){
     const task=dailyRows(state.tasks,state.plans,today()).find(t=>t.task_id===String(payload.id));
     if(task)queuePlan(task,{completed_at:new Date(now()).toISOString()},today());
@@ -242,7 +244,7 @@
     state.tasks=state.tasks.filter(t=>String(t.id)!==String(payload.id));render();
    }
    return data;
-  }catch(error){if((payload.action||'list')==='list'&&owner()===id){state.todoistConfirmed=false;state.syncText='Leitura do Todoist não confirmada. '+(state.tasks.length?'Exibindo a última lista conhecida.':'');render();}throw error;}
+  }catch(error){if((payload.action||'list')==='list'&&owner()===id){state.todoistConfirmed=false;state.syncText='Leitura do Danielle OS não confirmada. '+(state.tasks.length?'Exibindo a última lista conhecida.':'');render();}throw error;}
  };
  el('fpStart').addEventListener('click',()=>timerAction(state.active?.status==='paused'?'resume':'start'));
  el('fpPause').addEventListener('click',()=>timerAction('pause'));el('fpStop').addEventListener('click',()=>timerAction('stop'));

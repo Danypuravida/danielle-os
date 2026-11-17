@@ -1,0 +1,32 @@
+name: Native tasks regression
+on:
+  push:
+    paths:
+      - 'native-tasks.*'
+      - 'index.html'
+      - 'focus-workspace.js'
+      - 'supabase/functions/todoist-proxy/index.ts'
+      - 'tests/native-tasks.cjs'
+      - 'tests/todoist-sync.cjs'
+      - '.github/workflows/native-tasks.yml'
+  pull_request:
+    paths:
+      - 'native-tasks.*'
+      - 'index.html'
+      - 'focus-workspace.js'
+permissions:
+  contents: read
+jobs:
+  tasks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: node tests/native-tasks.cjs
+      - run: node tests/todoist-sync.cjs
+      - run: node tests/focus-workspace.cjs
+      - run: node tests/focus-controller.cjs
+      - run: node tests/james-page.cjs
