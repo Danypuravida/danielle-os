@@ -1,9 +1,9 @@
-const CACHE_NAME = 'danielle-os-v1-1-36';
+const CACHE_NAME = 'danielle-os-v1-1-37';
 const CORE_ASSETS = [
   './',
   './index.html',
-  './career-portfolio.css?v=2',
-  './career-portfolio.js?v=2',
+  './career-portfolio.css?v=3',
+  './career-portfolio.js?v=3',
   './manifest.webmanifest',
   './service-worker.js',
   './icon-192.png',

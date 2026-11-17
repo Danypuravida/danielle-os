@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
-const {typeOf,filterRecords,statistics,summaryText,sourceLink,validateFiles,duplicateUpload} = require('../career-portfolio.js');
+const {typeOf,filterRecords,statistics,summaryText,sourceLink,validateFiles,duplicateUpload,linkedinText,linkedinCandidates} = require('../career-portfolio.js');
 
 const evidence=[
   {id:'old',user_id:'owner',evidence_date:'2025-11-02',competency:'Projeto estratégico',result:'Entrega anterior'},
@@ -31,6 +31,18 @@ assert.throws(()=>validateFiles([{name:'x.pdf',size:10}],10),/10 arquivos/);
 assert.equal(validateFiles([{name:'certificado.PDF',size:10,type:''}])[0].mime,'application/pdf');
 assert(duplicateUpload({statusCode:'409'}));assert(duplicateUpload({statusCode:'400',message:'The resource already exists'}));
 assert(!duplicateUpload({statusCode:'400',message:'Invalid MIME type'}));
+assert.equal(linkedinText([],'2026'),'','Never invent a LinkedIn post without evidence');
+assert.equal(linkedinCandidates(evidence)[0].id,'d','Featured records are suggested first');
+const privateEvidence={...evidence[1],stakeholder:'Confidential stakeholder',evidence_source:'https://private.example/report',situation:'Private context',lesson_learned:'Preparar o processo com antecedência ajuda o time'};
+const post=linkedinText([privateEvidence],'novembro de 2026');
+assert.match(post,/Redução de tempo/);assert.match(post,/7 para 3 minutos/);
+assert.match(post,/Preparar o processo com antecedência/);
+for(const value of ['Confidential stakeholder','private.example','Private context','57%','100%'])assert(!post.includes(value),'Only the selected results and learning enter the post: '+value);
+assert.equal(linkedinText([evidence[1]],'2026','learning'),'','Missing learning must not become an invented reflection');
+assert.match(linkedinText([privateEvidence],'2026','learning'),/^Um aprendizado/);
+const review=linkedinText(linkedinCandidates(evidence),'2026','review');
+assert(review.includes('Novo fluxo'));assert(!review.includes('Entrega anterior'),'The review stays focused on at most three chosen records');
+assert.match(linkedinText([{...evidence[1],before_value:'0',after_value:'4',metric_unit:'casos',result:'Fluxo documentado'}],'2026'),/Antes: 0 casos\. Depois: 4 casos/);
 
 // Run the actual UI controller against an in-memory adapter. No production rows or files are created.
 async function controllerTests(){
@@ -43,7 +55,7 @@ async function controllerTests(){
   const nodes=new Map(),el=id=>{if(!nodes.has(id))nodes.set(id,new Element(id));return nodes.get(id);};
   const document={getElementById:el,querySelector:()=>el('section'),querySelectorAll:()=>[]};
   const rows=[],assets=[],objects=new Set(),queries=[],writeIds=[],uploadPaths=[];
-  let failUpload=true,failMetadata=false,failRead=false,uid='owner',sequence=0;
+  let failUpload=true,failMetadata=false,failRead=false,uid='owner',sequence=0,copied='';
   const client={from(table){let mode='read',payload,filters=[],single=false,range=[0,999];
     const q={select(){return q},eq(k,v){filters.push([k,v]);return q},order(){return q},range(a,b){range=[a,b];return q},
       upsert(p){mode='upsert';payload=p;return q},insert(p){mode='insert';payload=p;return q},update(p){mode='update';payload=p;return q},delete(){mode='delete';return q},single(){single=true;return q},maybeSingle(){single=true;return q},
@@ -62,6 +74,7 @@ async function controllerTests(){
         return Promise.resolve({data:result,error:null}).then(ok,bad);
       }};return q;},storage:{from(){return {async upload(p){uploadPaths.push(p);if(failUpload){failUpload=false;return {error:{statusCode:500}};}objects.add(p);return {error:null};},async remove(paths){paths.forEach(p=>objects.delete(p));return {error:null};},async createSignedUrl(p){return {data:{signedUrl:'https://example.com/private/'+p},error:null};}};}}};
   const context={document,window:{},sb:client,console,URL,Option:class{constructor(text,value){this.text=text;this.value=value;}},crypto:{randomUUID:()=> 'test-uuid-'+(++sequence)},setTimeout,clearTimeout,
+    navigator:{clipboard:{writeText:async text=>{copied=text;}}},
     get currentUserId(){return uid;},loadSeniorityEvidence(){},saveSeniorityEvidence(){},isoDateLocal:()=> '2026-11-17',numericDelta:()=>null,cloudMsg(){},refreshDashboardMetrics:async()=>{},loadMonthlyReview:async()=>{}};
   vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(__dirname,'../career-portfolio.js'),'utf8'),context);
   await context.window.CareerPortfolio.load();
@@ -81,6 +94,12 @@ async function controllerTests(){
   assert.equal(objects.size,1,'Committed metadata never loses its referenced object');
   assert.equal(el('cpEditor').open,false,'The editor closes only after every file is confirmed');
   assert.match(el('cpSummaryText').value,/Entrega nova/,'An initial empty state never becomes a stale draft after data loads');
+  assert.match(el('cpLinkedInText').value,/Entrega nova/,'The LinkedIn idea is ready as soon as records arrive');
+  el('cpLinkedInText').value='Minha versão pessoal do texto';el('cpLinkedInText').listeners.input();
+  await el('cpLinkedInCopy').listeners.click();assert.equal(copied,'Minha versão pessoal do texto','Copy uses the edited draft');
+  await context.window.CareerPortfolio.load(true);
+  assert.equal(el('cpLinkedInText').value,'Minha versão pessoal do texto','A refresh preserves manual draft edits');
+  el('cpLinkedInRegenerate').listeners.click();assert.match(el('cpLinkedInText').value,/Entrega nova/);
   assert(queries.filter(q=>q.mode==='read').every(q=>q.filters.some(([k])=>k==='user_id')),'All archive reads are explicitly scoped to the signed-in owner');
   const before=el('seniorityList').innerHTML;failRead=true;await context.window.CareerPortfolio.load(true);
   assert.equal(el('seniorityList').innerHTML,before,'A failed refresh preserves the last confirmed list');
@@ -88,5 +107,6 @@ async function controllerTests(){
   // Replacing an account must not display the previous account's records during a failed read.
   uid='other';await context.window.CareerPortfolio.load(true);
   assert(!el('seniorityList').innerHTML.includes('Entrega nova'),'An account change clears private data even when the new read fails');
+  assert(!el('cpLinkedInText').value.includes('Entrega nova'),'An account change also clears LinkedIn drafts');
 }
 controllerTests().then(()=>console.log('PASS: period filters, factual metrics, legacy records, safe links and files, owner-scoped reads, idempotent saves, partial-upload retries and account isolation.')).catch(error=>{console.error(error);process.exitCode=1;});

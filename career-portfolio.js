@@ -42,6 +42,40 @@
       return '• '+titleOf(r)+' ('+formatDate(dateOf(r))+')'+result+metric;
     }).join('\n\n')+(records.length>5?'\n\nO resumo seleciona até cinco registros, priorizando os destaques e a força da evidência.':'');
   }
+  function linkedinCandidates(records){
+    return [...records].sort((a,b)=>Number(!!b.featured)-Number(!!a.featured)||dateOf(b).localeCompare(dateOf(a))||String(a.id).localeCompare(String(b.id)));
+  }
+  function postSentence(value){
+    const text=String(value||'').trim().replace(/\s+/g,' ');
+    return text && !/[.!?…]$/.test(text)?text+'.':text;
+  }
+  function linkedinText(records,period,mode='achievement'){
+    if(!records.length)return '';
+    const selected=records.slice(0,mode==='review'?3:1);
+    if(mode==='learning'&&!selected[0].lesson_learned?.trim())return '';
+    function outcome(r){
+      const title=postSentence(titleOf(r)),result=postSentence(r.result);
+      const action=postSentence(r.action_taken);
+      const parts=[title];
+      if(action&&normalize(action)!==normalize(title)&&normalize(action)!==normalize(result))parts.push(action);
+      if(result&&normalize(result)!==normalize(title))parts.push(result);
+      // Use the recorded values without inferring a gain, a reduction or a percentage.
+      if(r.before_value!=null&&r.after_value!=null&&String(r.before_value).trim()&&String(r.after_value).trim()){
+        const before=String(r.before_value).trim(),after=String(r.after_value).trim(),unit=r.metric_unit?' '+String(r.metric_unit).trim():'';
+        if(!String(r.result||'').includes(before)||!String(r.result||'').includes(after))parts.push('Antes: '+before+unit+'. Depois: '+after+unit+'.');
+      }
+      return parts.join(' ');
+    }
+    if(mode==='review'){
+      const lessons=[...new Set(selected.map(r=>String(r.lesson_learned||'').trim()).filter(Boolean))];
+      return 'Alguns registros de '+period+' que quero compartilhar.\n\n'+selected.map(outcome).join('\n\n')+(lessons.length?'\n\nUm aprendizado que levo desse período: '+postSentence(lessons[0]):'');
+    }
+    const r=selected[0];
+    if(mode==='learning')return 'Um aprendizado da minha rotina de trabalho: '+postSentence(r.lesson_learned)+'\n\nIsso veio de uma experiência que quero registrar: '+outcome(r);
+    if(typeOf(r)==='feedback')return 'Recebi um feedback que quero guardar e compartilhar:\n\n“'+String(r.result||'').trim()+'”'+(r.lesson_learned?'\n\nO que levo dessa troca: '+postSentence(r.lesson_learned):'');
+    const intro=({course:'Um curso que entrou para a minha trajetória.',talk:'Uma participação que quero registrar por aqui.',material:'Um material do meu portfólio.'})[typeOf(r)]||'Uma entrega que quero registrar por aqui.';
+    return intro+'\n\n'+outcome(r)+(r.lesson_learned?'\n\nO que levo dessa experiência: '+postSentence(r.lesson_learned):'');
+  }
   function formatDate(date) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'Sem data';
     return date.slice(8,10)+'/'+date.slice(5,7)+'/'+date.slice(0,4);
@@ -63,11 +97,11 @@
     return status==='409' || ['ResourceAlreadyExists','KeyAlreadyExists','Duplicate'].includes(error?.code||error?.error) || (status==='400' && /already exists/i.test(error?.message||''));
   }
   // Export only pure helpers for regression tests; production runs as a classic script.
-  if(typeof module!=='undefined' && module.exports) module.exports={typeOf,dateOf,filterRecords,statistics,summaryText,sourceLink,validateFiles,duplicateUpload};
+  if(typeof module!=='undefined' && module.exports) module.exports={typeOf,dateOf,filterRecords,statistics,summaryText,sourceLink,validateFiles,duplicateUpload,linkedinCandidates,linkedinText};
   if(typeof document==='undefined') return;
 
   const el=id=>document.getElementById(id);
-  const state={owner:null,records:[],scores:[],assets:[],loaded:false,loading:null,request:0,view:'overview',editorId:null,saving:false,removing:false,pendingFiles:[],uploads:new WeakMap(),signed:new Map(),summaryKey:'',summaryDrafts:new Map()};
+  const state={owner:null,records:[],scores:[],assets:[],loaded:false,loading:null,request:0,view:'overview',editorId:null,saving:false,removing:false,pendingFiles:[],uploads:new WeakMap(),signed:new Map(),summaryKey:'',summaryDrafts:new Map(),linkedinSourceView:'overview',linkedinSourceKey:'',linkedinKey:'',linkedinSelected:[],linkedinDrafts:new Map()};
   const getOwner=()=>typeof currentUserId==='undefined'?null:currentUserId;
   const client=()=>sb;
   const notify=(message,good=false)=>{ if(typeof cloudMsg==='function') cloudMsg(message,good); };
@@ -89,6 +123,7 @@
     const owner=getOwner();
     if(owner!==state.owner){
       state.request++;state.owner=owner;state.loaded=false;state.loading=null;state.records=[];state.scores=[];state.assets=[];state.signed.clear();state.summaryDrafts.clear();state.summaryKey='';
+      state.linkedinDrafts.clear();state.linkedinSourceKey='';state.linkedinKey='';state.linkedinSelected=[];state.linkedinSourceView='overview';
       if(el('cpEditor').open) el('cpEditor').close();
       el('cpForm').reset();el('cpEditorFiles').innerHTML='';state.pendingFiles=[];state.editorId=null;
       render();
@@ -137,8 +172,8 @@
       [stats.courses,'cursos concluídos','registrados no período'],
       [stats.projects,'projetos registrados','parte das entregas']
     ].map(([v,label,note])=>'<div class="cp-kpi"><strong>'+(state.loaded?escape(v):'—')+'</strong><span>'+label+'</span><small>'+note+'</small></div>').join('');
-    const material=state.view==='materials',summary=state.view==='summary';
-    el('cpMainColumns').hidden=material;el('cpMaterialsPanel').hidden=!material;el('cpListPanel').hidden=summary;el('cpInsights').hidden=summary;
+    const material=state.view==='materials',summary=state.view==='summary',linkedin=state.view==='linkedin';
+    el('cpMainColumns').hidden=material||linkedin;el('cpMaterialsPanel').hidden=!material;el('cpLinkedInPanel').hidden=!linkedin;el('cpListPanel').hidden=summary;el('cpInsights').hidden=summary;
     el('cpMainColumns').style.gridTemplateColumns=summary?'1fr':'';
     el('cpHighlights').hidden=state.view!=='overview';
     document.querySelectorAll('[data-cp-view]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.cpView===state.view)));
@@ -149,6 +184,7 @@
     if(key!==state.summaryKey)el('cpCopyStatus').textContent='';
     state.summaryKey=key;
     el('cpSummaryText').value=state.summaryDrafts.get(key)||summaryText(visible,summaryLabel(f));
+    renderLinkedin();
     el('cpFootnote').textContent='Indicadores do período selecionado. Busca e seções filtram a lista e o resumo. Arquivos privados.';
   }
   function empty(title,body,button=true){return '<div class="cp-empty"><span class="cp-empty-mark" aria-hidden="true">✳</span><h3>'+title+'</h3><p>'+body+'</p>'+(button?'<button type="button" class="cp-btn cp-primary" data-cp-action="new">＋ Novo registro</button>':'')+'</div>';}
@@ -335,7 +371,43 @@
     }catch{el('cpEditorStatus').textContent='Não consegui concluir a remoção. Tente remover novamente.';}
     finally{state.removing=false;editorBusy(false);}
   }
-  function setView(view){state.view=view;render();}
+  function linkedinRows(){
+    const f=filters();return linkedinCandidates(filterRecords(state.records,{...f,view:state.linkedinSourceView}));
+  }
+  function renderLinkedin(force=false){
+    const f=filters(),mode=el('cpLinkedInMode').value||'achievement';
+    const rows=linkedinRows();
+    const available=mode==='learning'?rows.filter(r=>r.lesson_learned?.trim()):rows;
+    const sourceKey=JSON.stringify([state.owner,f.year,f.month,f.search,state.linkedinSourceView,mode,...available.map(r=>r.id)]);
+    if(sourceKey!==state.linkedinSourceKey){
+      state.linkedinSourceKey=sourceKey;
+      state.linkedinSelected=available.slice(0,mode==='review'?3:1).map(r=>r.id);
+    }
+    state.linkedinSelected=state.linkedinSelected.filter(id=>rows.some(r=>r.id===id));
+    const selected=state.linkedinSelected.map(id=>rows.find(r=>r.id===id)).filter(Boolean);
+    state.linkedinKey=JSON.stringify([sourceKey,...state.linkedinSelected]);
+    const draft=force?null:state.linkedinDrafts.get(state.linkedinKey);
+    if(force)state.linkedinDrafts.delete(state.linkedinKey);
+    el('cpLinkedInText').value=draft??linkedinText(selected,periodLabel(f),mode);
+    el('cpLinkedInCopyStatus').textContent='';
+    const kind=TYPES[state.linkedinSourceView];
+    el('cpLinkedInPeriod').textContent=periodLabel(f)+(kind?' · '+kind:'')+(f.search.trim()?' · busca: “'+f.search.trim()+'”':'');
+    el('cpLinkedInSelectionHint').textContent=mode==='review'?'Selecione até 3 registros para o balanço.':'Selecione o registro que vai virar publicação.';
+    el('cpLinkedInSources').innerHTML=rows.length?rows.map(r=>'<label class="cp-li-source"><input type="checkbox" data-cp-linkedin-source="'+escape(r.id)+'" '+(state.linkedinSelected.includes(r.id)?'checked':'')+'><span><strong>'+escape(titleOf(r))+'</strong><small>'+TYPES[typeOf(r)]+' · '+formatDate(dateOf(r))+(r.featured?' · Em destaque':'')+'</small></span></label>').join(''):'<p class="cp-small">Adicione uma conquista ou altere os filtros para preparar seu texto.</p>';
+    const noLearning=mode==='learning'&&selected.length&&!selected[0].lesson_learned?.trim();
+    el('cpLinkedInText').placeholder=noLearning?'Este registro ainda não tem um aprendizado. Complete esse campo em Editar registro ou escolha outro foco.':rows.length?'Escolha um registro ao lado para ver o texto pronto.':'Assim que você registrar uma conquista, o rascunho aparece aqui.';
+    if(mode==='learning'&&!selected.length&&rows.length)el('cpLinkedInText').placeholder='Nenhum aprendizado foi preenchido nesses registros. Escolha Uma conquista ou complete o campo Aprendizado em um registro.';
+    linkedinCount();
+  }
+  function linkedinCount(){
+    const text=el('cpLinkedInText').value.trim();el('cpLinkedInCount').textContent=text.length+' caracteres';el('cpLinkedInCopy').disabled=!text;
+  }
+  async function copyLinkedin(){
+    const text=el('cpLinkedInText').value.trim();if(!text)return;
+    try{await navigator.clipboard.writeText(text);el('cpLinkedInCopyStatus').textContent='Texto copiado. Agora você pode colar no LinkedIn.';}
+    catch{el('cpLinkedInText').focus();el('cpLinkedInText').select();el('cpLinkedInCopyStatus').textContent='Selecione e copie o texto para colar no LinkedIn.';}
+  }
+  function setView(view){if(view==='linkedin'&&state.view!=='linkedin')state.linkedinSourceView=TYPES[state.view]?state.view:'overview';state.view=view;render();}
   async function copySummary(){
     try{await navigator.clipboard.writeText(el('cpSummaryText').value);el('cpCopyStatus').textContent='Resumo copiado. Revise antes de compartilhar.';}
     catch{el('cpSummaryText').focus();el('cpSummaryText').select();el('cpCopyStatus').textContent='Selecione e copie o texto do resumo.';}
@@ -355,6 +427,19 @@
   el('cpCopy').addEventListener('click',copySummary);
   el('cpSummaryText').addEventListener('input',()=>{state.summaryDrafts.set(state.summaryKey,el('cpSummaryText').value);});
   el('cpRegenerate').addEventListener('click',()=>{const f=filters();state.summaryDrafts.delete(state.summaryKey);el('cpSummaryText').value=summaryText(filterRecords(state.records,f),summaryLabel(f));el('cpCopyStatus').textContent='Resumo refeito a partir dos registros atuais.';});
+  el('cpLinkedInMode').addEventListener('change',()=>renderLinkedin());
+  el('cpLinkedInText').addEventListener('input',()=>{state.linkedinDrafts.set(state.linkedinKey,el('cpLinkedInText').value);el('cpLinkedInCopyStatus').textContent='';linkedinCount();});
+  el('cpLinkedInRegenerate').addEventListener('click',()=>renderLinkedin(true));
+  el('cpLinkedInCopy').addEventListener('click',copyLinkedin);
+  el('cpLinkedInSources').addEventListener('change',event=>{
+    const input=event.target.closest('[data-cp-linkedin-source]');if(!input)return;
+    const id=input.dataset.cpLinkedinSource,mode=el('cpLinkedInMode').value;
+    if(!input.checked)state.linkedinSelected=state.linkedinSelected.filter(x=>x!==id);
+    else if(mode!=='review')state.linkedinSelected=[id];
+    else if(state.linkedinSelected.length<3)state.linkedinSelected.push(id);
+    else{input.checked=false;el('cpLinkedInCopyStatus').textContent='Escolha até 3 registros. Desmarque um deles para incluir outro.';return;}
+    renderLinkedin();
+  });
   document.querySelector('[data-page="senioridade"]').addEventListener('click',event=>{
     const button=event.target.closest('[data-cp-view],[data-cp-action]');if(!button)return;
     if(button.dataset.cpView){setView(button.dataset.cpView);return;}

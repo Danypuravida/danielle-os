@@ -667,7 +667,7 @@ select.field{max-width:100%}
 .field option{color:var(--text);}
 </style>
 
-<link rel="stylesheet" href="./career-portfolio.css?v=2">
+<link rel="stylesheet" href="./career-portfolio.css?v=3">
 </head><body>
 <div id="authScreen" class="auth-screen">
   <div class="auth-card">
@@ -1038,6 +1038,7 @@ select.field{max-width:100%}
         <button type="button" data-cp-view="talk" aria-pressed="false">Palestras</button>
         <button type="button" data-cp-view="materials" aria-pressed="false">Fotos e materiais</button>
         <button type="button" data-cp-view="summary" aria-pressed="false">Resumo da avaliação</button>
+        <button type="button" data-cp-view="linkedin" aria-pressed="false">LinkedIn</button>
       </nav>
       <div class="cp-side-note"><strong id="cpArchiveCount">—</strong>registros no seu acervo<br><br>Seu trabalho tem história.<br>Guarde as evidências.</div>
     </aside>
@@ -1065,7 +1066,7 @@ select.field{max-width:100%}
             <div class="cp-panel-head"><h2 id="cpSummaryTitle">Resumo para a avaliação</h2><span class="cp-tag">A partir dos seus registros</span></div>
             <p class="cp-small">Ajuste o rascunho antes de copiar. O texto reúne o período e os filtros selecionados.</p>
             <textarea id="cpSummaryText" aria-label="Texto do resumo para copiar" spellcheck="true"></textarea>
-            <div class="cp-summary-tools"><button type="button" class="cp-btn" id="cpCopy">Copiar resumo</button><button type="button" class="cp-btn" id="cpRegenerate">Refazer com os registros</button></div>
+            <div class="cp-summary-tools"><button type="button" class="cp-btn" id="cpCopy">Copiar resumo</button><button type="button" class="cp-btn" id="cpRegenerate">Refazer com os registros</button><button type="button" class="cp-btn" data-cp-view="linkedin">Texto para o LinkedIn</button></div>
             <p class="cp-small" id="cpCopyStatus" role="status"></p>
           </section>
           <section class="cp-panel cp-review" id="cpReviewPanel">
@@ -1078,8 +1079,21 @@ select.field{max-width:100%}
           <section class="cp-panel"><div class="cp-panel-head"><h2>Feedbacks recebidos</h2></div><div id="cpFeedbacks"></div></section>
         </aside>
       </div>
+      <section class="cp-panel cp-linkedin" id="cpLinkedInPanel" hidden aria-labelledby="cpLinkedInTitle">
+        <div class="cp-panel-head"><div><p class="cp-eyebrow">Da conquista à publicação</p><h2 id="cpLinkedInTitle">Seu próximo texto no LinkedIn</h2></div><span class="cp-tag">Rascunho para revisar</span></div>
+        <p class="cp-small">O texto já vem preparado com os registros escolhidos. Ajuste para ficar com a sua voz e revise os detalhes antes de compartilhar.</p>
+        <div class="cp-li-layout">
+          <div class="cp-li-draft"><label for="cpLinkedInMode">Foco do texto</label><select id="cpLinkedInMode"><option value="achievement">Uma conquista</option><option value="review">Balanço do período</option><option value="learning">Um aprendizado</option></select>
+            <p class="cp-small" id="cpLinkedInPeriod"></p>
+            <label for="cpLinkedInText">Ideia de texto pronta para editar</label><textarea id="cpLinkedInText" rows="14" spellcheck="true"></textarea>
+            <div class="cp-li-meta"><span class="cp-small" id="cpLinkedInCount"></span><span class="cp-small">Edições livres neste rascunho</span></div>
+            <div class="cp-summary-tools"><button type="button" class="cp-btn cp-primary" id="cpLinkedInCopy">Copiar para o LinkedIn</button><button type="button" class="cp-btn" id="cpLinkedInRegenerate">Refazer texto</button></div><p class="cp-small" id="cpLinkedInCopyStatus" role="status" aria-live="polite"></p>
+          </div>
+          <aside class="cp-li-evidence" aria-label="Registros para o texto"><h3>O que entra no texto</h3><p class="cp-small" id="cpLinkedInSelectionHint"></p><div id="cpLinkedInSources"></div><p class="cp-small">Os destaques entram primeiro. O texto usa os resultados e aprendizados preenchidos nos seus registros.</p></aside>
+        </div>
+      </section>
       <section class="cp-panel" id="cpMaterialsPanel" hidden aria-labelledby="cpMaterialsTitle"><div class="cp-panel-head"><h2 id="cpMaterialsTitle">Fotos e materiais</h2><span class="cp-small" id="cpMaterialsCount"></span></div><p class="cp-small">Fotos de palestras, certificados, apresentações e documentos vinculados aos seus registros.</p><div id="cpGallery" class="cp-gallery"></div></section>
-      <footer class="cp-footer"><span id="cpFootnote">Seu acervo é privado. Você escolhe o que registrar e destacar.</span><span>Danielle OS · carreira em construção</span></footer>
+      <footer class="cp-footer"><span id="cpFootnote">Seu acervo é privado. Você escolhe o que registrar e destacar.</span><button type="button" class="cp-btn" data-cp-view="linkedin">Texto para o LinkedIn</button></footer>
     </div>
   </div>
   <dialog class="cp-dialog" id="cpEditor" aria-labelledby="cpEditorTitle">
@@ -5467,5 +5481,5 @@ loadJames=async function(syncFinance=true){
 };
 
 </script>
-<script src="./career-portfolio.js?v=2"></script>
+<script src="./career-portfolio.js?v=3"></script>
 </body></html>

@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
   <title>Prévia visual · Portfólio de carreira</title>
-  <link rel="stylesheet" href="../../career-portfolio.css?v=2">
+  <link rel="stylesheet" href="../../career-portfolio.css?v=3">
 </head>
 <body>
   <p id="fixtureStatus" style="margin:0;padding:7px 20px;background:#e7ebdf;color:#56634d;font:11px/1.5 system-ui">PRÉVIA DE TESTE · Registros fictícios. Nenhum dado da sua conta é acessado ou alterado.</p>
@@ -23,7 +23,7 @@
       ['10-09','feedback','Feedback sobre a condução do projeto','Você trouxe clareza para as decisões e ouviu o time.','Comunicação/Liderança',false],
       ['09-17','course','Concluí um curso de negociação','Apliquei técnicas de preparação nas conversas com stakeholders.','Stakeholders',false],
       ['08-14','delivery','Criei um acompanhamento dos indicadores','A equipe passou a consultar os dados em uma única fonte.','Dados/Indicadores',false]
-    ].map(([day,type,title,result,competency,featured],i)=>({id:'sample-'+i,user_id:'preview',evidence_date:fixtureYear+'-'+day,entry_type:type,title,result,competency,domain:competency,featured,evidence_strength:4,situation:'Contexto de demonstração visual.',action_taken:'Registro fictício usado apenas nesta prévia.',stakeholder:'Equipe · exemplo',created_at:fixtureYear+'-'+day+'T12:00:00Z',before_value:i===0?'7':null,after_value:i===0?'3':null,metric_unit:i===0?'min':null}));
+    ].map(([day,type,title,result,competency,featured],i)=>({id:'sample-'+i,user_id:'preview',evidence_date:fixtureYear+'-'+day,entry_type:type,title,result,competency,domain:competency,featured,evidence_strength:4,situation:'Contexto de demonstração visual.',action_taken:i===0?'Revisei o fluxo com a equipe e documentei as etapas de atendimento.':'',lesson_learned:i===0?'Testar o fluxo com quem atende ajuda a encontrar os gargalos.':'',stakeholder:'Equipe · exemplo',created_at:fixtureYear+'-'+day+'T12:00:00Z',before_value:i===0?'7':null,after_value:i===0?'3':null,metric_unit:i===0?'min':null}));
     const fixtureEmpty=new URLSearchParams(location.search).has('empty');
     const fixtureTables={seniority_evidence:fixtureEmpty?[]:fixtureRows,weekly_scorecards:fixtureEmpty?[]:[{id:'score1',user_id:'preview',week_start:fixtureYear+'-11-09',priorities_planned:5,priorities_completed:4}],career_portfolio_assets:[]};
     var sb={from(table){let mode='read',payload,filters=[],range=[0,999];const q={select(){return q},eq(k,v){filters.push([k,v]);return q},order(){return q},range(a,b){range=[a,b];return q},upsert(p){mode='upsert';payload=p;return q},update(p){mode='update';payload=p;return q},single(){return q},then(ok,bad){let result;if(mode==='upsert'){const item={...payload},i=fixtureTables[table].findIndex(r=>r.id===item.id);if(i<0)fixtureTables[table].push(item);else fixtureTables[table][i]=item;result=item;}else if(mode==='update'){const row=fixtureTables[table].find(r=>filters.every(([k,v])=>r[k]===v));Object.assign(row,payload);result=row;}else result=fixtureTables[table].filter(r=>filters.every(([k,v])=>r[k]===v)).slice(range[0],range[1]+1);return Promise.resolve({data:result,error:null}).then(ok,bad)}};return q},storage:{from(){return {upload:async()=>({error:{message:'Uploads não estão ativos na prévia visual.'}})}}}};
@@ -33,7 +33,7 @@
       source.querySelectorAll('style').forEach(style=>document.head.append(style.cloneNode(true)));
       const link=document.querySelector('link[rel=stylesheet]');document.head.append(link);
       const section=source.querySelector('[data-page=senioridade]');section.classList.add('active');document.getElementById('fixtureMain').append(section);
-      const script=document.createElement('script');script.src='../../career-portfolio.js?v=2';document.body.append(script);
+      const script=document.createElement('script');script.src='../../career-portfolio.js?v=3';document.body.append(script);
     })().catch(error=>document.getElementById('fixtureStatus').textContent='Falha na prévia: '+error.message);
   </script>
 </body>
