@@ -853,7 +853,7 @@ select.field{max-width:100%}
     <div class="card source-status-card todoist">
       <div class="source-card-top"><span class="source-card-badge">Tarefas</span><span class="tag" id="sourceTodoistCount">0</span></div>
       <h3>Execução do dia</h3>
-      <p id="sourceTodoistState" class="muted">Resumo superficial aqui; aprofundamento na aba Danielle OS.</p>
+      <p id="sourceTodoistState" class="muted">Resumo superficial aqui; aprofundamento na aba Tarefas.</p>
     </div>
     <div class="card source-status-card whatsapp">
       <div class="source-card-top"><span class="source-card-badge">WhatsApp • James</span><span class="tag" id="sourceWhatsAppCount">0</span></div>
@@ -3264,11 +3264,11 @@ async function loadJamesTodoist(){
     const overdue=(groups.overdue||[]).length;
     el.textContent=`${today} pendente(s) hoje${overdue?` • ${overdue} atrasada(s)`:''}`;
     setTextSafe('sourceTodoistCount',String(today));
-    setTextSafe('sourceTodoistState', overdue?`${today} tarefa(s) para hoje • ${overdue} atrasada(s). Aprofunde na aba Danielle OS.`:`${today} tarefa(s) previstas para hoje. Aprofunde na aba Danielle OS.`);
+    setTextSafe('sourceTodoistState', overdue?`${today} tarefa(s) para hoje • ${overdue} atrasada(s). Aprofunde na aba Tarefas.`:`${today} tarefa(s) previstas para hoje. Aprofunde na aba Tarefas.`);
   }catch(e){
     el.textContent='Danielle OS indisponível agora';
     setTextSafe('sourceTodoistCount','0');
-    setTextSafe('sourceTodoistState','Resumo superficial indisponível agora. Se precisar, abra a aba Danielle OS.');
+    setTextSafe('sourceTodoistState','Resumo superficial indisponível agora. Se precisar, abra a aba Tarefas.');
   }
 }
 
@@ -5326,7 +5326,7 @@ function jamesReadIssues(){
   else if(!h.last_scan_at)out.push(label+': primeira análise ainda não confirmada');
   else if(Date.now()-new Date(h.last_scan_at).getTime()>30*60000)out.push(label+': última leitura em '+jamesReadTime(h.last_scan_at)+'; atualização pendente');
  }
- if(!jamesHealth.todoist||jamesHealth.todoist.error)out.push('Danielle OS: '+(jamesHealth.todoist?.error||'leitura ainda não conferida'));
+ if(!jamesHealth.todoist||jamesHealth.todoist.error)out.push('Tarefas: '+(jamesHealth.todoist?.error||'leitura ainda não conferida'));
  return out;
 }
 function renderJamesHealth(){
@@ -5362,7 +5362,7 @@ loadJamesTodoist=async function(){
   setTextSafe('jamesTodoistSummary',today+' pendente(s) hoje • '+overdue+' atrasada(s)');
   setTextSafe('sourceTodoistCount',String(today+overdue));
   setTextSafe('sourceTodoistState',today+' tarefa(s) para hoje • '+overdue+' atrasada(s) • '+groups.no_due.length+' sem data. '+todoistSyncText(data));
- }catch(e){if(request!==todoistJamesRequest)return;jamesHealth.todoist={error:e.message};setTextSafe('jamesTodoistSummary','Não foi possível ler o Danielle OS');setTextSafe('sourceTodoistCount','—');setTextSafe('sourceTodoistState','Leitura falhou: '+e.message)}
+ }catch(e){if(request!==todoistJamesRequest)return;jamesHealth.todoist={error:e.message};setTextSafe('jamesTodoistSummary','Não foi possível ler as tarefas');setTextSafe('sourceTodoistCount','—');setTextSafe('sourceTodoistState','Leitura falhou: '+e.message)}
  renderJamesHealth();
 };
 async function refreshVisibleTodoist(force=false){

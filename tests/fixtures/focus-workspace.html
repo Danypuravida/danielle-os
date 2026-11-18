@@ -30,5 +30,17 @@ var todoistSyncText=data=>data.sync.task_count+' tarefas de teste no Danielle OS
 var loadTodoistTasks=async function(){const data=await todoistCall({action:'list'});window.NativeTasks.render(data);document.getElementById('todoistStatus').textContent=todoistSyncText(data);};
 var loadJamesTodoist=async()=>{};
 var closeTodoistTask=async id=>{await todoistCall({action:'close',id});await loadTodoistTasks();};
-(async()=>{const response=await fetch('../../index.html?focus-preview='+Date.now(),{cache:'no-store'});if(!response.ok)throw new Error('Prévia indisponível');const source=new DOMParser().parseFromString(await response.text(),'text/html');source.querySelectorAll('style').forEach(s=>document.head.append(s.cloneNode(true)));document.head.append(document.querySelector('link[rel=stylesheet]'));const section=source.querySelector('[data-page=todoist]');section.classList.add('active');document.getElementById('fixtureMain').append(section);const script=document.createElement('script');script.src='../../focus-workspace.js?v=2';script.onload=()=>loadTodoistTasks();document.body.append(script);})();
+(async()=>{
+ const base=new URL('../../index.html',location.href);
+ const response=await fetch(base.href+'?focus-preview='+Date.now(),{cache:'no-store'});
+ if(!response.ok)throw new Error('Prévia indisponível');
+ const source=new DOMParser().parseFromString(await response.text(),'text/html');
+ source.querySelectorAll('style').forEach(style=>document.head.append(style.cloneNode(true)));
+ source.querySelectorAll('link[rel=stylesheet]').forEach(link=>{const copy=link.cloneNode();copy.href=new URL(link.getAttribute('href'),base).href;document.head.append(copy);});
+ const section=source.querySelector('[data-page=todoist]');section.classList.add('active');document.getElementById('fixtureMain').append(section);
+ const loadScript=selector=>new Promise((resolve,reject)=>{const sourceScript=source.querySelector(selector);if(!sourceScript){reject(new Error('Módulo da prévia não encontrado'));return;}const script=document.createElement('script');script.src=new URL(sourceScript.getAttribute('src'),base).href;script.onload=resolve;script.onerror=reject;document.body.append(script);});
+ await loadScript('script[src*="native-tasks.js"]');
+ await loadScript('script[src*="focus-workspace.js"]');
+ await loadTodoistTasks();
+})().catch(error=>{document.getElementById('fixtureMain').insertAdjacentText('beforeend','Não foi possível carregar a prévia: '+error.message);});
 </script></body></html>
