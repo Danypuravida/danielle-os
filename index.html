@@ -668,6 +668,7 @@ select.field{max-width:100%}
 </style>
 
 <link rel="stylesheet" href="./career-portfolio.css?v=3">
+<link rel="stylesheet" href="./learning-bank.css?v=1">
 <link rel="stylesheet" href="./focus-workspace.css?v=1">
 <link rel="stylesheet" href="./native-tasks.css?v=1">
 </head><body>
@@ -5171,7 +5172,7 @@ window.addEventListener('resize',()=>{for(const id of Object.keys(freehandBoards
     frame.contentWindow?.postMessage({type:'NUCLEO_SESSION',session:{access_token:data.session.access_token,user:{id:data.session.user.id,email:data.session.user.email}}},origin);
   }
   window.openDevelopmentCentral=function(page='dashboard',member=null){
-    desired={page,member};openOSPage('central');
+    desired={page,member};openOSPage('central');window.LearningBank?.show('plan');
     if(!frame.getAttribute('src'))frame.src=new URL('../PDI2/?embedded=1',location.href).href;
     else if(ready)frame.contentWindow.postMessage({type:'NUCLEO_NAVIGATE',...desired},origin);
   };
@@ -5482,5 +5483,6 @@ loadJames=async function(syncFinance=true){
 
 </script>
 <script src="./career-portfolio.js?v=3"></script>
+<script src="./learning-bank.js?v=1"></script>
 <script src="./focus-workspace.js?v=3"></script>
 </body></html>
