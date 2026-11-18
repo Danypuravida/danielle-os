@@ -1,4 +1,4 @@
-const CACHE_NAME = 'danielle-os-v1-1-50';
+const CACHE_NAME = 'danielle-os-v1-1-51';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -9,7 +9,7 @@ const CORE_ASSETS = [
   './learning-bank.js?v=4',
   './learning-bank.css?v=2',
   './development-workspaces.js?v=2',
-  './team-development.js?v=1',
+  './team-development.js?v=2',
   './team-development.css?v=1',
   './basic-triage.mjs?v=1',
   './development-workspaces.css?v=1',
