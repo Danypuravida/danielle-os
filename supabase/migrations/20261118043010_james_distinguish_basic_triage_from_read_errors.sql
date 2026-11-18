@@ -1,0 +1,2 @@
+alter table public.google_connections add column if not exists last_triage_mode text check (last_triage_mode in ('ai','basic'));
+alter table public.slack_connections add column if not exists last_triage_mode text check (last_triage_mode in ('ai','basic'));

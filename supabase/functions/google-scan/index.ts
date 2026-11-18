@@ -1,3 +1,4 @@
+import { gmailBasic } from "./basic-triage.mjs";
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
@@ -16,6 +17,19 @@ function extractText(p:any):string{
 }
 function outputText(r:any){if(typeof r?.output_text==="string")return r.output_text;const a=[];for(const i of r?.output??[])for(const c of i?.content??[])if(c?.type==="output_text")a.push(c.text);return a.join("\n")}
 function parseJsonLoose(s:string){const a=s.indexOf("{"),b=s.lastIndexOf("}");if(a<0||b<a)throw new Error("AI_JSON_INVALID");return JSON.parse(s.slice(a,b+1))}
+function geminiKey(){return Deno.env.get("GEMINI_API_KEY")??Deno.env.get("GOOGLE_API_KEY")??Deno.env.get("GOOGLE_GEMINI_API_KEY")??""}
+function geminiText(r:any){return (r?.candidates?.[0]?.content?.parts??[]).map((p:any)=>p?.text||"").join("\n").trim()}
+async function geminiJson(system:string,input:any){
+  const key=geminiKey();if(!key)throw new Error("GEMINI_API_KEY ausente. Gmail/Agenda usam OAuth; a IA do James precisa de uma chave da Gemini API/Google AI Studio.");
+  const model=Deno.env.get("GEMINI_JAMES_MODEL")||"gemini-3.8-flash";
+  const res=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,{
+    method:"POST",headers:{"x-goog-api-key":key,"Content-Type":"application/json"},
+    body:JSON.stringify({system_instruction:{parts:[{text:system}]},contents:[{role:"user",parts:[{text:typeof input==="string"?input:JSON.stringify(input)}]}],generationConfig:{response_mime_type:"application/json",temperature:0.1}})
+  });
+  const raw=await res.text();let j:any={};try{j=JSON.parse(raw)}catch{}
+  if(!res.ok)throw new Error("GEMINI_"+res.status+":"+String(j?.error?.message||raw));
+  return parseJsonLoose(geminiText(j));
+}
 function isoLocalDate(d:Date){return new Intl.DateTimeFormat("en-CA",{timeZone:"America/Sao_Paulo",year:"numeric",month:"2-digit",day:"2-digit"}).format(d)}
 function timeLocal(d:Date){return new Intl.DateTimeFormat("en-GB",{timeZone:"America/Sao_Paulo",hour:"2-digit",minute:"2-digit",second:"2-digit",hour12:false}).format(d)}
 function gmailMessageForItem(item:any,messages:any[]){
@@ -26,7 +40,7 @@ function gmailMessageForItem(item:any,messages:any[]){
 }
 async function persistGmailItem(admin:any,userId:string,item:any,message:any){
  const status=["needs_me","delegated","draft_waiting","treated"].includes(item.status)?item.status:"needs_me";
- const row={user_id:userId,source:"gmail",source_ref:message.id,source_url:message.url,source_context:"Google scan",sender_name:item.sender_name||message.from||null,title:item.title||message.subject||"Sem título",summary:item.summary||null,why_it_needs_me:item.why_it_needs_me||null,due_at:item.due_at||null,urgency:["low","normal","high","urgent"].includes(item.urgency)?item.urgency:"normal",status,suggested_reply:item.suggested_reply||null,responsible:item.responsible||null,fingerprint:"gmail:"+message.id,last_seen_at:new Date().toISOString(),treated_at:status==="treated"?new Date().toISOString():null};
+ const row={user_id:userId,source:"gmail",source_ref:message.id,source_url:message.url,source_context:item._basic?"Gmail · triagem básica; revisar contexto":"Google scan",sender_name:item.sender_name||message.from||null,title:item.title||message.subject||"Sem título",summary:item.summary||null,why_it_needs_me:item.why_it_needs_me||null,due_at:item.due_at||null,urgency:["low","normal","high","urgent"].includes(item.urgency)?item.urgency:"normal",status,suggested_reply:item.suggested_reply||null,responsible:item.responsible||null,fingerprint:"gmail:"+message.id,last_seen_at:new Date().toISOString(),treated_at:status==="treated"?new Date().toISOString():null};
  // The unique fingerprint comes from Gmail, never from model-generated text.
  const inserted=await admin.from("assistant_items").upsert(row,{onConflict:"user_id,fingerprint",ignoreDuplicates:true});
  if(inserted.error)throw inserted.error;
@@ -34,8 +48,9 @@ async function persistGmailItem(admin:any,userId:string,item:any,message:any){
  const updated=await admin.from("assistant_items").update(metadata).eq("user_id",userId).eq("fingerprint",row.fingerprint).is("hidden_at",null);
  if(updated.error)throw updated.error;
  // Conditions run atomically in Postgres, including when completion races with a scan.
- const classified=await admin.from("assistant_items").update({status,treated_at:row.treated_at}).eq("user_id",userId).eq("fingerprint",row.fingerprint).eq("status_locked",false).is("hidden_at",null);
- if(classified.error)throw classified.error;
+ const classifiedQuery=admin.from("assistant_items").update({status,treated_at:row.treated_at}).eq("user_id",userId).eq("fingerprint",row.fingerprint).eq("status_locked",false).is("hidden_at",null);
+ const classified=await (item._basic?classifiedQuery.neq("status","treated"):classifiedQuery);if(classified.error)throw classified.error;
+ if(item._basic)return;
  const assigned=await admin.from("assistant_items").update({responsible:row.responsible}).eq("user_id",userId).eq("fingerprint",row.fingerprint).eq("responsible_locked",false).is("hidden_at",null);
  if(assigned.error)throw assigned.error;
 }
@@ -59,12 +74,16 @@ Deno.serve(async(req)=>{
 
   // Gmail: últimos 3 dias, exclui promo/spam/lixeira.
   const q=encodeURIComponent("newer_than:3d -category:promotions -in:spam -in:trash");
-  const lr=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=40&q="+q,{headers:{Authorization:"Bearer "+access}});
-  const list=await lr.json();if(!lr.ok)throw new Error(list.error?.message||"Falha ao ler Gmail"); const ids=(list.messages??[]).slice(0,40);
+  const ids:any[]=[];let pageToken="",gmailMore=false;
+  for(let page=0;page<5;page++){
+    const lr=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=40&q="+q+(pageToken?"&pageToken="+encodeURIComponent(pageToken):""),{headers:{Authorization:"Bearer "+access}});
+    const list=await lr.json();if(!lr.ok)throw new Error(list.error?.message||"Falha ao ler Gmail");ids.push(...list.messages??[]);pageToken=list.nextPageToken||"";if(!pageToken)break;
+  }
+  gmailMore=!!pageToken;let failedMessages=0;
   const messages:any[]=[];
   for(const x of ids){
     const mr=await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/"+x.id+"?format=full",{headers:{Authorization:"Bearer "+access}});
-    if(!mr.ok)continue; const m=await mr.json();
+    if(!mr.ok){failedMessages++;continue;} const m=await mr.json();
     messages.push({id:m.id,threadId:m.threadId,from:header(m,"From"),to:header(m,"To"),subject:header(m,"Subject"),date:header(m,"Date"),snippet:m.snippet??"",body:extractText(m.payload).slice(0,5000),labels:m.labelIds??[],url:"https://mail.google.com/mail/u/0/#all/"+m.id});
   }
 
@@ -79,13 +98,13 @@ Deno.serve(async(req)=>{
     const title=String(e.summary??"Sem título"); if(personal.test(title))continue;
     const start=e.start?.dateTime?new Date(e.start.dateTime):null; if(!start)continue;
     const attendees=(e.attendees??[]).map((a:any)=>a.displayName||a.email).filter(Boolean).join(", ");
-    await admin.from("meetings").upsert({
+    const savedMeeting=await admin.from("meetings").upsert({
       user_id:user.id,calendar_event_id:e.id,calendar_url:e.htmlLink??null,calendar_source:"google_calendar",calendar_synced_at:new Date().toISOString(),
       meeting_date:isoLocalDate(start),start_time:timeLocal(start),title,participants:attendees||null,status:"planned"
     },{onConflict:"user_id,calendar_event_id",ignoreDuplicates:false});
+    if(savedMeeting.error)throw savedMeeting.error;
   }
 
-  const openaiKey=Deno.env.get("OPENAI_API_KEY"); if(!openaiKey)throw new Error("OPENAI_API_KEY ausente.");
   const prompt={
     now:new Date().toISOString(),
     timezone:"America/Sao_Paulo",
@@ -93,22 +112,29 @@ Deno.serve(async(req)=>{
     schema:{items:[{source:"gmail",source_ref:"",source_url:"",sender_name:"",title:"",summary:"",why_it_needs_me:"",due_at:null,urgency:"low|normal|high|urgent",status:"needs_me|delegated|draft_waiting|treated",suggested_reply:"",responsible:"",fingerprint:""}],morning_line_1:"",morning_line_2:"",morning_line_3:""},
     messages,events:events.map((e:any)=>({id:e.id,title:e.summary,start:e.start,end:e.end,status:e.status,response:(e.attendees??[]).find((a:any)=>a.self)?.responseStatus,organizer:e.organizer?.email,description:String(e.description??"").slice(0,2500)}))
   };
-  const or=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{Authorization:"Bearer "+openaiKey,"Content-Type":"application/json"},body:JSON.stringify({model:Deno.env.get("OPENAI_MODEL")||"gpt-5.6-terra",store:false,max_output_tokens:3500,instructions:"Você é James, assistente executivo pessoal. Produza triagem curta, precisa e acionável. Responda apenas JSON.",input:[{role:"user",content:[{type:"input_text",text:JSON.stringify(prompt)}]}]})});
-  const oj=await or.json(); if(!or.ok)throw new Error(oj?.error?.message||"Falha na IA");
-  const tri=parseJsonLoose(outputText(oj)); const items=Array.isArray(tri.items)?tri.items:[];
+  let tri:any,triageMode="ai";
+  if(geminiKey())tri=await geminiJson("Você é James, assistente executivo pessoal. Produza triagem curta, precisa e acionável. Responda apenas JSON.",prompt);
+  else {triageMode="basic";tri=gmailBasic(messages,conn.google_email);}
+  const partial=gmailMore||failedMessages>0||!!cj.nextPageToken;
+  const coverageWarning=partial?"Leitura parcial: "+[gmailMore?"há mais e-mails além do limite de 200":"",failedMessages?failedMessages+" e-mail(s) não puderam ser abertos":"",cj.nextPageToken?"há mais eventos além do limite de 40":""].filter(Boolean).join("; "):null;
+  if(!Array.isArray(tri.items))throw Error("A triagem retornou dados incompletos. Tente atualizar novamente.");
+  const items=tri.items;
   for(const it of items){
     const message=gmailMessageForItem(it,messages);
     if(!message)continue;
-    await persistGmailItem(admin,user.id,it,message);
+    await persistGmailItem(admin,user.id,{...it,_basic:triageMode==="basic"},message);
   }
 
-  const {data:all}=await admin.from("assistant_items").select("status,urgency,due_at").eq("user_id",user.id).is("hidden_at",null);
+  const {data:all,error:allError}=await admin.from("assistant_items").select("status,urgency,due_at").eq("user_id",user.id).is("hidden_at",null);
+  if(allError)throw allError;
   const needs=(all??[]).filter((x:any)=>x.status==="needs_me").length, drafts=(all??[]).filter((x:any)=>x.status==="draft_waiting").length, treated=(all??[]).filter((x:any)=>x.status==="treated").length;
   const delegatedAttention=(all??[]).some((x:any)=>x.status==="delegated" && ((x.due_at&&new Date(x.due_at)<=new Date())||["high","urgent"].includes(x.urgency)));
   const cat=(needs||drafts||delegatedAttention)?"awake":"sleeping";
-  const {data:scan}=await admin.from("assistant_scans").insert({user_id:user.id,scan_period:"manual",needs_me_count:needs,draft_count:drafts,treated_count:treated,cat_state:cat,morning_line_1:tri.morning_line_1||"Dia atualizado.",morning_line_2:tri.morning_line_2||"Mais importante: revisar pendências.",morning_line_3:tri.morning_line_3||"Prestes a atrasar: nada identificado."}).select("id").single();
-  await admin.from("google_connections").update({last_scan_at:new Date().toISOString(),last_error:null}).eq("user_id",user.id);
-  return json(req,{ok:true,scan_id:scan?.id,counts:{needs,drafts,treated},meetings_synced:events.length});
+  const {data:scan,error:scanError}=await admin.from("assistant_scans").insert({user_id:user.id,scan_period:"manual",needs_me_count:needs,draft_count:drafts,treated_count:treated,cat_state:cat,morning_line_1:tri.morning_line_1||"Dia atualizado.",morning_line_2:tri.morning_line_2||"Mais importante: revisar pendências.",morning_line_3:tri.morning_line_3||"Prestes a atrasar: nada identificado."}).select("id").single();
+  if(scanError)throw scanError;
+  const confirmed=await admin.from("google_connections").update({last_scan_at:new Date().toISOString(),last_error:coverageWarning,last_triage_mode:triageMode}).eq("user_id",user.id);
+  if(confirmed.error)throw confirmed.error;
+  return json(req,{ok:true,scan_id:scan?.id,counts:{needs,drafts,treated},meetings_synced:events.length,triage_mode:triageMode,partial,warning:coverageWarning,messages_read:messages.length});
  }catch(e){
   const message=e instanceof Error?e.message:"Erro inesperado.";if(admin&&user)await admin.from("google_connections").update({last_error:message}).eq("user_id",user.id);return json(req,{error:message,needs_google_connect:/invalid_grant|expired|revoked/i.test(message)},500);
  }

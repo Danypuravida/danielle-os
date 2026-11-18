@@ -257,7 +257,7 @@
   const settings={user_id:id,focus_minutes:Number(el('fpFocusMinutes').value),break_minutes:Number(el('fpBreakMinutes').value),daily_goal:Number(el('fpDailyGoal').value),updated_at:new Date(now()).toISOString()};
   const {data,error}=await db().from('focus_settings').upsert(settings,{onConflict:'user_id'}).select().single();if(owner()!==id)return;if(error){notify('Não consegui salvar as configurações. Tente novamente quando estiver conectado.',true);return;}state.settings=data;cache();render();notify('Configurações salvas. As novas durações valem para os próximos ciclos.');
  });
- document.querySelector('[data-page="todoist"]').addEventListener('click',event=>{
+ document.querySelector('section.page[data-page="todoist"]').addEventListener('click',event=>{
   const b=event.target.closest('[data-fp-view],[data-fp-kind],[data-fp-select],[data-fp-remove],[data-fp-action]');if(!b)return;
   if(b.dataset.fpView){state.view=b.dataset.fpView;render();loadCloud();}
   if(b.dataset.fpKind&&!state.active){state.phase=b.dataset.fpKind;renderTimer();}

@@ -440,7 +440,7 @@
     else{input.checked=false;el('cpLinkedInCopyStatus').textContent='Escolha até 3 registros. Desmarque um deles para incluir outro.';return;}
     renderLinkedin();
   });
-  document.querySelector('[data-page="senioridade"]').addEventListener('click',event=>{
+  document.querySelector('section.page[data-page="senioridade"]').addEventListener('click',event=>{
     const button=event.target.closest('[data-cp-view],[data-cp-action]');if(!button)return;
     if(button.dataset.cpView){setView(button.dataset.cpView);return;}
     const action=button.dataset.cpAction,id=button.dataset.id;

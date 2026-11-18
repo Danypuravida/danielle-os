@@ -669,6 +669,7 @@ select.field{max-width:100%}
 
 <link rel="stylesheet" href="./career-portfolio.css?v=3">
 <link rel="stylesheet" href="./learning-bank.css?v=2">
+<link rel="stylesheet" href="./development-workspaces.css?v=1">
 <link rel="stylesheet" href="./focus-workspace.css?v=1">
 <link rel="stylesheet" href="./native-tasks.css?v=1">
 <link rel="stylesheet" href="./clean-theme.css?v=2">
@@ -3160,12 +3161,13 @@ function chunkSlackMessages(messages,maxChars=6000){
 async function saveSlackTriage(messages){
   if(!messages?.length)return {written:0,batches:0};
   const batches=chunkSlackMessages(messages,6000);
-  const items=[];
+  const items=[];let triageMode="ai";
   for(let i=0;i<batches.length;i++){
     const compact=batches[i];
     const question=buildSlackTriageQuestion(compact);
-    const answer=await callManagementAdvisor(`James • triagem Slack • bloco ${i+1}/${batches.length}`,question);
-    const parsed=parseLooseJson(answer);
+    let parsed;
+    try{const answer=await callManagementAdvisor(`James • triagem Slack • bloco ${i+1}/${batches.length}`,question);parsed=parseLooseJson(answer);}
+    catch(e){if(!/Nenhuma IA configurada|(?:GEMINI_API_KEY|OPENAI_API_KEY).*(?:ausente|configurad)|Adicione GEMINI_API_KEY/i.test(e.message))throw e;const basic=await import('./basic-triage.mjs?v=1');triageMode='basic';parsed=basic.slackBasic(compact);}
     if(!Array.isArray(parsed.items))throw new Error('A análise do Slack retornou dados incompletos no bloco '+(i+1)+'.');
     for(const it of parsed.items){
       const ref=String(it.source_ref||'');
@@ -3188,7 +3190,7 @@ async function saveSlackTriage(messages){
       source:'slack',
       source_ref:it.source_ref||null,
       source_url:it.source_url||null,
-      source_context:'Slack ao vivo',
+      source_context:triageMode==='basic'?'Slack · triagem básica; revisar contexto':'Slack ao vivo',
       sender_name:it.sender_name||null,
       title:it.title||'Slack',
       summary:it.summary||null,
@@ -3207,11 +3209,11 @@ async function saveSlackTriage(messages){
       const {status,treated_at,responsible,...metadata}=row;
       const updated=await sb.from('assistant_items').update(metadata).eq('user_id',currentUserId).eq('id',old.id);
       if(updated.error)throw new Error('Falha ao salvar a triagem do Slack: '+updated.error.message);
-      if(!old.status_locked){
+      if(!old.status_locked&&!(triageMode==='basic'&&old.status==='treated')){
         const classified=await sb.from('assistant_items').update({status,treated_at}).eq('user_id',currentUserId).eq('id',old.id).eq('status_locked',false);
         if(classified.error)throw classified.error;
       }
-      if(!old.responsible_locked){
+      if(!old.responsible_locked&&triageMode!=='basic'){
         const assigned=await sb.from('assistant_items').update({responsible}).eq('user_id',currentUserId).eq('id',old.id).eq('responsible_locked',false);
         if(assigned.error)throw assigned.error;
       }
@@ -3221,7 +3223,7 @@ async function saveSlackTriage(messages){
     }
     written++;
   }
-  return {written,batches:batches.length};
+  return {written,batches:batches.length,triage_mode:triageMode};
 }
 
 async function scanSlackLive(){
@@ -5161,36 +5163,6 @@ window.addEventListener('resize',()=>{for(const id of Object.keys(freehandBoards
 @media(max-width:600px){.travel-card{padding:12px}.travel-item{gap:6px}.travel-item label{gap:10px}}
 </style>
 <script>
-(function(){
-  const origin=location.origin;
-  const section=document.createElement('section');section.className='page';section.dataset.page='central';
-  section.innerHTML='<div class="card" style="margin-bottom:14px"><h2>Central de desenvolvimento</h2><p>Seu plano, sua equipe, seus aprendizados e seus aplicativos de desenvolvimento em um lugar. Plano e equipe continuam conectados ao Núcleo.</p><div id="centralStatus" class="muted" role="status">Abra a central para carregar seus registros.</div></div><iframe id="centralFrame" title="Núcleo — desenvolvimento pessoal e da equipe" style="width:100%;height:calc(100vh - 170px);min-height:720px;border:0;border-radius:16px;background:#0c1723" referrerpolicy="same-origin"></iframe>';
-  const existing=document.querySelector('section.page');existing.parentNode.insertBefore(section,existing);
-  const frame=document.getElementById('centralFrame');let desired={page:'dashboard'},ready=false;
-  async function sendSession(){
-    const {data,error}=await sb.auth.getSession();
-    if(error||!data.session){frame.contentWindow?.postMessage({type:'NUCLEO_SIGN_OUT'},origin);document.getElementById('centralStatus').textContent='Entre no Danielle OS para acessar a central.';return;}
-    frame.contentWindow?.postMessage({type:'NUCLEO_SESSION',session:{access_token:data.session.access_token,user:{id:data.session.user.id,email:data.session.user.email}}},origin);
-  }
-  window.openDevelopmentCentral=function(page='dashboard',member=null){
-    desired={page,member};openOSPage('central');window.LearningBank?.show('plan');
-    if(!frame.getAttribute('src'))frame.src=new URL('../PDI2/?embedded=1',location.href).href;
-    else if(ready)frame.contentWindow.postMessage({type:'NUCLEO_NAVIGATE',...desired},origin);
-  };
-  window.addEventListener('message',async e=>{
-    if(e.origin!==origin||e.source!==frame.contentWindow)return;
-    if(e.data?.type==='NUCLEO_READY')await sendSession();
-    if(e.data?.type==='NUCLEO_LOADED'){ready=true;document.getElementById('centralStatus').textContent='Base compartilhada conectada · atualização automática enquanto a central estiver aberta.';frame.contentWindow.postMessage({type:'NUCLEO_NAVIGATE',...desired},origin);}
-    if(e.data?.type==='NUCLEO_SAVED'){cloudMsg('Desenvolvimento atualizado na base compartilhada',true);}
-  });
-  const b=document.querySelector('#nav [data-page="central"]');if(b)b.addEventListener('click',()=>{if(!frame.getAttribute('src'))frame.src=new URL('../PDI2/?embedded=1',location.href).href;});
-  for(const [id,page] of [['desenvolvimento','pdi'],['gestao','team']]){
-    const button=document.querySelector('#nav [data-page="'+id+'"]');if(button)button.onclick=()=>openDevelopmentCentral(page);
-  }
-  sb.auth.onAuthStateChange((event,session)=>{if(['TOKEN_REFRESHED','SIGNED_IN'].includes(event)&&frame.getAttribute('src'))setTimeout(sendSession,0);if(event==='SIGNED_OUT'){ready=false;frame.contentWindow?.postMessage({type:'NUCLEO_SIGN_OUT'},origin);frame.removeAttribute('src');document.getElementById('centralStatus').textContent='Sessão encerrada.';}});
-  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&frame.getAttribute('src'))sendSession();});
-})();
-
 </script>
 <script>
 /* Travel checklist: save each item separately so devices never overwrite the whole list. */
@@ -5342,7 +5314,8 @@ function renderJamesHealth(){
  cat?.setAttribute('aria-label',awake?'James acordado':'James dormindo');
  setTextSafe('jamesStateText',reading?'James está lendo as fontes…':attention?'James: uma fonte precisa de atenção':issues.length?'James: atualização pendente':awake?'James está acordado':'James está dormindo');
  setTextSafe('jamesStateSub',reading?'Aguarde a análise terminar. As pendências já registradas continuam disponíveis.':issues.length?'Suas pendências continuam disponíveis. Confira abaixo o estado de cada fonte.':awake?open.length+' item(ns) no James • '+tasks+' tarefa(s) no Danielle OS.':'Nenhuma pendência encontrada nas fontes verificadas.');
- banner.textContent=reading?(jamesSlackProgress||'Leitura em andamento. O resultado será confirmado quando todas as análises terminarem.'):issues.length?(attention?'Fonte com aviso: ':'Atualização pendente: ')+issues.join(' • '):'Fontes verificadas. As tarefas do Danielle OS também contam como pendências.';
+ const basicSources=['google','slack'].filter(k=>jamesHealth[k]?.last_triage_mode==='basic');
+ banner.textContent=reading?(jamesSlackProgress||'Leitura em andamento. O resultado será confirmado quando todas as análises terminarem.'):issues.length?(attention?'Fonte com aviso: ':'Atualização pendente: ')+issues.join(' • '):'Leitura confirmada na janela consultada.'+(basicSources.length?' Triagem básica por regras em '+basicSources.map(k=>k==='google'?'Gmail':'Slack').join(' e ')+': revise o contexto; IA não configurada.':'')+' As tarefas do Danielle OS também contam como pendências.';
  banner.classList.toggle('danger',attention&&!reading);
  for(const [source,label,id] of [['gmail','Gmail','sourceGmailState'],['calendar','Agenda','sourceCalendarState'],['slack','Slack','sourceSlackState']]){
   const h=jamesHealth[source==='slack'?'slack':'google'];
@@ -5350,7 +5323,7 @@ function renderJamesHealth(){
   const fresh=h?.connected&&!h.last_error&&h.last_scan_at&&Date.now()-new Date(h.last_scan_at).getTime()<=30*60000;
   if(source==='calendar'){setTextSafe(id,'Sua agenda fica na aba Reuniões.');continue}
   const note=source==='slack'&&jamesSlackProgress?jamesSlackProgress:h?.last_error?jamesAwaitingTriage(h.last_error)?'Mensagens recebidas; análise ainda não confirmada.':'Aviso: '+h.last_error:h?.last_scan_at?'Última leitura: '+jamesReadTime(h.last_scan_at)+'.':label+': aguardando confirmação da primeira leitura.';
-  setTextSafe(id,(n?n+' item(ns) pendente(s). ':fresh?'Nenhuma pendência identificada. ':'')+note);
+  setTextSafe(id,(n?n+' item(ns) pendente(s). ':fresh?'Nenhuma pendência identificada na janela lida. ':'')+note+(h?.last_triage_mode==='basic'?' Triagem básica por regras: revise destinatário e contexto. A IA não está configurada.':''));
  }
  if(jamesHealth.google?.needs_google_connect||/invalid_grant|expired|revoked/i.test(jamesHealth.google?.last_error||'')){const b=document.getElementById('googleConnectBtn');if(b){b.style.display='';b.textContent='Reconectar Google'}}
 
@@ -5425,13 +5398,13 @@ function buildSlackTriageBatches(messages){
 const jamesTriageOriginal=saveSlackTriage;
 saveSlackTriage=async function(messages){
  const batches=buildSlackTriageBatches(messages);
- let written=0;
+ let written=0,triageMode="ai";
  for(let i=0;i<batches.length;i++){
   jamesSlackProgress='Slack: analisando lote '+(i+1)+' de '+batches.length+'…';
   renderJamesHealth();
-  const r=await jamesTriageOriginal(batches[i]);written+=r.written||0;
+  const r=await jamesTriageOriginal(batches[i]);written+=r.written||0;if(r.triage_mode==='basic')triageMode='basic';
  }
- return {written};
+ return {written,triage_mode:triageMode};
 };
 scanSlackLive=function(){
  if(jamesSlackReadFlight)return jamesSlackReadFlight;
@@ -5444,8 +5417,8 @@ scanSlackLive=function(){
    const tri=await saveSlackTriage(data.messages||[]);
    stage='confirmação';
    jamesSlackProgress='Slack: confirmando o resultado da análise…';renderJamesHealth();
-   await callEdge('slack-fetch',{action:'confirm_triage',partial:!!data.partial});
-   jamesHealth.slack={...(jamesHealth.slack||{}),connected:true,last_scan_at:new Date().toISOString(),last_error:data.partial?'Leitura parcial: '+(data.warnings||[]).join(' • '):null};
+   await callEdge('slack-fetch',{action:'confirm_triage',partial:!!data.partial,triage_mode:tri.triage_mode});
+   jamesHealth.slack={...(jamesHealth.slack||{}),connected:true,last_triage_mode:tri.triage_mode,last_scan_at:new Date().toISOString(),last_error:data.partial?'Leitura parcial: '+(data.warnings||[]).join(' • '):null};
    return {...data,...tri};
   }catch(e){
    const detail=e?.message||String(e),errorStage=e?.data?.stage||stage;
@@ -5483,7 +5456,8 @@ loadJames=async function(syncFinance=true){
 };
 
 </script>
-<script src="./career-portfolio.js?v=3"></script>
-<script src="./learning-bank.js?v=3"></script>
-<script src="./focus-workspace.js?v=3"></script>
+<script src="./career-portfolio.js?v=4"></script>
+<script src="./development-workspaces.js?v=1"></script>
+<script src="./learning-bank.js?v=4"></script>
+<script src="./focus-workspace.js?v=4"></script>
 </body></html>

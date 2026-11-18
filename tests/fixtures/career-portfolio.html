@@ -8,7 +8,7 @@
 </head>
 <body>
   <p id="fixtureStatus" style="margin:0;padding:7px 20px;background:#e7ebdf;color:#56634d;font:11px/1.5 system-ui">PRÉVIA DE TESTE · Registros fictícios. Nenhum dado da sua conta é acessado ou alterado.</p>
-  <div class="app"><aside class="side"><div class="brand">Danielle OS<small>MEU SISTEMA PESSOAL</small></div><div class="nav"><button>Visão geral</button><button>James</button><button>Reuniões</button><button class="active">Resultados</button><button>Desenvolvimento</button><button>Financeiro</button></div></aside><main class="main" id="fixtureMain"></main></div>
+  <div class="app"><aside class="side"><div class="brand">Danielle OS<small>MEU SISTEMA PESSOAL</small></div><div class="nav"><button>Visão geral</button><button>James</button><button>Reuniões</button><button class="active" data-page="senioridade">Resultados</button><button>Desenvolvimento</button><button>Financeiro</button></div></aside><main class="main" id="fixtureMain"></main></div>
   <script>
     // A public visual regression fixture. Auth and production APIs are never initialized.
     var currentUserId='preview',loadSeniorityEvidence,saveSeniorityEvidence;
@@ -33,7 +33,7 @@
       source.querySelectorAll('style').forEach(style=>document.head.append(style.cloneNode(true)));
       const link=document.querySelector('link[rel=stylesheet]');document.head.append(link);
       const section=source.querySelector('[data-page=senioridade]');section.classList.add('active');document.getElementById('fixtureMain').append(section);
-      const script=document.createElement('script');script.src='../../career-portfolio.js?v=3';document.body.append(script);
+      const script=document.createElement('script');script.src='../../career-portfolio.js?v=4';document.body.append(script);
     })().catch(error=>document.getElementById('fixtureStatus').textContent='Falha na prévia: '+error.message);
   </script>
 </body>

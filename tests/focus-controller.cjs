@@ -14,12 +14,18 @@ const sb={async rpc(){return {data:{session:null,server_now:new Date().toISOStri
  }else{reads.push({table,filters});data=tables[table].filter(r=>filters.every(([k,v])=>r[k]===v));if(single)data=data[0]||null;}
  return Promise.resolve({data,error:null}).then(ok,bad);}};return q;}};
 const win={listeners:{},addEventListener(name,fn){this.listeners[name]=fn;}};
-const ctx={window:win,document:{title:'Danielle OS',visibilityState:'visible',activeElement:null,getElementById:node,querySelector:s=>s==='.page.active'?{dataset:{page:'todoist'}}:node(s),querySelectorAll:()=>[],addEventListener(){}},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},sb,Intl,Date,console,crypto:{randomUUID:()=> 'id-'+(++sequence)},setInterval(){},clearInterval(){},
+const ctx={window:win,document:{title:'Danielle OS',visibilityState:'visible',activeElement:null,getElementById:node,querySelector:s=>s==='.page.active'?{dataset:{page:'todoist'}}:s==='section.page[data-page="todoist"]'?node('pageSection'):s==='[data-page="todoist"]'?node('mainNavDecoy'):node(s),querySelectorAll:()=>[],addEventListener(){}},localStorage:{getItem:k=>storage.get(k),setItem:(k,v)=>storage.set(k,v)},sb,Intl,Date,console,crypto:{randomUUID:()=> 'id-'+(++sequence)},setInterval(){},clearInterval(){},
  get currentUserId(){return uid;},todoistReadRevision:0,
  async todoistCall(p={}){if(p.action==='close'){ctx.todoistReadRevision++;return {ok:true};}return {groups:{all:tasks},sync:{provider:'danielle-os',complete:true}};},
  todoistSyncText:()=> 'PRIVATE OWNER ACCOUNT',async loadTodoistTasks(){return ctx.todoistCall({action:'list'});},async closeTodoistTask(id){return ctx.todoistCall({action:'close',id});}};
 async function run(){
  vm.createContext(ctx);vm.runInContext(fs.readFileSync(path.join(__dirname,'../focus-workspace.js'),'utf8'),ctx);
+ assert.equal(typeof node('pageSection').listeners.click,'function');
+ assert.equal(node('mainNavDecoy').listeners.click,undefined);
+ node('pageSection').listeners.click({target:{closest:()=>({dataset:{fpView:'history'}})}});
+ assert.equal(node('fpHistoryPanel').hidden,false);assert.equal(node('fpTodayPanel').hidden,true);
+ node('pageSection').listeners.click({target:{closest:()=>({dataset:{fpView:'settings'}})}});
+ assert.equal(node('fpSettingsPanel').hidden,false);
  await ctx.loadTodoistTasks();await win.FocusWorkspace.load();
  node('fpTaskPicker').value='b';node('fpAddPlan').listeners.click();await new Promise(setImmediate);
  assert.equal(tables.focus_task_plans.length,1,'An initial empty queue cannot leave the plan synchronizer stuck');

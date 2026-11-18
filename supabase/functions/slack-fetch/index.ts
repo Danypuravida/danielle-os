@@ -56,7 +56,7 @@ Deno.serve(async(req:Request)=>{
 
     const body=await req.json().catch(()=>({}));
     if(body.action==="confirm_triage"){
-      const {error}=await admin.from("slack_connections").update({last_scan_at:new Date().toISOString(),last_error:body.partial?"Leitura parcial do Slack. Confira os avisos e tente atualizar novamente.":null}).eq("user_id",user.id);
+      const {error}=await admin.from("slack_connections").update({last_scan_at:new Date().toISOString(),last_triage_mode:body.triage_mode==='basic'?'basic':'ai',last_error:body.partial?"Leitura parcial do Slack. Confira os avisos e tente atualizar novamente.":null}).eq("user_id",user.id);
       if(error)throw error;return send(req,{ok:true});
     }
     stage="decrypt";

@@ -53,7 +53,7 @@ async function controllerTests(){
     showModal(){this.open=true;} close(){this.open=false;} reset(){} focus(){} select(){}
   }
   const nodes=new Map(),el=id=>{if(!nodes.has(id))nodes.set(id,new Element(id));return nodes.get(id);};
-  const document={getElementById:el,querySelector:()=>el('section'),querySelectorAll:()=>[]};
+  const document={getElementById:el,querySelector:s=>s==='section.page[data-page="senioridade"]'?el('section'):el('mainNavDecoy'),querySelectorAll:()=>[]};
   const rows=[],assets=[],objects=new Set(),queries=[],writeIds=[],uploadPaths=[];
   let failUpload=true,failMetadata=false,failRead=false,uid='owner',sequence=0,copied='';
   const client={from(table){let mode='read',payload,filters=[],single=false,range=[0,999];
@@ -77,6 +77,8 @@ async function controllerTests(){
     navigator:{clipboard:{writeText:async text=>{copied=text;}}},
     get currentUserId(){return uid;},loadSeniorityEvidence(){},saveSeniorityEvidence(){},isoDateLocal:()=> '2026-11-17',numericDelta:()=>null,cloudMsg(){},refreshDashboardMetrics:async()=>{},loadMonthlyReview:async()=>{}};
   vm.createContext(context);vm.runInContext(fs.readFileSync(path.join(__dirname,'../career-portfolio.js'),'utf8'),context);
+  assert.equal(typeof el('section').listeners.click,'function','Side menu delegates to the page section');
+  assert.equal(el('mainNavDecoy').listeners.click,undefined,'Main navigation must not capture internal menu clicks');
   await context.window.CareerPortfolio.load();
   context.window.CareerPortfolio.openEditor();
   el('cpEntryTitle').value='Entrega nova';el('cpEntryType').value='delivery';el('cpEntryDate').value='2026-11-17';el('seResult').value='Resultado real';el('seCompetency').value='Processo/Sistema';el('seStrength').value='4';
@@ -108,5 +110,10 @@ async function controllerTests(){
   uid='other';await context.window.CareerPortfolio.load(true);
   assert(!el('seniorityList').innerHTML.includes('Entrega nova'),'An account change clears private data even when the new read fails');
   assert(!el('cpLinkedInText').value.includes('Entrega nova'),'An account change also clears LinkedIn drafts');
+  el('section').listeners.click({target:{closest:()=>({dataset:{cpView:'feedback'}})}});
+  assert.equal(el('cpListTitle').textContent,'Feedbacks recebidos');
+  el('section').listeners.click({target:{closest:()=>({dataset:{cpView:'linkedin'}})}});
+  assert.equal(el('cpLinkedInPanel').hidden,false);
+
 }
 controllerTests().then(()=>console.log('PASS: period filters, factual metrics, legacy records, safe links and files, owner-scoped reads, idempotent saves, partial-upload retries and account isolation.')).catch(error=>{console.error(error);process.exitCode=1;});

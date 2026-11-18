@@ -1,16 +1,19 @@
-const CACHE_NAME = 'danielle-os-v1-1-46';
+const CACHE_NAME = 'danielle-os-v1-1-47';
 const CORE_ASSETS = [
   './',
   './index.html',
   './clean-theme.css?v=2',
-  './learning-bank.js?v=3',
+  './learning-bank.js?v=4',
   './learning-bank.css?v=2',
+  './development-workspaces.js?v=1',
+  './basic-triage.mjs?v=1',
+  './development-workspaces.css?v=1',
   './native-tasks.js?v=1',
   './native-tasks.css?v=1',
   './focus-workspace.css?v=1',
-  './focus-workspace.js?v=3',
+  './focus-workspace.js?v=4',
   './career-portfolio.css?v=3',
-  './career-portfolio.js?v=3',
+  './career-portfolio.js?v=4',
   './manifest.webmanifest',
   './service-worker.js',
   './icon-192.png',
