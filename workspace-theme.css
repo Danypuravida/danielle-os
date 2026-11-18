@@ -1,0 +1,33 @@
+/* One paper-and-sage identity, including older Danielle OS pages. */
+:root{--workspace-paper:#faf8f1;--workspace-card:#fffef9;--workspace-heading:#354330;--workspace-radius:20px}
+body{font-family:Inter,system-ui,'Segoe UI',Arial,sans-serif;line-height:1.6}
+.main{padding:30px;max-width:1480px}
+.page:not([data-page="senioridade"]):not([data-page="todoist"]):not([data-page="central"]):not([data-page="desenvolvimento"]){background:var(--workspace-paper);border:1px solid var(--line);border-radius:var(--workspace-radius);padding:28px;min-width:0;box-shadow:var(--shadow)}
+.page>h1{font:400 clamp(29px,3vw,38px)/1.2 Georgia,'Times New Roman',serif;letter-spacing:-.7px;color:var(--workspace-heading);margin:0 0 12px}
+.page>.lead{font-size:14px;line-height:1.7;max-width:850px;margin:0 0 22px}
+.page>.grid{margin-top:22px;gap:18px}
+.card,.growth-card,.timeline-item,.option-box,.mini-item,.metricbox{border-radius:12px;box-shadow:none}
+.card>h2,.growth-card>h2,.overview-now h2{font-family:Georgia,'Times New Roman',serif;font-size:23px;line-height:1.3;font-weight:400;color:var(--workspace-heading)}
+.card>h3,.growth-card>h3{font-size:10px;letter-spacing:.13em;color:var(--muted)}
+.btn,.tabbtn,.person-btn,.meeting-agenda-card{font-weight:500;border-radius:8px;min-height:42px}
+.btn.primary{font-weight:600}.btn:not(.primary):hover{background:var(--sage-soft)}
+.field{border-radius:8px;background:var(--workspace-card)}
+.field:focus{border-color:var(--accent)}
+.metric,.quick-stat b,.statmini b{font-family:Georgia,'Times New Roman',serif;font-weight:400;letter-spacing:-.6px}
+.tag,.badge,.finance-pill,.growth-chip{font-size:11px;font-weight:500;border-radius:6px}
+.person-btn,.meeting-agenda-card{border-color:var(--line);background:var(--workspace-card);padding:13px 15px}
+.person-btn.active,.meeting-agenda-card.active{background:var(--sage-soft);border-color:var(--accent)}
+.person-btn .person-role,.meeting-agenda-card .meeting-meta{color:var(--muted);font-size:12px}
+.statmini,.quick-stat,.metricbox,.option-box,.mini-item{background:var(--workspace-card);border-color:var(--line);padding:16px;border-radius:10px}
+.james-alert{background:var(--warning-soft);color:var(--warn);border-color:var(--warn)}
+.james-stage{border-radius:12px}.james-todo-strip{border-radius:10px}
+.finance-table th{text-transform:uppercase;font-size:10px;letter-spacing:.07em;font-weight:600}
+.finance-table td{font-size:13px}.finance-import-card,.finance-month-picker-panel,.finance-coach-hero,.finance-live-status{border-radius:12px}
+.finance-bill-kpis{gap:12px}.finance-kpi{border-radius:12px}
+.source-status-card,.james-brief-card,.assistant-item,.overview-module,.overview-score-card,.overview-now{border-radius:12px}
+.day,.chat,.callout,.mentor-suggestion,.growth-item,.finance-goal,.finance-weekly-target{border-radius:10px}
+.chat .msg{font-size:14px;line-height:1.65}.callout{color:var(--text)}
+.freehand-toolbar{color:var(--text)}
+.auth-card{border-radius:20px}.auth-card h1{font-family:Georgia,'Times New Roman',serif;font-weight:400;font-size:32px}
+@media(max-width:900px){.main{padding:22px 18px}.page:not([data-page="senioridade"]):not([data-page="todoist"]):not([data-page="central"]):not([data-page="desenvolvimento"]){padding:22px}}
+@media(max-width:600px){.main{padding:18px 12px}.page:not([data-page="senioridade"]):not([data-page="todoist"]):not([data-page="central"]):not([data-page="desenvolvimento"]){padding:18px 14px;border-radius:13px}.page>h1{font-size:29px}.page>.lead{font-size:13px}.page>.grid{gap:12px}.card,.growth-card{padding:16px}.card>h2{font-size:21px}.btn{min-height:44px}}
