@@ -5281,7 +5281,7 @@ callEdge=async function(name,payload={}){
   const data=await jamesEdgeOriginal(name,payload);
   if(name==='google-status')jamesHealth.google=data;
   if(name==='slack-status')jamesHealth.slack=data;
-  if(name==='google-scan')jamesHealth.google={connected:true,last_scan_at:new Date().toISOString(),last_error:null};
+  if(name==='google-scan')jamesHealth.google={connected:true,last_scan_at:new Date().toISOString(),last_triage_mode:data.triage_mode,last_error:data.partial?(data.warning||'Leitura parcial do Gmail ou da Agenda.'):null};
   renderJamesHealth();return data;
  }catch(e){
   if(name==='google-scan'||name==='google-calendar-sync'||name==='google-status')jamesHealth.google={...(jamesHealth.google||{}),last_error:e.message,needs_google_connect:!!e.data?.needs_google_connect};
