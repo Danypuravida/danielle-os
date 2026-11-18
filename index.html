@@ -668,7 +668,7 @@ select.field{max-width:100%}
 </style>
 
 <link rel="stylesheet" href="./career-portfolio.css?v=3">
-<link rel="stylesheet" href="./learning-bank.css?v=1">
+<link rel="stylesheet" href="./learning-bank.css?v=2">
 <link rel="stylesheet" href="./focus-workspace.css?v=1">
 <link rel="stylesheet" href="./native-tasks.css?v=1">
 <link rel="stylesheet" href="./clean-theme.css?v=2">
@@ -5164,7 +5164,7 @@ window.addEventListener('resize',()=>{for(const id of Object.keys(freehandBoards
 (function(){
   const origin=location.origin;
   const section=document.createElement('section');section.className='page';section.dataset.page='central';
-  section.innerHTML='<div class="card" style="margin-bottom:14px"><h2>Central de desenvolvimento</h2><p>Seu desenvolvimento, a Manu e os alinhamentos com sua líder usam a mesma base do Núcleo. Alterações salvas aparecem nos dois aplicativos.</p><div id="centralStatus" class="muted" role="status">Abra a central para carregar seus registros.</div></div><iframe id="centralFrame" title="Núcleo — desenvolvimento pessoal e da equipe" style="width:100%;height:calc(100vh - 170px);min-height:720px;border:0;border-radius:16px;background:#0c1723" referrerpolicy="same-origin"></iframe>';
+  section.innerHTML='<div class="card" style="margin-bottom:14px"><h2>Central de desenvolvimento</h2><p>Seu plano, sua equipe, seus aprendizados e seus aplicativos de desenvolvimento em um lugar. Plano e equipe continuam conectados ao Núcleo.</p><div id="centralStatus" class="muted" role="status">Abra a central para carregar seus registros.</div></div><iframe id="centralFrame" title="Núcleo — desenvolvimento pessoal e da equipe" style="width:100%;height:calc(100vh - 170px);min-height:720px;border:0;border-radius:16px;background:#0c1723" referrerpolicy="same-origin"></iframe>';
   const existing=document.querySelector('section.page');existing.parentNode.insertBefore(section,existing);
   const frame=document.getElementById('centralFrame');let desired={page:'dashboard'},ready=false;
   async function sendSession(){
@@ -5484,6 +5484,6 @@ loadJames=async function(syncFinance=true){
 
 </script>
 <script src="./career-portfolio.js?v=3"></script>
-<script src="./learning-bank.js?v=1"></script>
+<script src="./learning-bank.js?v=2"></script>
 <script src="./focus-workspace.js?v=3"></script>
 </body></html>

@@ -13,7 +13,7 @@ async function run(){
  await s.call({action:'save_review',week_start:'2026-11-16',reflection:'Reflexão',next_action:'Aplicar'});await s.call({action:'save_review',week_start:'2026-11-16',reflection:'Reflexão atualizada'});assert.equal((await s.call()).reviews.length,1);assert.equal(tables.os_learning_weekly_reviews[0].reflection,'Reflexão atualizada');await assert.rejects(s.call({action:'save_review',week_start:'2026-11-17',reflection:'Wrong date'}));
  owner='owner-b';assert.equal((await s.call()).entries.length,0);assert.equal((await s.call()).reviews.length,0);await assert.rejects(s.call({action:'archive',id:'entry-a'}),/mudou em outro/);owner=null;await assert.rejects(s.call(),/Entre na sua conta/);
  owner='paged-owner';tables.os_learning_entries.push(...Array.from({length:1007},(_,i)=>({...input,id:'many-'+i,user_id:owner})));assert.equal((await s.call()).entries.length,1007);assert(queries.filter(q=>q.mode==='read'||q.mode==='update').every(q=>q.filters.some(([k])=>k==='user_id')));
- const html=fs.readFileSync('index.html','utf8');assert(html.includes("window.LearningBank?.show('plan')"));assert(html.includes('learning-bank.js?v=1'));assert(html.trim().endsWith('</html>'));assert(html.includes('async function loadJames'));
+ const html=fs.readFileSync('index.html','utf8');assert(html.includes("window.LearningBank?.show('plan')"));assert(html.includes('learning-bank.js?v=2'));assert(html.trim().endsWith('</html>'));assert(html.includes('async function loadJames'));
  console.log('PASS learning bank: owned CRUD, retry preservation, weekly boundaries, review history, stale editing, safe source URLs, timezone and pagination.');
 }
 run().catch(e=>{console.error(e);process.exitCode=1});
