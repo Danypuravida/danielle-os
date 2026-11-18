@@ -16,3 +16,5 @@ jobs:
       - run: node --check development-workspaces.js
       - run: node tests/development-workspaces.cjs
       - run: node tests/basic-triage.cjs
+      - run: node --check team-development.js
+      - run: node tests/team-development.cjs
